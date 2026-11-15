@@ -1429,6 +1429,37 @@ export function Import1cPageSkeleton() {
 }
 
 // ---------------------------------------------------------------------------
+// Экспорт (абонементы клиентов в Excel)
+
+export function ExportPageSkeleton() {
+  return (
+    <ShellSkeleton title="Экспорт">
+      <div className="max-w-4xl space-y-8">
+        <div className="space-y-4 rounded-lg border bg-background p-6">
+          <div className="space-y-2">
+            <Skeleton className="h-5 w-1/3" />
+            <Skeleton className="h-4 w-full" />
+            <Skeleton className="h-4 w-2/3" />
+          </div>
+          <div className="space-y-2">
+            <Skeleton className="h-4 w-16" />
+            <div className="flex gap-6">
+              <Skeleton className="h-5 w-24" />
+              <Skeleton className="h-5 w-24" />
+            </div>
+          </div>
+          <div className="space-y-2">
+            <Skeleton className="h-4 w-24" />
+            <Skeleton className="h-9 w-80" />
+          </div>
+          <Skeleton className="h-14 w-full" />
+          <Skeleton className="h-9 w-40 rounded-full" />
+        </div>
+      </div>
+    </ShellSkeleton>
+  );
+}
+
 // Импорт переноса (клиенты купленной студии)
 
 export function ImportCarryoverPageSkeleton() {

@@ -37,6 +37,7 @@ import { Route as AuthenticatedKbBasesRouteImport } from './routes/_authenticate
 import { Route as AuthenticatedImportCarryoverRouteImport } from './routes/_authenticated/import-carryover'
 import { Route as AuthenticatedImport1cRouteImport } from './routes/_authenticated/import-1c'
 import { Route as AuthenticatedFeedbackRouteImport } from './routes/_authenticated/feedback'
+import { Route as AuthenticatedExportRouteImport } from './routes/_authenticated/export'
 import { Route as AuthenticatedEmployeesRouteImport } from './routes/_authenticated/employees'
 import { Route as AuthenticatedClubSettingsRouteImport } from './routes/_authenticated/club-settings'
 import { Route as AuthenticatedClientsRouteImport } from './routes/_authenticated/clients'
@@ -233,6 +234,11 @@ const AuthenticatedImport1cRoute = AuthenticatedImport1cRouteImport.update({
 const AuthenticatedFeedbackRoute = AuthenticatedFeedbackRouteImport.update({
   id: '/feedback',
   path: '/feedback',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedExportRoute = AuthenticatedExportRouteImport.update({
+  id: '/export',
+  path: '/export',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedEmployeesRoute = AuthenticatedEmployeesRouteImport.update({
@@ -573,6 +579,7 @@ export interface FileRoutesByFullPath {
   '/clients': typeof AuthenticatedClientsRoute
   '/club-settings': typeof AuthenticatedClubSettingsRoute
   '/employees': typeof AuthenticatedEmployeesRoute
+  '/export': typeof AuthenticatedExportRoute
   '/feedback': typeof AuthenticatedFeedbackRoute
   '/import-1c': typeof AuthenticatedImport1cRoute
   '/import-carryover': typeof AuthenticatedImportCarryoverRoute
@@ -656,6 +663,7 @@ export interface FileRoutesByTo {
   '/clients': typeof AuthenticatedClientsRoute
   '/club-settings': typeof AuthenticatedClubSettingsRoute
   '/employees': typeof AuthenticatedEmployeesRoute
+  '/export': typeof AuthenticatedExportRoute
   '/feedback': typeof AuthenticatedFeedbackRoute
   '/import-1c': typeof AuthenticatedImport1cRoute
   '/import-carryover': typeof AuthenticatedImportCarryoverRoute
@@ -742,6 +750,7 @@ export interface FileRoutesById {
   '/_authenticated/clients': typeof AuthenticatedClientsRoute
   '/_authenticated/club-settings': typeof AuthenticatedClubSettingsRoute
   '/_authenticated/employees': typeof AuthenticatedEmployeesRoute
+  '/_authenticated/export': typeof AuthenticatedExportRoute
   '/_authenticated/feedback': typeof AuthenticatedFeedbackRoute
   '/_authenticated/import-1c': typeof AuthenticatedImport1cRoute
   '/_authenticated/import-carryover': typeof AuthenticatedImportCarryoverRoute
@@ -829,6 +838,7 @@ export interface FileRouteTypes {
     | '/clients'
     | '/club-settings'
     | '/employees'
+    | '/export'
     | '/feedback'
     | '/import-1c'
     | '/import-carryover'
@@ -912,6 +922,7 @@ export interface FileRouteTypes {
     | '/clients'
     | '/club-settings'
     | '/employees'
+    | '/export'
     | '/feedback'
     | '/import-1c'
     | '/import-carryover'
@@ -997,6 +1008,7 @@ export interface FileRouteTypes {
     | '/_authenticated/clients'
     | '/_authenticated/club-settings'
     | '/_authenticated/employees'
+    | '/_authenticated/export'
     | '/_authenticated/feedback'
     | '/_authenticated/import-1c'
     | '/_authenticated/import-carryover'
@@ -1274,6 +1286,13 @@ declare module '@tanstack/react-router' {
       path: '/feedback'
       fullPath: '/feedback'
       preLoaderRoute: typeof AuthenticatedFeedbackRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/export': {
+      id: '/_authenticated/export'
+      path: '/export'
+      fullPath: '/export'
+      preLoaderRoute: typeof AuthenticatedExportRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/employees': {
@@ -1676,6 +1695,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedClientsRoute: typeof AuthenticatedClientsRoute
   AuthenticatedClubSettingsRoute: typeof AuthenticatedClubSettingsRoute
   AuthenticatedEmployeesRoute: typeof AuthenticatedEmployeesRoute
+  AuthenticatedExportRoute: typeof AuthenticatedExportRoute
   AuthenticatedFeedbackRoute: typeof AuthenticatedFeedbackRoute
   AuthenticatedImport1cRoute: typeof AuthenticatedImport1cRoute
   AuthenticatedImportCarryoverRoute: typeof AuthenticatedImportCarryoverRoute
@@ -1757,6 +1777,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedClientsRoute: AuthenticatedClientsRoute,
   AuthenticatedClubSettingsRoute: AuthenticatedClubSettingsRoute,
   AuthenticatedEmployeesRoute: AuthenticatedEmployeesRoute,
+  AuthenticatedExportRoute: AuthenticatedExportRoute,
   AuthenticatedFeedbackRoute: AuthenticatedFeedbackRoute,
   AuthenticatedImport1cRoute: AuthenticatedImport1cRoute,
   AuthenticatedImportCarryoverRoute: AuthenticatedImportCarryoverRoute,

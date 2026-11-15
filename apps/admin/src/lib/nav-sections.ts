@@ -24,6 +24,7 @@ import {
   Crown,
   CupStar,
   DocumentText,
+  DownloadMinimalistic,
   Dumbbell,
   Flag,
   GraphNewUp,
@@ -470,6 +471,10 @@ export const ACCESS_ITEMS: NavItem[] = [
   { title: "Импорт переноса", url: "/import-carryover", icon: HandShake },
 ];
 export const STUDIOS_ITEMS: NavItem[] = [{ title: "Настройки", url: "/studios", icon: Widget3 }];
+// Выгрузки в Excel (2026-11-15) — владельцу клуба: в файлах личные данные клиентов.
+export const EXPORT_ITEMS: NavItem[] = [
+  { title: "Абонементы клиентов", url: "/export", icon: DownloadMinimalistic },
+];
 export const MANAGE_GROUPS: NavGroup[] = [
   {
     key: "manage-kb",
@@ -478,6 +483,7 @@ export const MANAGE_GROUPS: NavGroup[] = [
   },
   { key: "manage-access", label: "Пользователи и роли", items: ACCESS_ITEMS },
   { key: "manage-studios", label: "Клубы", items: STUDIOS_ITEMS },
+  { key: "manage-export", label: "Экспорт", items: EXPORT_ITEMS },
 ];
 const MANAGE_URLS = MANAGE_GROUPS.flatMap((g) => g.items.map((i) => i.url));
 
@@ -556,7 +562,7 @@ export function canOpenPath(
 
 /**
  * Страница «Управления»: «Клубы» — всем (список и свои настройки), «Знания» —
- * администратору баз знаний, импорт из 1С и импорт переноса — владельцу клуба, «Пользователи и
+ * администратору баз знаний, импорт из 1С, импорт переноса и «Экспорт» — владельцу клуба, «Пользователи и
  * роли» — по правам: люди — управляющим пользователями (и тем, кто ведёт роли
  * или журнал — для просмотра), роли и структура — им же, журнал — audit.view
  * или roles.manage.
@@ -565,7 +571,11 @@ export function canOpenManagePath(access: AdminAccess, pathname: string): boolea
   const any = (...rights: AccessRight[]) => rights.some((r) => access.rights.includes(r));
   if (STUDIOS_ITEMS.some((i) => matches(pathname, i.url))) return true;
   if (matches(pathname, KB_BASES_URL)) return access.kbAdmin;
-  if (matches(pathname, "/import-1c") || matches(pathname, "/import-carryover"))
+  if (
+    matches(pathname, "/import-1c") ||
+    matches(pathname, "/import-carryover") ||
+    EXPORT_ITEMS.some((i) => matches(pathname, i.url))
+  )
     return Object.values(access.studios).some((s) => s.owner);
   if (matches(pathname, "/access/log")) return any("audit.view", "roles.manage");
   if (matches(pathname, "/access/structure"))

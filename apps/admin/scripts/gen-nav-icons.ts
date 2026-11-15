@@ -77,6 +77,7 @@ const ICONS: Record<string, string> = {
   TagPrice: "money",
   Target: "ui",
   TicketSale: "money",
+  DownloadMinimalistic: "arrows-action",
   UploadMinimalistic: "arrows-action",
   UserId: "users",
   UsersGroupRounded: "users",

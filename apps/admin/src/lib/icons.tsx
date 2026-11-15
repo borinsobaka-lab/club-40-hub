@@ -68,6 +68,7 @@ import {
   Eraser as EraserArt,
   ExternalLink as ExternalLinkArt,
   Eye as EyeArt,
+  FileDown as FileDownArt,
   FilePlus as FilePlusArt,
   FileText as FileTextArt,
   FileUp as FileUpArt,
@@ -217,6 +218,7 @@ export const Ellipsis = icon(EllipsisArt, "Ellipsis");
 export const Eraser = icon(EraserArt, "Eraser");
 export const ExternalLink = icon(ExternalLinkArt, "ExternalLink");
 export const Eye = icon(EyeArt, "Eye");
+export const FileDown = icon(FileDownArt, "FileDown");
 export const FilePlus = icon(FilePlusArt, "FilePlus");
 export const FileText = icon(FileTextArt, "FileText");
 export const FileUp = icon(FileUpArt, "FileUp");
