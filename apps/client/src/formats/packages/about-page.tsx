@@ -51,7 +51,7 @@ export function AboutTab() {
       <section className="rounded-[14px] bg-background pt-8 pb-2">
         <ol>
           {ABOUT_CHAPTERS.map((chapter) => (
-            <TimelineItem key={chapter.photosKey} date={chapter.date}>
+            <TimelineItem key={chapter.date} date={chapter.date}>
               <Chapter chapter={chapter} settings={settings} />
             </TimelineItem>
           ))}
@@ -154,17 +154,19 @@ function Chapter({
   settings: AboutSettings | null | undefined;
 }) {
   const t = useT();
-  const caption = t(chapter.galleryCaption);
+  const caption = chapter.galleryCaption ? t(chapter.galleryCaption) : "";
   return (
     <>
       <Reveal>
         <h2 className="mt-1 text-2xl font-semibold">{t(chapter.title)}</h2>
         <Paragraphs items={chapter.paragraphs} className="mt-3" />
       </Reveal>
-      <Reveal className="mt-6">
-        <div className="mb-3 text-sm font-medium text-muted-foreground">{caption}</div>
-        <Gallery photos={galleryPhotos(settings, chapter.photosKey)} label={caption} />
-      </Reveal>
+      {chapter.photosKey && (
+        <Reveal className="mt-6">
+          <div className="mb-3 text-sm font-medium text-muted-foreground">{caption}</div>
+          <Gallery photos={galleryPhotos(settings, chapter.photosKey)} label={caption} />
+        </Reveal>
+      )}
     </>
   );
 }
@@ -433,7 +435,7 @@ function photoSrc(
 /** Галерея главы: свои фото или три временных. */
 function galleryPhotos(
   settings: AboutSettings | null | undefined,
-  key: AboutChapter["photosKey"],
+  key: NonNullable<AboutChapter["photosKey"]>,
 ): (string | null)[] {
   if (settings === undefined) return [null, null, null];
   const own = (settings?.[key] ?? [])

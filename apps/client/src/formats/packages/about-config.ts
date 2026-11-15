@@ -27,12 +27,12 @@ export const ABOUT_INTRO = {
 };
 
 export type AboutChapter = {
-  /** Колонка галереи в app_about_settings. */
-  photosKey: "first_studio_photos" | "second_studio_photos" | "massage_photos";
+  /** Колонка галереи в app_about_settings; нет — глава без галереи. */
+  photosKey?: "first_studio_photos" | "second_studio_photos" | "massage_photos";
   date: string;
   title: string;
   paragraphs: string[];
-  galleryCaption: string;
+  galleryCaption?: string;
 };
 
 export const ABOUT_CHAPTERS: AboutChapter[] = [
@@ -79,6 +79,17 @@ export const ABOUT_CHAPTERS: AboutChapter[] = [
       ),
     ],
     galleryCaption: msg("Наш массажный кабинет"),
+  },
+  {
+    // Глава — 2026-11-15, по просьбе владельца; галереи пока нет.
+    date: msg("Ноябрь 2026"),
+    title: msg("Нас стало ещё больше"),
+    paragraphs: [
+      msg("В ноябре 2026 года к нам присоединилась студия Elastic в Ваке."),
+      msg(
+        "Теперь у Lady Stretch три студии — ещё больше тренировок, тренеров и девушек, которые выбирают движение и заботу о себе.",
+      ),
+    ],
   },
 ];
 

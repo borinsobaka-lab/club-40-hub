@@ -38,6 +38,12 @@ const dict: Dictionary = {
   "Так массаж стал ещё одной частью Lady Stretch, дополнив наши тренировки возможностью расслабиться, отдохнуть и восстановить силы.":
     "That's how massage became another part of Lady Stretch, adding to our workouts a chance to relax, rest and recharge.",
   "Наш массажный кабинет": "Our massage room",
+  "Ноябрь 2026": "November 2026",
+  "Нас стало ещё больше": "Even more of us",
+  "В ноябре 2026 года к нам присоединилась студия Elastic в Ваке.":
+    "In November 2026, the Elastic studio in Vake joined us.",
+  "Теперь у Lady Stretch три студии — ещё больше тренировок, тренеров и девушек, которые выбирают движение и заботу о себе.":
+    "Lady Stretch now has three studios — even more classes, trainers and women who choose movement and self-care.",
   Сегодня: "Today",
   "Больше, чем тренировки": "More than workouts",
   "За это время вокруг Lady Stretch сформировалось настоящее сообщество.":
