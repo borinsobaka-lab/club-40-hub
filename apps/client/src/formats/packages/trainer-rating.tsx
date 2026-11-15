@@ -12,8 +12,11 @@ import { cn } from "@/lib/utils";
 /**
  * Рейтинг тренера и чаевые в пакетном приложении (решение владельца
  * 2026-10-11). Рейтинг — trainers.rating_avg (до сотых) и rating_count:
- * отзывы из прежнего сервиса + оценки клиентов (trainer_reviews), считает
- * база (db/migrations/2026-10-11_zzzzzzzzzzzzz_trainer_ratings.sql). Клиент
+ * оценки из прежнего сервиса + оценки клиентов (trainer_reviews), считает
+ * база (db/migrations/2026-10-11_zzzzzzzzzzzzz_trainer_ratings.sql). В
+ * скобках — число оценок; «отзывы клиентов» — текстовые комментарии
+ * (client_trainer_comments), их число — строкой ниже в списке тренеров
+ * (решение владельца 2026-11-15). Клиент
  * ставит одну оценку тренеру и может её изменить. Чаевые — внешняя ссылка
  * trainers.tip_url (задаётся в админке, «Сотрудники»).
  */
@@ -23,8 +26,14 @@ export function formatRating(avg: number, t: Translator) {
   return t.number(avg, { maximumFractionDigits: 2 });
 }
 
-function reviewsLabel(n: number, t: Translator) {
-  return t.plural(n, "{n} отзыв|{n} отзыва|{n} отзывов");
+function ratingsLabel(n: number, t: Translator) {
+  return t.plural(n, "{n} оценка|{n} оценки|{n} оценок");
+}
+
+function clientReviewsLabel(n: number, t: Translator) {
+  return n === 0
+    ? t("Нет отзывов клиентов")
+    : t.plural(n, "{n} отзыв клиента|{n} отзыва клиентов|{n} отзывов клиентов");
 }
 
 /** Золотые звёзды; дробная часть заполняет звезду частично (4,5 — половинка). */
@@ -60,35 +69,55 @@ export function RatingStars({
   );
 }
 
-/** Строка «★★★★★ 4,99 (56 отзывов)» — в списке тренеров и в карточке. */
+/**
+ * Строка «★★★★★ 4,99 (56 оценок)» — в списке тренеров и в карточке. С
+ * `reviews` (список тренеров) — строкой ниже «N отзывов клиентов»; undefined —
+ * не показывается (гость, ещё грузится, ошибка).
+ */
 export function TrainerRatingLine({
   avg,
   count,
+  reviews,
   starClass,
   textClass = "text-sm",
 }: {
   avg: number | null;
   count: number;
+  reviews?: number;
   starClass?: string;
   textClass?: string;
 }) {
   const t = useT();
+  const reviewsLine =
+    reviews === undefined ? null : (
+      <div className={`${textClass} mt-0.5 text-muted-foreground`}>
+        {clientReviewsLabel(reviews, t)}
+      </div>
+    );
   if (avg == null || count === 0) {
-    return <div className={`${textClass} text-muted-foreground`}>{t("Пока нет отзывов")}</div>;
+    return (
+      <>
+        <div className={`${textClass} text-muted-foreground`}>{t("Пока нет оценок")}</div>
+        {reviewsLine}
+      </>
+    );
   }
   return (
-    <div
-      className="flex items-center gap-2"
-      aria-label={t("Рейтинг {value} из 5, {reviews}", {
-        value: formatRating(avg, t),
-        reviews: reviewsLabel(count, t),
-      })}
-    >
-      <RatingStars value={avg} className={starClass} />
-      <span className={`${textClass} text-muted-foreground tabular-nums`}>
-        {formatRating(avg, t)} ({reviewsLabel(count, t)})
-      </span>
-    </div>
+    <>
+      <div
+        className="flex items-center gap-2"
+        aria-label={t("Рейтинг {value} из 5, {reviews}", {
+          value: formatRating(avg, t),
+          reviews: ratingsLabel(count, t),
+        })}
+      >
+        <RatingStars value={avg} className={starClass} />
+        <span className={`${textClass} text-muted-foreground tabular-nums`}>
+          {formatRating(avg, t)} ({ratingsLabel(count, t)})
+        </span>
+      </div>
+      {reviewsLine}
+    </>
   );
 }
 

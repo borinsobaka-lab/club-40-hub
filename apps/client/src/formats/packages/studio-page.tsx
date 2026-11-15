@@ -11,6 +11,7 @@ import {
   SquircleAvatarFallback,
   SquircleAvatarImage,
 } from "@/components/ui/squircle-avatar";
+import { useAuth } from "@/hooks/use-auth";
 import { useFormatStudios, useViewedStudioId } from "@/hooks/use-viewed-studio";
 import { msg, useLocalize, useT } from "@/i18n";
 import { mediaUrl } from "@/lib/media";
@@ -27,6 +28,7 @@ import {
 } from "./queries";
 import { TrainerDrawer } from "./trainer-drawer";
 import { TrainerRatingLine } from "./trainer-rating";
+import { trainerCommentCountsQuery } from "./trainer-comments-data";
 
 /**
  * «Студия» пакетного приложения (до 2026-10-11 — заглушка «Клуб»): вкладки
@@ -114,6 +116,17 @@ function StaffTab({ role }: { role: StaffRole }) {
   const t = useT();
   const loc = useLocalize();
   const { data: rows, isPending, error } = useQuery(studioStaffQuery(studioId, studioReady));
+  // «N отзывов клиентов» под рейтингом — тем, кого оценивают, и только
+  // вошедшему (опубликованные читает вошедший).
+  const { user } = useAuth();
+  const ratedIds = useMemo(
+    () =>
+      staffHasRating(role)
+        ? (rows ?? []).filter((r) => staffRole(r) === role).map((r) => r.id)
+        : [],
+    [rows, role],
+  );
+  const { data: reviewCounts } = useQuery(trainerCommentCountsQuery(ratedIds, !!user));
   // Имена — на языке клиента, порядок — руководитель студии первым, дальше
   // по переведённому имени.
   const data = useMemo(
@@ -187,6 +200,7 @@ function StaffTab({ role }: { role: StaffRole }) {
                       <TrainerRatingLine
                         avg={tr.rating_avg}
                         count={tr.rating_count}
+                        reviews={reviewCounts ? (reviewCounts[tr.id] ?? 0) : undefined}
                         starClass="h-3.5 w-3.5"
                         textClass="text-xs"
                       />

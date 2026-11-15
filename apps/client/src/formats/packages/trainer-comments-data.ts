@@ -40,6 +40,33 @@ export function publishedTrainerCommentsQuery(trainerId: string) {
   });
 }
 
+/**
+ * Число опубликованных комментариев по тренерам — строка «N отзывов
+ * клиентов» в списке тренеров (RPC client_trainer_comment_counts,
+ * db/migrations/2026-11-15_zzz_trainer_comment_counts.sql). Только
+ * вошедшему: тренеров, которых клиент не видит, в ответе нет — им 0.
+ */
+export function trainerCommentCountsQuery(trainerIds: string[], enabled: boolean) {
+  const ids = [...trainerIds].sort();
+  return queryOptions({
+    queryKey: ["trainer-comment-counts", ids],
+    queryFn: async (): Promise<Record<string, number>> => {
+      const { data, error } = await untypedDb.rpc("client_trainer_comment_counts", {
+        _trainer_ids: ids,
+      });
+      if (error) throw error;
+      const counts: Record<string, number> = {};
+      for (const row of (data ?? []) as { trainer_id: string; comments_count: number }[]) {
+        counts[row.trainer_id] = row.comments_count;
+      }
+      return counts;
+    },
+    enabled: enabled && ids.length > 0,
+    // До выкатки миграции функции нет — строка просто не показывается.
+    retry: false,
+  });
+}
+
 /** Последний свой комментарий о тренере — чтобы показать «на модерации». */
 export function myTrainerCommentQuery(trainerId: string, userId: string | null) {
   return queryOptions({

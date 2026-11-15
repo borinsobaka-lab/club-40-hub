@@ -59,7 +59,8 @@ const dict: Dictionary = {
   "Не удалось загрузить карточку тренера. Попробуйте ещё раз.":
     "Couldn't load the trainer's profile. Please try again.",
   "Рассказ о тренере скоро появится.": "The trainer's bio is coming soon.",
-  "Пока нет отзывов": "No reviews yet",
+  "Пока нет оценок": "No ratings yet",
+  "Нет отзывов клиентов": "No client reviews yet",
   "Рейтинг {value} из 5, {reviews}": "Rated {value} out of 5, {reviews}",
   "Поблагодарить тренера": "Thank your trainer",
   "Оставить чаевые": "Leave a tip",
@@ -76,7 +77,9 @@ const dict: Dictionary = {
   Сохранить: "Save",
   Отправить: "Submit",
   Изменить: "Edit",
-  "{n} отзыв|{n} отзыва|{n} отзывов": "{n} review|{n} reviews",
+  "{n} оценка|{n} оценки|{n} оценок": "{n} rating|{n} ratings",
+  "{n} отзыв клиента|{n} отзыва клиентов|{n} отзывов клиентов":
+    "{n} client review|{n} client reviews",
   Тренеры: "Trainers",
   Студия: "Studio",
   "Не удалось загрузить сотрудников. Обновите страницу.":
