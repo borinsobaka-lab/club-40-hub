@@ -117,6 +117,8 @@ export type Pack = {
    */
   full_price?: number | string | null;
   savings_amount?: number | string | null;
+  /** «N ₾ за занятие» рядом с ценой — вручную (2026-11-15_zz_memberships_price_per_class.sql). */
+  price_per_class?: number | string | null;
   /** «Что входит» — пункты из админки («Номенклатуры»). */
   benefits?: string[] | null;
   /** Переводы названия, описания, тега, подарка и пунктов (src/i18n/content.ts). */

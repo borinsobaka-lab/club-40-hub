@@ -516,7 +516,8 @@ AUTH_SETUP.md.
   как в прайсе студии): `db/migrations/2026-11-15_memberships_full_price_savings.sql`
   — `memberships.full_price` (зачёркнутая цена) и `savings_amount` («выгода
   N ₾»): вводятся вручную в «Номенклатурах», не считаются, в продажи не идут;
-  null — не показываются.
+  null — не показываются. Так же «N ₾ за занятие» — `memberships.price_per_class`
+  (`2026-11-15_zz_memberships_price_per_class.sql`).
   Онбординг пакетного приложения: `db/migrations/2026-10-11_packages_onboarding.sql`
   — `member_profiles.goal_other` (текст цели «Другое»), `birth_date`, новые
   значения enum `fitness_goal` (`flexibility`/`stress_relief`/`body_shape`/`other`).

@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { AddCircle, SaleSquare, Ticket } from "@solar-icons/react";
+import { AddCircle, Gift, SaleSquare, Ticket } from "@solar-icons/react";
 
 import { PageShell } from "@/components/page-shell";
 import { UnderlineTabs } from "@/components/underline-tabs";
@@ -187,6 +187,8 @@ function PackCard({
   const duration = durationLabel(m.duration_days, t);
   // Зачёркнутая полная стоимость и «выгода» — вручную из «Номенклатур», не считаются.
   const fullPrice = m.full_price != null && Number(m.full_price) > 0 ? Number(m.full_price) : null;
+  const perClass =
+    m.price_per_class != null && Number(m.price_per_class) > 0 ? Number(m.price_per_class) : null;
   const savings =
     m.savings_amount != null && Number(m.savings_amount) > 0 ? Number(m.savings_amount) : null;
   const message = clientName
@@ -219,8 +221,15 @@ function PackCard({
           linkClass="font-medium text-foreground underline decoration-primary decoration-2 underline-offset-2"
         />
       )}
-      <div className="mt-3 text-4xl font-black tracking-tight tabular-nums">
-        {t.number(Number(m.price))} ₾
+      <div className="mt-3 flex flex-wrap items-baseline gap-x-3 gap-y-1">
+        <span className="text-5xl font-semibold tracking-tight tabular-nums">
+          {t.number(Number(m.price))} ₾
+        </span>
+        {perClass != null && (
+          <span className="text-base text-muted-foreground tabular-nums">
+            {t("{amount} ₾ за занятие", { amount: t.number(perClass) })}
+          </span>
+        )}
       </div>
       {(fullPrice != null || savings != null) && (
         <div className="mt-2 flex flex-wrap items-center gap-2.5">
@@ -265,7 +274,10 @@ function PackCard({
       </div>
       {m.gift_text?.trim() && (
         <div className="mt-4 rounded-xl bg-[#2A2B2F] p-4 text-white">
-          <div className="text-xs text-white/60">{t("В подарок")}</div>
+          <div className="flex items-center gap-1.5 text-xs text-white/60">
+            <Gift className="h-4 w-4 shrink-0" weight="Bold" />
+            {t("В подарок")}
+          </div>
           <FormattedText
             text={m.gift_text}
             className="mt-1.5 text-sm leading-snug"

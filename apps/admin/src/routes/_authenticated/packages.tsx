@@ -89,6 +89,8 @@ const TIPS = {
     "Пункты «Что входит» в карточке пакета в приложении, по одному: «2 диагностики тела», «Продление со скидкой 35%». Пусто — приложение напишет число тренировок и рассрочку само.",
   fullPrice:
     "Зачёркнутая цена под ценой пакета в приложении — как в прайсе студии. Только для показа: в продажу не подставляется. Пусто — не показывается.",
+  pricePerClass:
+    "«N ₾ за занятие» рядом с ценой пакета в приложении, как в прайсе студии. Пишется вручную, не считается. Пусто — не показывается.",
   savings:
     "Плашка «выгода N ₾» рядом с зачёркнутой ценой в приложении. Пишется вручную, не считается. Пусто — не показывается.",
   gift: "Блок «В подарок» под составом пакета в приложении (заголовок всегда «В подарок»). Например: **Персональная тренировка** — 110 ₾. Персональные в подарок отдельной строкой в составе не показываются — напишите их здесь.",
@@ -161,6 +163,8 @@ type Package = {
   /** Зачёркнутая «полная стоимость до скидки» и «выгода» в приложении — вручную, только витрина. */
   full_price: number | null;
   savings_amount: number | null;
+  /** «N ₾ за занятие» рядом с ценой в приложении — вручную, только витрина. */
+  price_per_class: number | null;
   /** «Что входит» в приложении — пункты по одному. */
   benefits: string[] | null;
   /** Переводы для приложения: {en|ka: {name, description, tag_text, gift_text, benefits[]}}. */
@@ -171,7 +175,7 @@ type Package = {
 type PackageDraft = Omit<Package, "id" | "studio_id" | "sort_order">;
 
 const COLUMNS =
-  "id, studio_id, name, description, visits_count, duration_days, price, max_payments, kind, personal_count, diagnostics_count, is_active, sort_order, tag_text, tag_style, gift_text, full_price, savings_amount, benefits, translations";
+  "id, studio_id, name, description, visits_count, duration_days, price, max_payments, kind, personal_count, diagnostics_count, is_active, sort_order, tag_text, tag_style, gift_text, full_price, savings_amount, price_per_class, benefits, translations";
 
 /** «Тренировок» в таблице: обычные и персональные по типу номенклатуры. */
 function trainingsLabel(p: Package) {
@@ -587,6 +591,9 @@ function PackageForm({ onOpenChange, studioId, item, draft, nextSortOrder, onSav
   const [fullPrice, setFullPrice] = useState(
     init?.full_price != null ? String(init.full_price) : "",
   );
+  const [pricePerClass, setPricePerClass] = useState(
+    init?.price_per_class != null ? String(init.price_per_class) : "",
+  );
   const [savings, setSavings] = useState(
     init?.savings_amount != null ? String(init.savings_amount) : "",
   );
@@ -638,6 +645,7 @@ function PackageForm({ onOpenChange, studioId, item, draft, nextSortOrder, onSav
         gift_text: null,
         full_price: null,
         savings_amount: null,
+        price_per_class: null,
         auto_renew: false,
         installment_enabled: false,
         for_couple: false,
@@ -706,6 +714,11 @@ function PackageForm({ onOpenChange, studioId, item, draft, nextSortOrder, onSav
       toast.error("Выгода — число (пусто — не показывать)");
       return;
     }
+    const perClassNum = isSingle ? null : optionalMoney(pricePerClass);
+    if (perClassNum === undefined) {
+      toast.error("Цена за занятие — число (пусто — не показывать)");
+      return;
+    }
     // У пробного и разового посещения рассрочки нет — всегда один платёж.
     const payments =
       kind === "trial" || isSingle ? SINGLE_VISIT.payments : positiveInt(maxPayments);
@@ -741,6 +754,7 @@ function PackageForm({ onOpenChange, studioId, item, draft, nextSortOrder, onSav
       gift_text: giftText.trim() || null,
       full_price: fullPriceNum,
       savings_amount: savingsNum,
+      price_per_class: perClassNum,
       auto_renew: false,
       installment_enabled: false,
       for_couple: false,
@@ -950,7 +964,15 @@ function PackageForm({ onOpenChange, studioId, item, draft, nextSortOrder, onSav
                   />
                 </FormField>
 
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                  <FormField label="За занятие, ₾" tip={TIPS.pricePerClass} optional>
+                    <Input
+                      inputMode="decimal"
+                      value={pricePerClass}
+                      onChange={(e) => setPricePerClass(e.target.value)}
+                      placeholder="Например: 20"
+                    />
+                  </FormField>
                   <FormField label="Полная стоимость до скидки, ₾" tip={TIPS.fullPrice} optional>
                     <Input
                       inputMode="decimal"
