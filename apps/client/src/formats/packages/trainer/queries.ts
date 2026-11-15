@@ -163,3 +163,31 @@ export async function addTrainerComment(clientId: string, body: string) {
   });
   if (error) throw error;
 }
+
+export type StudioAdminToday = {
+  trainer_id: string;
+  full_name: string | null;
+  photo_url: string | null;
+  telegram: string | null;
+  translations?: ContentTranslations | null;
+};
+
+/**
+ * Кто сегодня администратор в студии — из «Графика» админки (admin_shifts),
+ * только тренеру (db/migrations/2026-11-15_zz_trainer_app_admin_on_shift.sql).
+ * До миграции RPC нет — пусто, плашки нет.
+ */
+export function studioAdminsTodayQuery(studioId: string | null, enabled: boolean) {
+  return queryOptions({
+    queryKey: ["trainer-studio-admins-today", studioId],
+    queryFn: async (): Promise<StudioAdminToday[]> => {
+      const { data, error } = await untypedDb.rpc("trainer_studio_admins_today", {
+        p_studio: studioId,
+      });
+      if (error) return [];
+      return (data as StudioAdminToday[] | null) ?? [];
+    },
+    enabled: enabled && !!studioId,
+    staleTime: 5 * 60_000,
+  });
+}

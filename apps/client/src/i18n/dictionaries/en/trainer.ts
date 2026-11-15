@@ -40,6 +40,7 @@ const dict: Dictionary = {
   "Записан {n} человек|Записано {n} человека|Записано {n} человек":
     "{n} person booked|{n} people booked",
   "{n} на пробном|{n} на пробном|{n} на пробном": "{n} on a trial|{n} on a trial",
+  "Администратор сегодня": "Administrator today",
 };
 
 export default dict;

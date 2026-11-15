@@ -36,6 +36,7 @@ import { isDiagnostic, packEntryToDrawerData, type PackEntry } from "@/formats/p
 import { PackWorkoutCard } from "@/formats/packages/workout-card";
 import { StudioSwitcher } from "@/formats/packages/studio-switcher";
 import { TrainerMySchedule } from "@/formats/packages/trainer/my-schedule";
+import { StudioAdminToday } from "@/formats/packages/trainer/studio-admin-today";
 import { trainerMeQuery } from "@/formats/packages/trainer/queries";
 
 import { ContentDrawer } from "@/components/content-drawer";
@@ -442,6 +443,8 @@ function HomePage() {
           {IS_PACKAGES && (
             <section className="px-4 my-3">
               <StudioSwitcher />
+              {/* Тренеру — кто сегодня администратор в студии (2026-11-15). */}
+              <StudioAdminToday />
             </section>
           )}
         </div>

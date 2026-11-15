@@ -255,6 +255,33 @@ describe.skipIf(!url)("тренер в приложении (база)", () => {
     });
   });
 
+  test("администратор сегодня: только тренеру, смена на сегодня, Telegram", async () => {
+    await scenario(async (tx) => {
+      const s = await seed(tx);
+      const [{ id: adm }] = await tx`
+        insert into trainers (full_name, role, telegram) values ('Мариам Админ', 'admin', ' @mariam ')
+        returning id`;
+      const [{ id: adm2 }] =
+        await tx`insert into trainers (full_name, role) values ('Вчерашняя Админ', 'admin') returning id`;
+      await tx`insert into admin_shifts (studio_id, trainer_id, shift_date)
+               values (${s.studio}, ${adm}, workday_today()),
+                      (${s.studio}, ${adm2}, workday_today() - 1)`;
+
+      // Не тренер — пусто.
+      await as(tx, s.trainerUser);
+      expect((await tx`select * from trainer_studio_admins_today(${s.studio})`).length).toBe(0);
+      await asServer(tx);
+
+      await link(tx, s);
+      await as(tx, s.trainerUser);
+      const rows = await tx`select * from trainer_studio_admins_today(${s.studio})`;
+      expect(rows.map((r: { full_name: string }) => r.full_name)).toEqual(["Мариам Админ"]);
+      expect(rows[0].telegram).toBe("@mariam");
+      // Таблица графика клиенту-тренеру напрямую закрыта.
+      expect((await tx`select * from admin_shifts`).length).toBe(0);
+    });
+  });
+
   test("один тренер — одна карточка", async () => {
     await scenario(async (tx) => {
       const s = await seed(tx);

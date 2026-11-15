@@ -33,3 +33,16 @@ export function clientDisplayName(c: {
   const parts = [c.first_name, c.last_name].map((p) => p?.trim()).filter(Boolean);
   return parts.length ? parts.join(" ") : c.full_name?.trim() || "—";
 }
+
+/**
+ * Ссылка на Telegram сотрудника из поля «Telegram» админки: ник (с «@» или
+ * без), «t.me/ник» или ссылка целиком. Чужие адреса и мусор — null (кнопки нет).
+ */
+export function telegramHref(value: string | null | undefined): string | null {
+  const v = (value ?? "").trim();
+  if (!v) return null;
+  const link = v.match(/^(?:https?:\/\/)?(?:www\.)?(?:t\.me|telegram\.me)\/(.+)$/i);
+  if (link) return `https://t.me/${link[1]}`;
+  const nick = v.replace(/^@/, "");
+  return /^[A-Za-z0-9_]{4,32}$/.test(nick) ? `https://t.me/${nick}` : null;
+}

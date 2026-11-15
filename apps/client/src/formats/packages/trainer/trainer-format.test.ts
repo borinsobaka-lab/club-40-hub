@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 
 import { getTranslator } from "@/i18n/translate";
-import { clientDisplayName, commentWhen, goalText } from "./format";
+import { clientDisplayName, commentWhen, goalText, telegramHref } from "./format";
 import { healthRestrictions } from "./profile-labels";
 
 const t = getTranslator("ru");
@@ -40,5 +40,17 @@ describe("тренер: подписи", () => {
     );
     expect(commentWhen(new Date(2026, 10, 4, 9, 30).toISOString(), t, now)).toMatch(/^вчера 09:30/);
     expect(commentWhen(new Date(2026, 9, 12, 9, 30).toISOString(), t, now)).toContain("12");
+  });
+
+  test("Telegram администратора: ник, @ник, t.me и ссылка; мусор — без ссылки", () => {
+    expect(telegramHref("@mariam_ls")).toBe("https://t.me/mariam_ls");
+    expect(telegramHref(" mariam_ls ")).toBe("https://t.me/mariam_ls");
+    expect(telegramHref("t.me/mariam_ls")).toBe("https://t.me/mariam_ls");
+    expect(telegramHref("https://t.me/mariam_ls")).toBe("https://t.me/mariam_ls");
+    expect(telegramHref("http://telegram.me/mariam_ls")).toBe("https://t.me/mariam_ls");
+    expect(telegramHref("+995 591 00 00 00")).toBeNull();
+    expect(telegramHref("javascript:alert(1)")).toBeNull();
+    expect(telegramHref("")).toBeNull();
+    expect(telegramHref(null)).toBeNull();
   });
 });

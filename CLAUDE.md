@@ -1180,7 +1180,11 @@ AUTH_SETUP.md.
   (только packages), срабатывают сразу триггерами на
   `schedule_entries.cancelled_at` и `schedule_entry_substitutions` (будущие
   занятия; `trainer_push` → `push_trigger_send`). Удаление занятия пуша
-  тренеру не шлёт. Тесты — `db/trainer-app.test.ts`.
+  тренеру не шлёт. Кто сегодня администратор в студии (2026-11-15) — RPC
+  `trainer_studio_admins_today(p_studio)`
+  (`db/migrations/2026-11-15_zz_trainer_app_admin_on_shift.sql`: только
+  тренеру, только пакетная студия; имя, фото, Telegram сегодняшней смены
+  `admin_shifts`). Тесты — `db/trainer-app.test.ts`.
   Рейтинг тренеров и чаевые: `db/migrations/2026-10-11_zzzzzzzzzzzzz_trainer_ratings.sql`
   — `trainer_reviews` (оценка 1–5, одна от учётной записи на тренера; клиент
   читает и правит свою, ставит — тренеру, которого видит в приложении,
