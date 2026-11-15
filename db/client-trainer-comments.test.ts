@@ -119,7 +119,9 @@ describe.skipIf(!url)("комментарии клиентов о тренера
       expect(new Date(own.created_at).getFullYear()).toBeGreaterThan(2020);
 
       // Пока на модерации — в карточке тренера пусто, и второй не отправить.
-      expect(await tx`select * from client_trainer_comments_published(${s.trainer})`).toHaveLength(0);
+      expect(await tx`select * from client_trainer_comments_published(${s.trainer})`).toHaveLength(
+        0,
+      );
       expect(
         await failure(
           tx,
@@ -194,7 +196,9 @@ describe.skipIf(!url)("комментарии клиентов о тренера
       await as(tx, s.admin);
       await tx`update client_trainer_comments set status = 'rejected' where id = ${row.id}`;
       await as(tx, s.maria);
-      expect(await tx`select * from client_trainer_comments_published(${s.trainer})`).toHaveLength(0);
+      expect(await tx`select * from client_trainer_comments_published(${s.trainer})`).toHaveLength(
+        0,
+      );
 
       await as(tx, s.admin);
       await tx`update client_trainer_comments set status = 'pending' where id = ${row.id}`;
@@ -239,6 +243,32 @@ describe.skipIf(!url)("комментарии клиентов о тренера
       expect(
         await tx`select * from client_trainer_comments_published(${s.farTrainer})`,
       ).toHaveLength(0);
+    });
+  });
+
+  test("число опубликованных для списка тренеров — только видимым тренерам", async () => {
+    await scenario(async (tx) => {
+      const s = await seed(tx);
+      await asServer(tx);
+      await tx`
+        insert into client_trainer_comments (trainer_id, message, status)
+        values (${s.trainer}, 'Раз', 'approved'), (${s.trainer}, 'Два', 'approved'),
+               (${s.trainer}, 'Ждёт', 'pending'), (${s.trainer}, 'Нет', 'rejected'),
+               (${s.farTrainer}, 'Чужой', 'approved')`;
+      await as(tx, s.anna);
+      const rows = await tx`
+        select * from client_trainer_comment_counts(${[s.trainer, s.farTrainer]}::uuid[])`;
+      expect(
+        rows.map((r: { trainer_id: string; comments_count: number }) => [
+          r.trainer_id,
+          r.comments_count,
+        ]),
+      ).toEqual([[s.trainer, 2]]);
+      await as(tx, s.admin);
+      const staff = await tx`
+        select * from client_trainer_comment_counts(${[s.trainer, s.farTrainer]}::uuid[])
+         order by comments_count`;
+      expect(staff.map((r: { comments_count: number }) => r.comments_count)).toEqual([1, 2]);
     });
   });
 
