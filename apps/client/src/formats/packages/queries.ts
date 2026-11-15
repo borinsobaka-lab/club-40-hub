@@ -111,6 +111,12 @@ export type Pack = {
   tag_style?: "soft" | "bright" | null;
   /** Блок «В подарок» — текст с разметкой. */
   gift_text?: string | null;
+  /**
+   * Зачёркнутая «полная стоимость до скидки» и «выгода», ₾ — вручную в
+   * «Номенклатурах» (2026-11-15_memberships_full_price_savings.sql); до миграции полей нет.
+   */
+  full_price?: number | string | null;
+  savings_amount?: number | string | null;
   /** «Что входит» — пункты из админки («Номенклатуры»). */
   benefits?: string[] | null;
   /** Переводы названия, описания, тега, подарка и пунктов (src/i18n/content.ts). */

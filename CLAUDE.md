@@ -512,6 +512,11 @@ AUTH_SETUP.md.
   `bookings_log_fill_calories` переопределена здесь; RPC
   `my_studio_visit_stats` — сравнение со студией в статистике приложения;
   `refresh_client_stats_30d` — только service_role.
+  Полная стоимость и выгода в карточке пакета (решение владельца 2026-11-15,
+  как в прайсе студии): `db/migrations/2026-11-15_memberships_full_price_savings.sql`
+  — `memberships.full_price` (зачёркнутая цена) и `savings_amount` («выгода
+  N ₾»): вводятся вручную в «Номенклатурах», не считаются, в продажи не идут;
+  null — не показываются.
   Онбординг пакетного приложения: `db/migrations/2026-10-11_packages_onboarding.sql`
   — `member_profiles.goal_other` (текст цели «Другое»), `birth_date`, новые
   значения enum `fitness_goal` (`flexibility`/`stress_relief`/`body_shape`/`other`).

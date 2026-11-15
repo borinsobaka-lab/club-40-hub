@@ -185,6 +185,10 @@ function PackCard({
   const tag = m.tag_text?.trim();
   const bright = !!tag && m.tag_style === "bright";
   const duration = durationLabel(m.duration_days, t);
+  // Зачёркнутая полная стоимость и «выгода» — вручную из «Номенклатур», не считаются.
+  const fullPrice = m.full_price != null && Number(m.full_price) > 0 ? Number(m.full_price) : null;
+  const savings =
+    m.savings_amount != null && Number(m.savings_amount) > 0 ? Number(m.savings_amount) : null;
   const message = clientName
     ? t("Здравствуйте! Я {name}, клиент студии. Хочу оформить абонемент «{membership}».", {
         name: clientName,
@@ -197,7 +201,7 @@ function PackCard({
       className={`overflow-hidden rounded-2xl p-5 ${bright ? "border-primary ring-1 ring-primary" : ""}`}
     >
       <div className="flex items-start justify-between gap-3">
-        <h3 className="min-w-0 text-xl font-semibold leading-tight">{m.name}</h3>
+        <h3 className="min-w-0 text-2xl font-bold leading-tight">{m.name}</h3>
         {tag && (
           <span
             className={`mt-0.5 shrink-0 rounded-md px-2 py-0.5 text-xs font-medium ${
@@ -218,6 +222,20 @@ function PackCard({
       <div className="mt-3 text-4xl font-black tracking-tight tabular-nums">
         {t.number(Number(m.price))} ₾
       </div>
+      {(fullPrice != null || savings != null) && (
+        <div className="mt-2 flex flex-wrap items-center gap-2.5">
+          {fullPrice != null && (
+            <span className="text-base text-muted-foreground line-through tabular-nums">
+              {t.number(fullPrice)} ₾
+            </span>
+          )}
+          {savings != null && (
+            <span className="rounded-md bg-primary/15 px-2.5 py-1 text-sm font-semibold tabular-nums">
+              {t("выгода {amount} ₾", { amount: t.number(savings) })}
+            </span>
+          )}
+        </div>
+      )}
       {renewalPrice && (
         <div className="mt-3 flex items-start gap-3 rounded-xl bg-emerald-50 p-3 text-emerald-900 dark:bg-emerald-500/15 dark:text-emerald-100">
           <SaleSquare
