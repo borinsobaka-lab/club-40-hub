@@ -9,8 +9,8 @@ const dict: Dictionary = {
     "Lady Stretch — a place where you can be yourself.",
   "Мы создаём пространства, в которых хочется двигаться, отдыхать от повседневных забот и находить время для себя.":
     "We create spaces where you want to move, take a break from everyday worries and find time for yourself.",
-  "Всё началось с одной небольшой студии в Тбилиси. Сегодня Lady Stretch — это уже две студии и сообщество девушек, которых объединяет любовь к движению и заботе о себе.":
-    "It all started with one small studio in Tbilisi. Today Lady Stretch is two studios and a community of women united by a love of movement and self-care.",
+  "Всё началось с одной небольшой студии в Тбилиси. Сегодня Lady Stretch — это уже три студии и сообщество девушек, которых объединяет любовь к движению и заботе о себе.":
+    "It all started with one small studio in Tbilisi. Today Lady Stretch is three studios and a community of women united by a love of movement and self-care.",
   "Октябрь 2023": "October 2023",
   "С этого всё началось": "Where it all began",
   "В октябре 2023 года мы открыли первую студию Lady Stretch в районе Ваке.":
