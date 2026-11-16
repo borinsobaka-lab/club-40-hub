@@ -54,6 +54,13 @@ export type PackEntry = {
    * attachSubstitutions.
    */
   substitutions?: EntrySubstitution<PackTrainer>[];
+  /**
+   * «Моё расписание» тренера (2026-11-16, RPC trainer_entries_view): там и
+   * personal / other. title — название прочей активности; clients — имена
+   * записанных на персональное и диагностику.
+   */
+  title?: string | null;
+  clients?: string[] | null;
 };
 
 /** select для schedule_entries (и вложенного entry в schedule_bookings). */
@@ -121,6 +128,30 @@ export function isDiagnostic(e: Pick<PackEntry, "kind">) {
   return e.kind === "diagnostic";
 }
 
+export function isPersonal(e: Pick<PackEntry, "kind">) {
+  return e.kind === "personal";
+}
+
+/** Прочая активность (у тренера в «Моём расписании»): без записанных. */
+export function isOtherActivity(e: Pick<PackEntry, "kind">) {
+  return e.kind === "other";
+}
+
+/**
+ * Название занятия: тренировка — её название; диагностика, персональная и
+ * прочая активность (её название из админки) — своя подпись.
+ */
+export function entryName(
+  e: Pick<PackEntry, "kind" | "title">,
+  workoutName: string | null | undefined,
+  t: Translator = currentT(),
+) {
+  if (isDiagnostic(e)) return t("Диагностика");
+  if (isPersonal(e)) return t("Персональная тренировка");
+  if (isOtherActivity(e)) return e.title?.trim() || t("Прочая активность");
+  return workoutName ?? t("Тренировка");
+}
+
 /** Цвет полоски: цвет тренировки (#rrggbb), без него — серый; диагностика — чёрный. */
 export function entryColor(e: PackEntry): string | null {
   if (isDiagnostic(e)) return DIAGNOSTIC_COLOR;
@@ -171,7 +202,7 @@ export function packEntryToDrawerData(e: PackEntry, t: Translator = currentT()):
   const diagnostic = isDiagnostic(e);
   return {
     id: e.id,
-    name: diagnostic ? t("Диагностика") : (workout?.name ?? t("Тренировка")),
+    name: entryName(e, workout?.name, t),
     type: null,
     description: diagnostic ? diagnosticDescription(t) : (workout?.description ?? null),
     photo: mediaUrl(workout?.photo_url, "workout-photos"),
@@ -200,6 +231,7 @@ export function packEntryToDrawerData(e: PackEntry, t: Translator = currentT()):
     spotsLabel: spotsLabel(e, t),
     spotsLeft: spotsLeft(e),
     studioId: e.studio_id,
+    noAttendees: isOtherActivity(e),
   };
 }
 

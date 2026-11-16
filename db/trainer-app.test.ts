@@ -184,6 +184,63 @@ describe.skipIf(!url)("тренер в приложении (база)", () => {
     });
   });
 
+  test("моё расписание: персональные, диагностики и прочая активность — с клиентами", async () => {
+    await scenario(async (tx) => {
+      const s = await seed(tx);
+      await link(tx, s);
+      async function special(kind: string, hours: number, title: string | null, trainer = s.trainer) {
+        const [{ id }] = await tx.unsafe(
+          `insert into schedule_entries (studio_id, kind, title, starts_at, ends_at)
+           values ($1, $2, $3, now() + make_interval(hours => $4::int),
+                   now() + make_interval(hours => $4::int) + interval '1 hour')
+           returning id`,
+          [s.studio, kind, title, hours],
+        );
+        await tx`insert into schedule_entry_trainers (entry_id, trainer_id) values (${id}, ${trainer})`;
+        return id as string;
+      }
+      const group = await entry(tx, s, 2);
+      const personal = await special("personal", 3, null);
+      const diagnostic = await special("diagnostic", 4, null);
+      const other = await special("other", 5, "Уборка зала");
+      const foreign = await special("personal", 6, null, s.other);
+      const anna = await client(tx, s.studio, "Иванова");
+      // Персональное и диагностику записывает сотрудник.
+      await as(tx, s.admin);
+      await book(tx, s, personal, anna.id);
+      await book(tx, s, diagnostic, anna.id);
+      await asServer(tx);
+
+      await as(tx, s.trainerUser);
+      const ids = (await tx`select * from trainer_my_entries(0, 10) as id`).map(
+        (r: { id: string }) => r.id,
+      );
+      expect(ids).toEqual([group, personal, diagnostic, other]);
+
+      const [{ v }] = await tx`select trainer_entries_view(${ids}::uuid[]) as v`;
+      expect(v.map((e: { id: string }) => e.id)).toEqual(ids);
+      const byId = new Map(v.map((e: { id: string }) => [e.id, e]));
+      const g = byId.get(group) as { workout: { name: string }; clients: unknown; trainers: unknown[] };
+      expect(g.workout.name).toBe("Стретчинг");
+      expect(g.clients).toBeNull();
+      expect(g.trainers.length).toBe(1);
+      expect((byId.get(personal) as { clients: string[] }).clients).toEqual(["Анна Иванова"]);
+      expect((byId.get(diagnostic) as { clients: string[] }).clients).toEqual(["Анна Иванова"]);
+      expect((byId.get(other) as { title: string }).title).toBe("Уборка зала");
+      // Записанные и анкета — и на персональном.
+      const clients = await tx`select * from trainer_entry_clients(${personal})`;
+      expect(clients.map((r: { client_id: string }) => r.client_id)).toEqual([anna.id]);
+
+      // Чужое занятие не отдаётся; не тренер — пусто.
+      const [{ v: none }] = await tx`select trainer_entries_view(${[foreign]}::uuid[]) as v`;
+      expect(none).toEqual([]);
+      await asServer(tx);
+      await as(tx, anna.user!);
+      const [{ v: stranger }] = await tx`select trainer_entries_view(${ids}::uuid[]) as v`;
+      expect(stranger).toEqual([]);
+    });
+  });
+
   test("записанные: пробные первыми, цель и ограничения; анкета и комментарии", async () => {
     await scenario(async (tx) => {
       const s = await seed(tx);

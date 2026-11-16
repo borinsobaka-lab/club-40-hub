@@ -69,6 +69,8 @@ export type WorkoutDrawerData = {
   spotsLeft?: number | null;
   /** Студия занятия — название и адрес в шторке (куда записывается клиент). */
   studioId?: string | null;
+  /** Прочая активность у тренера (2026-11-16): записанных нет — без вкладок тренера. */
+  noAttendees?: boolean;
 };
 
 function initialsOf(name: string) {
@@ -148,7 +150,7 @@ export function WorkoutDrawer({
     setTrainerId(null);
     setTrainerTab("clients");
   }, [data?.id, open]);
-  const showTrainerTabs = trainerMode && isPack;
+  const showTrainerTabs = trainerMode && isPack && !data?.noAttendees;
 
   const cancelLocked =
     isBooked &&

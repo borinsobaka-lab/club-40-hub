@@ -1172,7 +1172,11 @@ AUTH_SETUP.md.
   `app_trainer_user` / `trainer_push` — здесь). Всё тренерское — только RPC, они сами
   проверяют вызывающего (`app_trainer_of(auth.uid())`, без связи — пусто
   или `trainer_only`): `trainer_app_me`, `trainer_my_entries` (свои
-  ближайшие групповые), `trainer_entry_clients` (записанные: пробные
+  ближайшие занятия; с 2026-11-16 — всех видов: групповые, персональные,
+  диагностики, прочая активность — и `trainer_entries_view(ids)`: сами
+  занятия для карточек, у персонального и диагностики — имена записанных;
+  `db/migrations/2026-11-16_zz_trainer_personal_entries.sql`, актуальные
+  определения — здесь), `trainer_entry_clients` (записанные: пробные
   первыми, главная цель, `has_restrictions` — здоровье в анкете, сводка
   комментариев), `trainer_client_profile` (анкета — только клиента,
   записанного на занятие этого тренера), `trainer_client_comments` /

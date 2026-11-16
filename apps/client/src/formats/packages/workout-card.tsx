@@ -1,5 +1,6 @@
 import {
   AltArrowRight,
+  UserRounded,
   CheckCircle,
   CloseCircle,
   LockKeyholeMinimalistic,
@@ -20,7 +21,8 @@ import {
   entryColor,
   entryTrainers,
   fmtTime,
-  isDiagnostic,
+  entryName,
+  isOtherActivity,
   replacedTrainer,
   spotsLabel,
   spotsLeft,
@@ -147,7 +149,7 @@ export function PackWorkoutCard({
         </div>
         <div className="ml-1 min-w-0 flex-1">
           <div className="break-words font-semibold leading-snug">
-            {isDiagnostic(entry) ? t("Диагностика") : (loc(entry.workout)?.name ?? t("Тренировка"))}
+            {entryName(entry, loc(entry.workout)?.name, t)}
           </div>
           {studioName && (
             <div className="mt-0.5 truncate text-xs font-medium text-muted-foreground">
@@ -195,7 +197,15 @@ export function PackWorkoutCard({
               <LockKeyholeMinimalistic className="h-3.5 w-3.5 shrink-0" weight="BoldDuotone" />
               <span>{t("Запись пока закрыта")}</span>
             </div>
-          ) : showBooked ? (
+          ) : showBooked && entry.clients ? (
+            // Персональная и диагностика у тренера — кто придёт (2026-11-16).
+            <div className="mt-1.5 flex items-start gap-1 text-xs font-medium leading-tight text-muted-foreground">
+              <UserRounded className="h-3.5 w-3.5 shrink-0" weight="BoldDuotone" />
+              <span>
+                {entry.clients.length > 0 ? entry.clients.join(", ") : t("Клиент не указан")}
+              </span>
+            </div>
+          ) : showBooked && isOtherActivity(entry) ? null : showBooked ? (
             <div className="mt-1.5 flex items-center gap-1 text-xs font-medium leading-none text-muted-foreground">
               <UsersGroupRounded className="h-3.5 w-3.5 shrink-0" weight="BoldDuotone" />
               <span>{bookedLabel(entry, t)}</span>

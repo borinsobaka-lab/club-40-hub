@@ -7,7 +7,7 @@ import { WorkoutDrawer, type WorkoutDrawerData } from "@/components/workout-draw
 import { useAuth } from "@/hooks/use-auth";
 import { useFormatStudios } from "@/hooks/use-viewed-studio";
 import { useLocalize, useT } from "@/i18n";
-import { bookedLabel, packEntryToDrawerData, type PackEntry } from "../entries";
+import { bookedLabel, isOtherActivity, packEntryToDrawerData, type PackEntry } from "../entries";
 import { PackWorkoutCard } from "../workout-card";
 import { MY_SCHEDULE_STEP, trainerEntriesQuery, trainerMeQuery } from "./queries";
 
@@ -19,8 +19,10 @@ function dayTitle(iso: string, t: ReturnType<typeof useT>) {
 /**
  * «Моё расписание» на главной — только тренеру (пользователь, которому в
  * карточке клиента указан тренер; решение владельца 2026-11-05): ближайшие
- * его тренировки по 5, «Показать ещё» — ещё 5. По нажатию — окно тренировки
- * тренера: кто записан и «О тренировке». Не тренер — блока нет.
+ * его занятия по 5, «Показать ещё» — ещё 5. С 2026-11-16 — все виды, где он
+ * стоит: групповые, персональные и диагностики (на карточке — имя клиента),
+ * прочая активность. По нажатию — окно занятия тренера: кто записан и
+ * «О тренировке» (у прочей активности — только описание). Не тренер — блока нет.
  */
 export function TrainerMySchedule() {
   const { user } = useAuth();
@@ -68,7 +70,7 @@ export function TrainerMySchedule() {
           </div>
         ) : data.entries.length === 0 ? (
           <div className="mx-4 rounded-2xl border border-border bg-card p-5 text-center text-sm text-muted-foreground">
-            {t("Ближайших тренировок в расписании нет")}
+            {t("Ближайших занятий в расписании нет")}
           </div>
         ) : (
           <div className="px-4 space-y-5">
@@ -89,7 +91,11 @@ export function TrainerMySchedule() {
                     onOpen={() =>
                       setOpen({
                         ...packEntryToDrawerData(e, t),
-                        spotsLabel: bookedLabel(e, t),
+                        spotsLabel: e.clients
+                          ? e.clients.join(", ") || t("Клиент не указан")
+                          : isOtherActivity(e)
+                            ? null
+                            : bookedLabel(e, t),
                         spotsLeft: null,
                       })
                     }

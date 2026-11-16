@@ -35,7 +35,14 @@ export function trainerMeQuery(userId: string | null) {
 /** Сколько занятий «Моего расписания» показывать сразу и добавлять по «Показать ещё». */
 export const MY_SCHEDULE_STEP = 5;
 
-/** Мои ближайшие тренировки: первые `limit` и есть ли ещё. */
+/**
+ * Мои ближайшие занятия: первые `limit` и есть ли ещё. С 2026-11-16 — все
+ * виды, где стоит тренер: групповые, персональные, диагностики, прочая
+ * активность (db/migrations/2026-11-16_zz_trainer_personal_entries.sql).
+ * Сами занятия — RPC trainer_entries_view: персональные и прочие RLS клиента
+ * не открывает. Пока RPC нет (клиент вышел раньше миграции) — как раньше,
+ * обычным запросом (только групповые).
+ */
 export function trainerEntriesQuery(trainerId: string | null, limit: number) {
   return queryOptions({
     queryKey: ["trainer-entries", trainerId, limit],
@@ -48,18 +55,25 @@ export function trainerEntriesQuery(trainerId: string | null, limit: number) {
       const list = ((ids as string[] | null) ?? []).map(String);
       const shown = list.slice(0, limit);
       if (shown.length === 0) return { entries: [], hasMore: false };
-      const { data, error: e2 } = await untypedDb
-        .from("schedule_entries")
-        .select(PACK_ENTRY_SELECT)
-        .in("id", shown);
-      if (e2) throw e2;
-      const byId = new Map(((data as unknown as PackEntry[] | null) ?? []).map((e) => [e.id, e]));
+      const rows = await fetchTrainerEntries(shown);
+      const byId = new Map(rows.map((e) => [e.id, e]));
       const ordered = shown.map((id) => byId.get(id)).filter((e): e is PackEntry => !!e);
       return { entries: await attachSubstitutions(ordered), hasMore: list.length > limit };
     },
     enabled: !!trainerId,
     placeholderData: keepPreviousData,
   });
+}
+
+async function fetchTrainerEntries(ids: string[]): Promise<PackEntry[]> {
+  const { data, error } = await untypedDb.rpc("trainer_entries_view", { p_ids: ids });
+  if (!error) return (data as PackEntry[] | null) ?? [];
+  const { data: rows, error: e2 } = await untypedDb
+    .from("schedule_entries")
+    .select(PACK_ENTRY_SELECT)
+    .in("id", ids);
+  if (e2) throw e2;
+  return (rows as unknown as PackEntry[] | null) ?? [];
 }
 
 export type EntryClient = {

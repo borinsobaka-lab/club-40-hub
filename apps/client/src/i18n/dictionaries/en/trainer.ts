@@ -31,7 +31,6 @@ const dict: Dictionary = {
   "Моё расписание": "My schedule",
   "Не удалось загрузить ваше расписание. Обновите страницу.":
     "Couldn't load your schedule. Refresh the page.",
-  "Ближайших тренировок в расписании нет": "No upcoming classes in your schedule",
   "Показать ещё": "Show more",
   "Не удалось загрузить список записанных.": "Couldn't load the list of attendees.",
   "На тренировку пока никто не записан.": "Nobody has booked this class yet.",
@@ -41,6 +40,10 @@ const dict: Dictionary = {
     "{n} person booked|{n} people booked",
   "{n} на пробном|{n} на пробном|{n} на пробном": "{n} on a trial|{n} on a trial",
   "Администратор сегодня": "Administrator today",
+  "Ближайших занятий в расписании нет": "No upcoming sessions in your schedule",
+  "Персональная тренировка": "Personal training",
+  "Прочая активность": "Other activity",
+  "Клиент не указан": "No client yet",
 };
 
 export default dict;
