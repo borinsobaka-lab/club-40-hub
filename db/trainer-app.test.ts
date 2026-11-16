@@ -282,19 +282,37 @@ describe.skipIf(!url)("тренер в приложении (база)", () => {
     });
   });
 
-  test("один тренер — одна карточка", async () => {
+  test("один тренер — у нескольких карточек: обе видят его, пуш — обеим", async () => {
     await scenario(async (tx) => {
       const s = await seed(tx);
       await link(tx, s);
       const second = await client(tx, s.studio, "Вторая");
       await as(tx, s.admin);
+      await tx`insert into app_trainer_links (client_id, trainer_id) values (${second.id}, ${s.trainer})`;
+      await asServer(tx);
+      // Оба пользователя приложения — этот тренер.
+      for (const u of [s.trainerUser, second.user!]) {
+        await as(tx, u);
+        const [{ me }] = await tx`select trainer_app_me() as me`;
+        expect(me.trainer_id).toBe(s.trainer);
+        await asServer(tx);
+      }
+      // Пуш об отмене — на обе учётные записи.
+      const e = await entry(tx, s, 5);
+      await tx`update schedule_entries set cancelled_at = now() where id = ${e}`;
+      const rows = await pushes(tx, "trainer_class_cancelled");
+      expect(rows.map((r: { user_id: string }) => r.user_id).sort()).toEqual(
+        [s.trainerUser, second.user!].sort(),
+      );
+      // У карточки по-прежнему один тренер.
+      await as(tx, s.admin);
       expect(
         await failure(
           tx,
           () =>
-            tx`insert into app_trainer_links (client_id, trainer_id) values (${second.id}, ${s.trainer})`,
+            tx`insert into app_trainer_links (client_id, trainer_id) values (${second.id}, ${s.other})`,
         ),
-      ).toContain("app_trainer_links_trainer_key");
+      ).toContain("app_trainer_links_pkey");
     });
   });
 

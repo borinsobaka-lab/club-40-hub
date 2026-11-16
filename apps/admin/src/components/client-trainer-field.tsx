@@ -26,7 +26,9 @@ type TrainerOption = { id: string; full_name: string; photo_url: string | null }
  * «Тренер» во вкладке «Приложение» карточки клиента (решение владельца
  * 2026-11-05, пакетные клубы): связь пользователя приложения с тренером
  * справочника — app_trainer_links (db/migrations/2026-11-05_zz_trainer_app.sql).
- * Список — тренеры клубов сети карточки. Один тренер — одна карточка.
+ * Список — тренеры клубов сети карточки. У карточки один тренер, один
+ * тренер может быть у нескольких карточек (2026-11-16_trainer_link_many_cards.sql:
+ * сотрудник ставит себе тренера, чтобы проверить приложение под ним).
  */
 export function ClientTrainerField({
   clientId,
@@ -79,11 +81,7 @@ export function ClientTrainerField({
             .upsert({ client_id: clientId, trainer_id: trainerId }, { onConflict: "client_id" })
         : await supabase.from("app_trainer_links").delete().eq("client_id", clientId);
       if (error) {
-        toast.error(
-          error.code === "23505"
-            ? "Этот тренер уже указан у другого пользователя приложения — сначала уберите его там."
-            : "Не удалось сохранить: " + error.message,
-        );
+        toast.error("Не удалось сохранить: " + error.message);
         return;
       }
       queryClient.setQueryData(["app_trainer_links", clientId], trainerId);
