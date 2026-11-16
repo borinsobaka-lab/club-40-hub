@@ -22,7 +22,8 @@ function dayTitle(iso: string, t: ReturnType<typeof useT>) {
  * его занятия по 5, «Показать ещё» — ещё 5. С 2026-11-16 — все виды, где он
  * стоит: групповые, персональные и диагностики (на карточке — имя клиента),
  * прочая активность. По нажатию — окно занятия тренера: кто записан и
- * «О тренировке» (у прочей активности — только описание). Не тренер — блока нет.
+ * «О тренировке» (у прочей активности — только описание). На каждой карточке
+ * — студия занятия (2026-11-16). Не тренер — блока нет.
  */
 export function TrainerMySchedule() {
   const { user } = useAuth();
@@ -49,10 +50,9 @@ export function TrainerMySchedule() {
   }, [data]);
 
   if (!me) return null;
-  // Студия на карточке — когда у тренера занятия в нескольких студиях.
-  const multiStudio = new Set((data?.entries ?? []).map((e) => e.studio_id)).size > 1;
-  const studioName = (id: string) =>
-    multiStudio ? (loc(studios.find((s) => s.id === id))?.name ?? null) : null;
+  // Студия — на каждой карточке, всегда (решение владельца 2026-11-16: иначе
+  // тренер может перепутать студию).
+  const studioName = (id: string) => loc(studios.find((s) => s.id === id))?.name ?? null;
 
   return (
     <>
