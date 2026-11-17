@@ -31,7 +31,8 @@ function tooMany(ip: string): boolean {
   const recent = (hits.get(ip) ?? []).filter((t) => now - t < 60_000);
   recent.push(now);
   hits.set(ip, recent);
-  if (hits.size > 5000) for (const [k, v] of hits) if (now - v[v.length - 1] > 60_000) hits.delete(k);
+  if (hits.size > 5000)
+    for (const [k, v] of hits) if (now - v[v.length - 1] > 60_000) hits.delete(k);
   return recent.length > PER_MINUTE;
 }
 

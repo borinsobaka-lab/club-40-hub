@@ -224,8 +224,8 @@ export function ScenariosPanel() {
     <Panel title="Сценарии по клиентам клуба">
       <p className="border-b px-3 py-3 text-sm text-muted-foreground">
         Сценарий сам заводит сделку и задачу ответственному, когда клиенту пора позвонить или
-        написать. Ответственный — по очереди из «Распределения новых заявок» клуба абонемента.
-        Пока по клиенту открыта сделка сценария, вторая не заводится.
+        написать. Ответственный — по очереди из «Распределения новых заявок» клуба абонемента. Пока
+        по клиенту открыта сделка сценария, вторая не заводится.
       </p>
       <ul className="divide-y">
         {scenarios.map((sc) => {
@@ -464,8 +464,8 @@ export function LeadFormsPanel() {
     >
       {forms.length === 0 ? (
         <p className="px-3 py-4 text-center text-sm text-muted-foreground">
-          Форм нет. Добавьте форму — получите адрес и код для сайта: заявки с него станут сделками
-          с источником и utm-метками рекламы.
+          Форм нет. Добавьте форму — получите адрес и код для сайта: заявки с него станут сделками с
+          источником и utm-метками рекламы.
         </p>
       ) : (
         <ul className="divide-y">
@@ -524,7 +524,9 @@ export function LeadFormsPanel() {
         </DialogContent>
       </Dialog>
       <Dialog open={!!code} onOpenChange={(o) => !o && setCode(null)}>
-        <DialogContent className="sm:max-w-2xl">{code && <LeadFormCode form={code} />}</DialogContent>
+        <DialogContent className="sm:max-w-2xl">
+          {code && <LeadFormCode form={code} />}
+        </DialogContent>
       </Dialog>
       {confirmDialog}
     </Panel>

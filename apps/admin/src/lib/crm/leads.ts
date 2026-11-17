@@ -22,7 +22,16 @@ const FIELD_NAMES: Record<keyof LeadData, string[]> = {
   name: ["name", "имя", "fio", "фио", "fullname", "full_name", "first_name", "firstname"],
   phone: ["phone", "tel", "telephone", "телефон", "phone_number", "mobile"],
   email: ["email", "e-mail", "mail", "почта"],
-  message: ["message", "comment", "comments", "text", "textarea", "сообщение", "комментарий", "вопрос"],
+  message: [
+    "message",
+    "comment",
+    "comments",
+    "text",
+    "textarea",
+    "сообщение",
+    "комментарий",
+    "вопрос",
+  ],
   utm_source: ["utm_source"],
   utm_medium: ["utm_medium"],
   utm_campaign: ["utm_campaign"],
@@ -84,7 +93,8 @@ export function parseLead(fields: Record<string, unknown>): LeadData {
     const value = clean(v, 500);
     if (value && extra.length < 15) extra.push(`${k.trim().slice(0, 60)}: ${value}`);
   }
-  if (extra.length > 0) lead.message = [lead.message, ...extra].filter(Boolean).join("\n").slice(0, 4000);
+  if (extra.length > 0)
+    lead.message = [lead.message, ...extra].filter(Boolean).join("\n").slice(0, 4000);
   return lead;
 }
 

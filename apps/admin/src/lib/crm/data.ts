@@ -1149,7 +1149,10 @@ export const crmSourceNamesQuery = queryOptions({
       ),
       unwrap<{ source: string }[]>(supabase.from("crm_links").select("source")),
       // Расходы видит только настройка — у остальных список без них.
-      supabase.from("crm_ad_spend").select("source").then((r) => (r.data ?? []) as { source: string }[]),
+      supabase
+        .from("crm_ad_spend")
+        .select("source")
+        .then((r) => (r.data ?? []) as { source: string }[]),
     ]);
     const seen = new Map<string, string>();
     for (const r of [...deals, ...links, ...spend])

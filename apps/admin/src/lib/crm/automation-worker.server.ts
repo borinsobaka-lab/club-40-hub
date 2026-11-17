@@ -146,5 +146,6 @@ export async function runCrmScenarios(): Promise<void> {
     return;
   }
   state.lastScenariosError = null;
-  if (typeof data === "number" && data > 0) console.info(`[crm] сценарии: заведено сделок — ${data}`);
+  if (typeof data === "number" && data > 0)
+    console.info(`[crm] сценарии: заведено сделок — ${data}`);
 }

@@ -234,6 +234,28 @@ function DealCard({
             onSave={(v) => patch({ source: v || null })}
           />
         </Row>
+        {(deal.utm_source || deal.utm_medium || deal.utm_campaign || deal.page_url) && (
+          <div className="col-span-2">
+            <Row label="Метки рекламы">
+              <div className="space-y-0.5 text-sm break-words">
+                {[deal.utm_source, deal.utm_medium, deal.utm_campaign, deal.utm_content].some(
+                  Boolean,
+                ) && (
+                  <div>
+                    {[deal.utm_source, deal.utm_medium, deal.utm_campaign, deal.utm_content]
+                      .filter(Boolean)
+                      .join(" · ")}
+                  </div>
+                )}
+                {deal.page_url && (
+                  <div className="truncate text-xs text-muted-foreground" title={deal.page_url}>
+                    {deal.page_url}
+                  </div>
+                )}
+              </div>
+            </Row>
+          </div>
+        )}
         {stage?.kind === "lost" && (
           <div className="col-span-2">
             <Row label="Причина отказа">

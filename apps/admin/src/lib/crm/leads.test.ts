@@ -61,29 +61,49 @@ describe("ссылка с меткой", () => {
 
   test("WhatsApp: номер цифрами, текст с кодом", () => {
     expect(
-      linkRedirectUrl({ ...base, target_kind: "whatsapp", target: "+995 555 11-12-22", text: "Хочу записаться" }),
+      linkRedirectUrl({
+        ...base,
+        target_kind: "whatsapp",
+        target: "+995 555 11-12-22",
+        text: "Хочу записаться",
+      }),
     ).toBe(`https://wa.me/995555111222?text=${encodeURIComponent("Хочу записаться #ab12cd")}`);
-    expect(linkRedirectUrl({ ...base, target_kind: "whatsapp", target: "+995 555 11-12-22" })).toContain(
-      encodeURIComponent("Здравствуйте! #ab12cd"),
-    );
+    expect(
+      linkRedirectUrl({ ...base, target_kind: "whatsapp", target: "+995 555 11-12-22" }),
+    ).toContain(encodeURIComponent("Здравствуйте! #ab12cd"));
     expect(linkRedirectUrl({ ...base, target_kind: "whatsapp", target: "нет" })).toBeNull();
   });
 
   test("Telegram: ник бота в любом виде", () => {
-    for (const target of ["@base40_bot", "base40_bot", "https://t.me/base40_bot", "https://t.me/base40_bot?start=x"])
-      expect(linkRedirectUrl({ ...base, target_kind: "telegram", target })).toBe("https://t.me/base40_bot?start=ab12cd");
+    for (const target of [
+      "@base40_bot",
+      "base40_bot",
+      "https://t.me/base40_bot",
+      "https://t.me/base40_bot?start=x",
+    ])
+      expect(linkRedirectUrl({ ...base, target_kind: "telegram", target })).toBe(
+        "https://t.me/base40_bot?start=ab12cd",
+      );
     expect(linkRedirectUrl({ ...base, target_kind: "telegram", target: "не ник!" })).toBeNull();
   });
 
   test("сайт: utm-метки дописываются, стоящие не затираются; только https", () => {
     const url = new URL(
-      linkRedirectUrl({ ...base, target_kind: "url", target: "https://site.example/promo?utm_source=flyer&x=1" })!,
+      linkRedirectUrl({
+        ...base,
+        target_kind: "url",
+        target: "https://site.example/promo?utm_source=flyer&x=1",
+      })!,
     );
     expect(url.searchParams.get("utm_source")).toBe("flyer");
     expect(url.searchParams.get("utm_campaign")).toBe("Ваке, ноябрь");
     expect(url.searchParams.get("utm_content")).toBe("ab12cd");
     expect(url.searchParams.get("x")).toBe("1");
-    expect(linkRedirectUrl({ ...base, target_kind: "url", target: "http://site.example" })).toBeNull();
-    expect(linkRedirectUrl({ ...base, target_kind: "url", target: "javascript:alert(1)" })).toBeNull();
+    expect(
+      linkRedirectUrl({ ...base, target_kind: "url", target: "http://site.example" }),
+    ).toBeNull();
+    expect(
+      linkRedirectUrl({ ...base, target_kind: "url", target: "javascript:alert(1)" }),
+    ).toBeNull();
   });
 });
