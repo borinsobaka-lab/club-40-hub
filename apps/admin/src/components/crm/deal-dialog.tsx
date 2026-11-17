@@ -58,7 +58,7 @@ import type { CrmContact, CrmDeal, CrmEvent, CrmTask } from "@/lib/crm/types";
 import { formatDateTime, formatPhone, toDateTimeLocalValue } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { PersonSelect, StageSelect, StudioPick, TaskDue } from "./parts";
-import { NONE } from "@/lib/crm/logic";
+import { NONE, replyBlock } from "@/lib/crm/logic";
 import { useCrmStudios } from "@/lib/crm/data";
 
 /**
@@ -343,9 +343,7 @@ function RightPane({
           conversationId={conversation.id}
           contactName={deal.contact?.name}
           studioName={studioName}
-          disabledReason={
-            account?.status === "disabled" ? "Аккаунт канала отключён — ответить нельзя." : null
-          }
+          disabledReason={replyBlock(account, conversation.last_inbound_at)}
         />
       ) : (
         feed

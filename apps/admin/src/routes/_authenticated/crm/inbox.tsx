@@ -20,7 +20,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { CountBadge } from "@/components/ui/status-chip";
 import { crmAccountsQuery, findContactDeal, useConversations, useCrmStudios } from "@/lib/crm/data";
-import { accountLabel, shortTime } from "@/lib/crm/logic";
+import { accountLabel, replyBlock, shortTime } from "@/lib/crm/logic";
 import type { CrmConversation } from "@/lib/crm/types";
 import { cn } from "@/lib/utils";
 
@@ -204,11 +204,7 @@ function CrmInboxPage() {
                 conversationId={selected.id}
                 contactName={selected.contact?.name}
                 studioName={studios.find((s) => s.id === selected.studio_id)?.name}
-                disabledReason={
-                  account?.status === "disabled"
-                    ? "Аккаунт канала отключён — ответить нельзя."
-                    : null
-                }
+                disabledReason={replyBlock(account, selected.last_inbound_at)}
               />
             </>
           ) : (

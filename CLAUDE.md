@@ -1268,7 +1268,9 @@ AUTH_SETUP.md.
   `crm_portal_event`. Объединение дублей контактов —
   `2026-11-17_zzzzzzz_crm_contact_merge.sql`: `crm_contacts_merge(keep,
   merge)` (личности, диалоги, сделки переходят; только если вызывающему
-  видны все сделки и диалоги обоих) и `crm_contact_search`.
+  видны все сделки и диалоги обоих) и `crm_contact_search`. Отчёт по
+  воронке — `2026-11-17_zzzzzzzz_crm_report.sql`: `crm_report(pipeline,
+  from, to)` — security invoker, считает только видимое вызывающему.
   Рейтинг тренеров и чаевые: `db/migrations/2026-10-11_zzzzzzzzzzzzz_trainer_ratings.sql`
   — `trainer_reviews` (оценка 1–5, одна от учётной записи на тренера; клиент
   читает и правит свою, ставит — тренеру, которого видит в приложении,

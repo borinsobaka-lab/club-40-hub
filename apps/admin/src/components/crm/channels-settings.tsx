@@ -30,6 +30,7 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import {
+  connectMetaAccountFn,
   connectTelegramBotFn,
   deleteChannelFn,
   setChannelEnabledFn,
@@ -74,15 +75,18 @@ function Panel({
 }
 
 /**
- * «Каналы» в настройках CRM: подключённые аккаунты мессенджеров. Пока —
- * Telegram-бот (CRM.md, этап 2); остальные каналы появятся здесь же.
+ * «Каналы» в настройках CRM: подключённые аккаунты мессенджеров —
+ * Telegram-бот (токен @BotFather), WhatsApp, Instagram и страница Facebook
+ * (токены Meta; вебхук приложения Meta — общий, /api/crm/meta).
  */
 export function ChannelsPanel() {
   const qc = useQueryClient();
   const { data: accounts = [] } = useQuery(crmAccountsQuery);
   const { data: studios = [] } = useCrmStudios();
   const { confirm, confirmDialog } = useConfirm();
-  const [adding, setAdding] = useState(false);
+  const [adding, setAdding] = useState<
+    "telegram_bot" | "whatsapp" | "instagram" | "facebook" | null
+  >(null);
   const [busy, setBusy] = useState<string | null>(null);
 
   const toggle = async (a: CrmChannelAccount, enabled: boolean) => {
@@ -122,16 +126,20 @@ export function ChannelsPanel() {
     <Panel
       title="Каналы"
       action={
-        <Button variant="outline" size="xs" onClick={() => setAdding(true)}>
-          <Plus />
-          Telegram-бот
-        </Button>
+        <div className="flex flex-wrap justify-end gap-1.5">
+          {(["telegram_bot", "whatsapp", "instagram", "facebook"] as const).map((k) => (
+            <Button key={k} variant="outline" size="xs" onClick={() => setAdding(k)}>
+              <Plus />
+              {CHANNEL_LABEL[k]}
+            </Button>
+          ))}
+        </div>
       }
     >
       {accounts.length === 0 ? (
         <p className="px-3 py-4 text-center text-sm text-muted-foreground">
-          Каналы не подключены. Подключите Telegram-бота — сообщения ему появятся в «Диалогах», а
-          новые обращения станут сделками.
+          Каналы не подключены. Подключите аккаунт — сообщения ему появятся в «Диалогах», а новые
+          обращения станут сделками.
         </p>
       ) : (
         <ul className="divide-y">
@@ -185,9 +193,12 @@ export function ChannelsPanel() {
           ))}
         </ul>
       )}
-      <Dialog open={adding} onOpenChange={setAdding}>
+      <Dialog open={!!adding} onOpenChange={(open) => !open && setAdding(null)}>
         <DialogContent className="sm:max-w-md">
-          {adding && <BotForm onDone={() => setAdding(false)} />}
+          {adding === "telegram_bot" && <BotForm onDone={() => setAdding(null)} />}
+          {adding && adding !== "telegram_bot" && (
+            <MetaForm key={adding} kind={adding} onDone={() => setAdding(null)} />
+          )}
         </DialogContent>
       </Dialog>
       {confirmDialog}
@@ -282,6 +293,163 @@ function BotForm({ onDone }: { onDone: () => void }) {
             <InfoNote>
               Если этот бот уже подключён к другой системе (например, к amoCRM), после подключения
               сообщения начнут приходить сюда, а там перестанут.
+            </InfoNote>
+          </div>
+        </DialogBody>
+        <DialogFooter>
+          <Button type="submit" disabled={saving}>
+            {saving && <Loader2 className="animate-spin" />}
+            Подключить
+          </Button>
+        </DialogFooter>
+      </DialogForm>
+    </>
+  );
+}
+
+const META_HELP: Record<
+  "whatsapp" | "instagram" | "facebook",
+  { title: string; text: string; token: string }
+> = {
+  whatsapp: {
+    title: "Подключить WhatsApp",
+    text: "Номер из аккаунта WhatsApp Business вашего приложения Meta. После подключения переписка этого номера идёт только здесь.",
+    token:
+      "Постоянный токен системного пользователя бизнес-портфолио с правами whatsapp_business_messaging и whatsapp_business_management. Хранится только на сервере.",
+  },
+  instagram: {
+    title: "Подключить Instagram",
+    text: "Профессиональный аккаунт Instagram, привязанный к странице Facebook. Нужен токен этой страницы.",
+    token:
+      "Токен доступа страницы Facebook, к которой привязан Instagram (права instagram_manage_messages, pages_manage_metadata). Хранится только на сервере.",
+  },
+  facebook: {
+    title: "Подключить страницу Facebook",
+    text: "Сообщения странице в Messenger будут приходить в «Диалоги».",
+    token:
+      "Токен доступа страницы (права pages_messaging, pages_manage_metadata). Хранится только на сервере.",
+  },
+};
+
+function MetaForm({
+  kind,
+  onDone,
+}: {
+  kind: "whatsapp" | "instagram" | "facebook";
+  onDone: () => void;
+}) {
+  const qc = useQueryClient();
+  const { data: setup } = useQuery(crmSetupQuery);
+  const { data: studios = [] } = useCrmStudios();
+  const [token, setToken] = useState("");
+  const [phoneNumberId, setPhoneNumberId] = useState("");
+  const [wabaId, setWabaId] = useState("");
+  const [name, setName] = useState("");
+  const [studio, setStudio] = useState<string | null>(null);
+  const [pipeline, setPipeline] = useState(NONE);
+  const [saving, setSaving] = useState(false);
+  const help = META_HELP[kind];
+  const pipelines = (setup?.pipelines ?? []).filter((p) => !p.is_archived);
+
+  const save = async () => {
+    if (!token.trim() || (kind === "whatsapp" && !phoneNumberId.trim())) {
+      toast.error(kind === "whatsapp" ? "Заполните токен и Phone number ID" : "Вставьте токен");
+      return;
+    }
+    setSaving(true);
+    try {
+      const res = await connectMetaAccountFn({
+        data: {
+          kind,
+          name: name.trim(),
+          token: token.trim(),
+          phoneNumberId: kind === "whatsapp" ? phoneNumberId.trim() : null,
+          wabaId: kind === "whatsapp" && wabaId.trim() ? wabaId.trim() : null,
+          studioId: studio,
+          pipelineId: pipeline === NONE ? null : pipeline,
+        },
+      });
+      await invalidateCrm(qc);
+      toast.success(`Подключено: ${res.label}`);
+      onDone();
+    } catch (e) {
+      toast.error(crmErrorText(e, "Не удалось подключить аккаунт"));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <>
+      <DialogHeader>
+        <DialogTitle>{help.title}</DialogTitle>
+        <DialogDescription>{help.text}</DialogDescription>
+      </DialogHeader>
+      <DialogForm onSubmit={() => void save()}>
+        <DialogBody>
+          <div className="space-y-4">
+            <FormField label="Токен доступа" required tip={help.token}>
+              <Input
+                value={token}
+                onChange={(e) => setToken(e.target.value)}
+                autoComplete="off"
+                spellCheck={false}
+                className="font-mono"
+                autoFocus
+              />
+            </FormField>
+            {kind === "whatsapp" && (
+              <>
+                <FormField
+                  label="Phone number ID"
+                  required
+                  hint="Кабинет разработчика Meta → WhatsApp → Настройка API: идентификатор номера телефона."
+                >
+                  <Input
+                    value={phoneNumberId}
+                    onChange={(e) => setPhoneNumberId(e.target.value)}
+                    inputMode="numeric"
+                  />
+                </FormField>
+                <FormField
+                  label="ID аккаунта WhatsApp Business"
+                  hint="Там же. С ним приложение само подпишется на сообщения аккаунта."
+                >
+                  <Input
+                    value={wabaId}
+                    onChange={(e) => setWabaId(e.target.value)}
+                    inputMode="numeric"
+                  />
+                </FormField>
+              </>
+            )}
+            <FormField
+              label="Название"
+              hint="Как аккаунт подписан в диалогах. Пусто — название из Meta."
+            >
+              <Input value={name} onChange={(e) => setName(e.target.value)} maxLength={80} />
+            </FormField>
+            <FormField label="Клуб" tip={TIPS.studio}>
+              <StudioPick value={studio} onChange={setStudio} studios={studios} />
+            </FormField>
+            <FormField label="Воронка новых обращений" tip={TIPS.pipeline}>
+              <Select value={pipeline} onValueChange={setPipeline}>
+                <SelectTrigger aria-label="Воронка новых обращений">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={NONE}>Первая воронка</SelectItem>
+                  {pipelines.map((p) => (
+                    <SelectItem key={p.id} value={p.id}>
+                      {p.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </FormField>
+            <InfoNote>
+              Отвечать клиенту в этом канале можно в течение 24 часов после его последнего сообщения
+              — правило Meta. Написать первым нельзя.
             </InfoNote>
           </div>
         </DialogBody>

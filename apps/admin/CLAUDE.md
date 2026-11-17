@@ -37,7 +37,7 @@ Tailwind 4 + shadcn/radix. Пакетный менеджер — bun.
   «Аналитика» — города, недели, прогноз, точка 0, продажи, пробные, рейтинг
   `lib/analytics/logic.test.ts`, разбор выгрузок `lib/analytics/import.test.ts`; «Академия» — подписи,
   проверка вопроса, сроки и напоминания `lib/academy/logic.test.ts`; CRM —
-  этапы, фильтр, задачи, события `lib/crm/logic.test.ts`, разбор обновления Telegram `lib/crm/telegram.test.ts`;
+  этапы, фильтр, задачи, события `lib/crm/logic.test.ts`, разбор обновления Telegram `lib/crm/telegram.test.ts`, вебхука Meta `lib/crm/meta.test.ts`;
   Kate — инструменты,
   права, история и промпт `lib/assistant/*.test.ts`).
 - `bun run version:bump` — повысить версию админки (`ADMIN_VERSION` в
@@ -814,7 +814,23 @@ kb`. Доступ — ролями «Пользователей и ролей» 
   сама. В карточке сделки у контакта — «Каналы» (личности в мессенджерах),
   «Объединить с дублем…» (`ContactChannels`: поиск `crm_contact_search` →
   `crm_contacts_merge`) и «Новый клиент» прямо из привязки к клиенту
-  (`ClientCombobox creatable`).
+  (`ClientCombobox creatable`). «Отчёт» (`/crm/reports`) — RPC `crm_report`:
+  плитки, «Сейчас в этапах», сотрудники, причины отказа, источники,
+  медиана первого ответа.
+  **Каналы Meta** (WhatsApp Cloud API, Messenger, Instagram через страницу
+  Facebook; код написан по документации Graph API v27.0, **на живых
+  аккаунтах не проверен** — проверка в AGENT_TASKS.md, Задача 18, часть B):
+  общий вебхук `/api/crm/meta` (GET — проверка адреса `META_VERIFY_TOKEN`,
+  POST — подпись `X-Hub-Signature-256` секретом `META_APP_SECRET`; без этих
+  переменных — 503), разбор — `lib/crm/meta.ts` (+ тест), Graph API —
+  `meta.server.ts` (`META_GRAPH_VERSION`, по умолчанию v27.0), приём и
+  статусы доставки — `handleMetaWebhook`, отправка всех каналов —
+  `deliver` в `channels.server.ts` (файл сначала кладётся в `crm-media`;
+  Messenger и Instagram забирают его по подписанной ссылке). Подключение —
+  «Настройки» → «Каналы»: токен (системного пользователя — WhatsApp +
+  Phone number ID, страницы — Facebook и Instagram), сервер проверяет его и
+  подписывает приложение на сообщения. Окно 24 ч — `replyBlock` /
+  `replyWindowOpen`: вместо поля ответа — пояснение.
 - **Контролы (2026-10-11) — только из набора, по инструкции**
   `.interface-design/system.md`, раздел «Контролы»: кнопки — пилюли
   (`Button`, круглые иконки), поля и фильтры — прямоугольники (вид —

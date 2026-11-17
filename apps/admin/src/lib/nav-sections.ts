@@ -243,6 +243,7 @@ export const CRM_ITEMS: NavItem[] = [
   { title: "Сделки", url: CRM_URL, icon: Case, exact: true },
   { title: "Диалоги", url: CRM_INBOX_URL, icon: ChatRoundLine },
   { title: "Задачи", url: CRM_TASKS_URL, icon: ClipboardCheck },
+  { title: "Отчёт", url: "/crm/reports", icon: ChartSquare },
   { title: "Настройки", url: CRM_SETTINGS_URL, icon: Settings },
 ];
 

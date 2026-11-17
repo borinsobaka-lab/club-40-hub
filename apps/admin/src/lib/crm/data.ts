@@ -515,3 +515,28 @@ export const searchContacts = (query: string, exclude: string) =>
 /** Всё от merge переходит к keep; merge удаляется. */
 export const mergeContacts = (keep: string, merge: string) =>
   crmRpc<void>("crm_contacts_merge", { p_keep: keep, p_merge: merge });
+
+// Отчёт -------------------------------------------------------------------------
+
+export type CrmReport = {
+  stages: { stage_id: string; count: number; budget: number }[];
+  created: number;
+  won: { count: number; budget: number };
+  lost: { count: number; budget: number };
+  loss: { name: string; count: number }[];
+  people: { user_id: string | null; open: number; won: number; won_budget: number; lost: number }[];
+  sources: { source: string; created: number; won: number }[];
+  reply: { count: number; median_minutes: number | null };
+  unanswered: number;
+};
+
+/** Отчёт по воронке за период (даты yyyy-MM-dd, включительно). */
+export function useCrmReport(pipelineId: string | null, from: string, to: string) {
+  return useQuery({
+    queryKey: [CRM_KEY, "report", pipelineId, from, to],
+    queryFn: () =>
+      crmRpc<CrmReport>("crm_report", { p_pipeline: pipelineId, p_from: from, p_to: to }),
+    enabled: !!pipelineId && !!from && !!to,
+    meta: { errorMessage: "Не удалось загрузить отчёт" },
+  });
+}

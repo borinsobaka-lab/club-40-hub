@@ -2,6 +2,7 @@
  * CRM — логика без React: порядок этапов, раскладка сделок по колонкам,
  * состояние задач, подписи событий ленты. Тест — logic.test.ts.
  */
+import { replyWindowOpen } from "./meta";
 import type { CrmDeal, CrmEvent, CrmStage, CrmTask, StageKind } from "./types";
 
 const KIND_ORDER: Record<StageKind, number> = { open: 0, won: 1, lost: 2 };
@@ -329,4 +330,33 @@ export function automationLabel(
             ? `сообщение клиенту «${(p.body ?? "").slice(0, 60)}${(p.body ?? "").length > 60 ? "…" : ""}»`
             : `тег #${p.tag ?? ""}`;
   return `${when} → ${what}`;
+}
+
+// Отчёт -------------------------------------------------------------------------
+
+/** Доля в процентах, целым: 1 из 3 → 33; деление на ноль → null. */
+export function percent(part: number, total: number): number | null {
+  return total > 0 ? Math.round((part / total) * 100) : null;
+}
+
+/** Минуты ожидания ответа: «12 мин», «1 ч 30 мин», «2 дн». */
+export function waitLabel(minutes: number | null): string {
+  if (minutes === null || !Number.isFinite(minutes)) return "—";
+  const m = Math.round(minutes);
+  if (m < 60) return `${Math.max(m, 1)} мин`;
+  if (m < 1440) return m % 60 ? `${Math.floor(m / 60)} ч ${m % 60} мин` : `${m / 60} ч`;
+  return `${Math.round(m / 1440)} дн`;
+}
+
+/** Почему в диалог нельзя ответить (вместо поля ввода); null — можно. */
+export function replyBlock(
+  account: { kind: string; status: string } | undefined | null,
+  lastInboundAt: string | null,
+  now: Date = new Date(),
+): string | null {
+  if (!account) return null;
+  if (account.status === "disabled") return "Аккаунт канала отключён — ответить нельзя.";
+  if (!replyWindowOpen(account.kind, lastInboundAt, now))
+    return "Прошло больше 24 часов с последнего сообщения клиента. По правилам канала ответить можно, когда он напишет снова.";
+  return null;
 }

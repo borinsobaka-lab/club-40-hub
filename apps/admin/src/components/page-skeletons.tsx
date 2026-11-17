@@ -2901,3 +2901,23 @@ export function CrmInboxPageSkeleton() {
     </ShellSkeleton>
   );
 }
+
+export function CrmReportsPageSkeleton() {
+  return (
+    <ShellSkeleton title="Отчёт" network>
+      <div className="mx-auto max-w-5xl space-y-4">
+        <ToolbarSkeleton search={false} controls={["w-56", "w-40", "w-40"]} />
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
+          {Array.from({ length: 5 }, (_, i) => (
+            <Skeleton key={i} className="h-20 w-full rounded-lg" />
+          ))}
+        </div>
+        <Skeleton className="h-56 w-full rounded-lg" />
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <Skeleton className="h-40 w-full rounded-lg" />
+          <Skeleton className="h-40 w-full rounded-lg" />
+        </div>
+      </div>
+    </ShellSkeleton>
+  );
+}

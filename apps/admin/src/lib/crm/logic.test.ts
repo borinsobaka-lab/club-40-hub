@@ -9,6 +9,8 @@ import {
   nextTaskByDeal,
   parseBudget,
   parseTags,
+  percent,
+  waitLabel,
   accountLabel,
   automationLabel,
   durationLabel,
@@ -225,5 +227,15 @@ describe("CRM — логика", () => {
         names,
       ),
     ).toBe("Клиент написал → тег #vip");
+  });
+
+  test("отчёт: доля и ожидание ответа", () => {
+    expect(percent(1, 3)).toBe(33);
+    expect(percent(0, 0)).toBeNull();
+    expect(waitLabel(null)).toBe("—");
+    expect(waitLabel(0.4)).toBe("1 мин");
+    expect(waitLabel(90)).toBe("1 ч 30 мин");
+    expect(waitLabel(120)).toBe("2 ч");
+    expect(waitLabel(4320)).toBe("3 дн");
   });
 });

@@ -707,4 +707,37 @@ describe.skipIf(!url)("CRM (база)", () => {
       await as(tx, admin2);
       expect((await tx`select * from crm_contact_search('чуж')`).length).toBe(1);
     }));
+  test("отчёт: этапы, закрытые за период, причины, ответственные, скорость ответа — по видимым сделкам", () =>
+    scenario(async (tx) => {
+      const { s1, s2, admin1, admin2, manager, pipeline, st1, st2, won, lost } = await setup(tx);
+      const bot = await account(tx, "telegram_bot", s1, pipeline);
+      const m = await ingest(tx, bot, "1", { external_id: "1", name: "А" }, { external_id: "1", body: "Привет", sent_at: new Date(Date.now() - 30 * 60_000).toISOString() });
+      await tx`insert into crm_messages (conversation_id, direction, body, status) values (${m.conversation_id}, 'out', 'Да', 'sent')`;
+      const [reason] = await tx`select id, name from crm_loss_reasons order by sort_order limit 1`;
+      await tx`insert into crm_deals (title, pipeline_id, stage_id, studio_id, budget, responsible_id, source) values
+        ('w', ${pipeline}, ${won}, ${s1}, 300, ${admin1}, 'Instagram'),
+        ('l', ${pipeline}, ${st1}, ${s1}, 100, ${admin1}, 'Instagram'),
+        ('o', ${pipeline}, ${st2}, ${s1}, 50, null, null),
+        ('чужая', ${pipeline}, ${won}, ${s2}, 999, ${admin2}, 'Сайт')`;
+      await tx`update crm_deals set stage_id = ${lost}, loss_reason_id = ${reason.id} where title = 'l'`;
+
+      await as(tx, admin1);
+      const [{ r }] = await tx`select crm_report(${pipeline}, current_date - 1, current_date) as r`;
+      expect(r.created).toBe(4); // три свои и сделка из входящего; чужого клуба не видно
+      expect(r.won).toEqual({ count: 1, budget: 300 });
+      expect(r.lost).toEqual({ count: 1, budget: 100 });
+      expect(r.loss).toEqual([{ name: reason.name, count: 1 }]);
+      const stages = Object.fromEntries(r.stages.map((x: { stage_id: string; count: number }) => [x.stage_id, x.count]));
+      expect(stages).toEqual({ [st1]: 1, [st2]: 1 });
+      const mine = r.people.find((p: { user_id: string }) => p.user_id === admin1);
+      expect(mine).toMatchObject({ won: 1, won_budget: 300, lost: 1, open: 0 });
+      expect(r.sources.find((x: { source: string }) => x.source === "Instagram")).toMatchObject({ created: 2, won: 1 });
+      expect(r.reply.count).toBe(1);
+      expect(Number(r.reply.median_minutes)).toBeGreaterThanOrEqual(29);
+      expect(r.unanswered).toBe(0);
+
+      await as(tx, manager);
+      const [{ r: all }] = await tx`select crm_report(${pipeline}, current_date - 1, current_date) as r`;
+      expect(all.won).toEqual({ count: 2, budget: 1299 });
+    }));
 });
