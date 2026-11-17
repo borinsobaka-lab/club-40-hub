@@ -8,7 +8,14 @@ import { queryOptions, useQuery, type QueryClient } from "@tanstack/react-query"
 
 import { supabase } from "@/integrations/supabase/client";
 import { unwrap } from "@/lib/query";
-import { sortStages } from "./logic";
+import {
+  DEFAULT_CRM_SETTINGS,
+  sortStages,
+  type CrmSettings,
+  type FunnelGroup,
+  type FunnelRow,
+  type ScenarioKey,
+} from "./logic";
 import type {
   CrmAutomation,
   CrmWaTemplate,
@@ -85,7 +92,7 @@ export const crmPeopleQuery = queryOptions({
 });
 
 const DEAL_COLUMNS =
-  "id, title, pipeline_id, stage_id, contact_id, studio_id, responsible_id, budget, source, tags, loss_reason_id, stage_entered_at, closed_at, created_at, updated_at, contact:crm_contacts(id, name, phone, email, client_id)";
+  "id, title, pipeline_id, stage_id, contact_id, studio_id, responsible_id, budget, source, tags, loss_reason_id, stage_entered_at, closed_at, created_at, updated_at, scenario, utm_source, utm_medium, utm_campaign, utm_content, page_url, contact:crm_contacts(id, name, phone, email, client_id)";
 
 /** Сколько дней закрытые сделки остаются в колонках «Успешно» / «Не реализовано». */
 export const CLOSED_DAYS = 30;
@@ -353,17 +360,22 @@ export const crmTemplatesQuery = queryOptions({
   meta: { errorMessage: "Не удалось загрузить шаблоны ответов" },
 });
 
-const CONVERSATION_COLUMNS =
-  "id, contact_id, account_id, studio_id, last_message_at, last_message_text, last_direction, last_inbound_at, unread_count, contact:crm_contacts(id, name, phone, client_id), identity:crm_contact_identities(username, display_name)";
+// Тип string (не литерал) — как UNREAD_COLUMNS ниже.
+const CONVERSATION_COLUMNS: string =
+  "id, contact_id, account_id, studio_id, last_message_at, last_message_text, last_direction, last_inbound_at, waiting_since, unread_count, contact:crm_contacts(id, name, phone, client_id), identity:crm_contact_identities(username, display_name)";
 
 /** Как часто перезапрашивать переписку, пока вкладка открыта (Realtime нет). */
 const CHAT_POLL_MS = 4_000;
 const INBOX_POLL_MS = 8_000;
 
 /** Диалоги: последние сверху; unreadOnly — только с непрочитанным. */
-export function useConversations(opts: { accountId: string; unreadOnly: boolean }) {
+export function useConversations(opts: {
+  accountId: string;
+  unreadOnly: boolean;
+  waitingOnly?: boolean;
+}) {
   return useQuery({
-    queryKey: [CRM_KEY, "conversations", opts.accountId, opts.unreadOnly],
+    queryKey: [CRM_KEY, "conversations", opts.accountId, opts.unreadOnly, !!opts.waitingOnly],
     queryFn: () => {
       let q = supabase
         .from("crm_conversations")
@@ -373,6 +385,7 @@ export function useConversations(opts: { accountId: string; unreadOnly: boolean 
         .limit(200);
       if (opts.accountId) q = q.eq("account_id", opts.accountId);
       if (opts.unreadOnly) q = q.gt("unread_count", 0);
+      if (opts.waitingOnly) q = q.filter("waiting_since", "not.is", null);
       return unwrap<CrmConversation[]>(q);
     },
     refetchInterval: INBOX_POLL_MS,
@@ -440,7 +453,17 @@ export function useUnreadConversations(enabled: boolean) {
   return data ?? 0;
 }
 
-export type ContactUnread = { count: number; text: string | null };
+// Тип string (не литерал): разбор длинной строки select вместе с .or() уводит
+// tsc в слишком глубокую рекурсию.
+const UNREAD_COLUMNS: string =
+  "contact_id, unread_count, last_message_text, last_message_at, waiting_since";
+
+export type ContactUnread = {
+  count: number;
+  text: string | null;
+  /** С какого сообщения клиент ждёт ответа (самое раннее по его диалогам). */
+  waitingSince: string | null;
+};
 
 /** Непрочитанное по контактам — для карточек канбана: кто ждёт ответа. */
 export function useUnreadByContact(enabled = true) {
@@ -449,21 +472,24 @@ export function useUnreadByContact(enabled = true) {
     queryFn: async () => {
       const { data: rows, error } = await supabase
         .from("crm_conversations")
-        .select("contact_id, unread_count, last_message_text, last_message_at")
-        .gt("unread_count", 0)
+        .select(UNREAD_COLUMNS)
+        .or("unread_count.gt.0,waiting_since.not.is.null")
         .order("last_message_at", { ascending: false, nullsFirst: false })
         .limit(500);
       if (error) throw new Error(error.message);
       const map = new Map<string, ContactUnread>();
-      for (const r of (rows ?? []) as {
+      for (const r of (rows ?? []) as unknown as {
         contact_id: string;
         unread_count: number;
         last_message_text: string | null;
+        waiting_since: string | null;
       }[]) {
         const prev = map.get(r.contact_id);
+        const waits = [prev?.waitingSince, r.waiting_since].filter((w): w is string => !!w).sort();
         map.set(r.contact_id, {
           count: (prev?.count ?? 0) + r.unread_count,
           text: prev?.text ?? r.last_message_text,
+          waitingSince: waits[0] ?? null,
         });
       }
       return map;
@@ -607,7 +633,7 @@ export function useClientConversations(clientId: string | null, enabled = true) 
         supabase
           .from("crm_conversations")
           .select(
-            "id, contact_id, account_id, studio_id, last_message_at, last_message_text, last_direction, last_inbound_at, unread_count, contact:crm_contacts!inner(id, name, phone, client_id), identity:crm_contact_identities(username, display_name)",
+            "id, contact_id, account_id, studio_id, last_message_at, last_message_text, last_direction, last_inbound_at, waiting_since, unread_count, contact:crm_contacts!inner(id, name, phone, client_id), identity:crm_contact_identities(username, display_name)",
           )
           .eq("contact.client_id", clientId!)
           .order("last_message_at", { ascending: false, nullsFirst: false }),
@@ -832,4 +858,325 @@ export async function removeDistributionStudio(studioId: string) {
     .delete()
     .eq("studio_id", studioId);
   if (error) throw new Error(error.message);
+}
+
+// Скорость ответа и уведомления (db/migrations/2026-11-19_crm_reply_sla_notifications.sql)
+
+export const crmSettingsQuery = queryOptions({
+  queryKey: [CRM_KEY, "settings"],
+  queryFn: async (): Promise<CrmSettings> =>
+    (await unwrap<CrmSettings | null>(
+      supabase
+        .from("crm_settings")
+        .select("reply_sla_minutes, escalate_minutes, work_from, work_to")
+        .maybeSingle(),
+    )) ?? DEFAULT_CRM_SETTINGS,
+  staleTime: 5 * 60_000,
+  meta: { errorMessage: "Не удалось загрузить настройки CRM" },
+});
+
+export async function saveCrmSettings(patch: Partial<CrmSettings>) {
+  const { error } = await supabase.from("crm_settings").update(patch).eq("id", true);
+  if (error) throw new Error(error.message);
+}
+
+/** Сколько диалогов ждут ответа — для «Диалогов» и отчёта. */
+export function useWaitingCount(enabled = true) {
+  const { data } = useQuery({
+    queryKey: [CRM_KEY, "conversations", "waiting-count"],
+    queryFn: async () => {
+      const { count, error } = await supabase
+        .from("crm_conversations")
+        .select("id", { count: "exact", head: true })
+        .not("waiting_since", "is", null);
+      if (error) throw new Error(error.message);
+      return count ?? 0;
+    },
+    enabled,
+    refetchInterval: 20_000,
+    staleTime: 10_000,
+  });
+  return data ?? 0;
+}
+
+export type PeopleReportRow = {
+  user_id: string | null;
+  open: number;
+  created: number;
+  won: number;
+  won_budget: number;
+  lost: number;
+  replies: number;
+  reply_median: number | null;
+  reply_in_sla: number;
+  messages: number;
+  tasks_done: number;
+  tasks_late: number;
+  tasks_overdue: number;
+};
+
+export type PeopleReport = {
+  sla_minutes: number;
+  unanswered: number;
+  asked: number;
+  answered: number;
+  reply_median: number | null;
+  reply_in_sla: number;
+  people: PeopleReportRow[];
+};
+
+export function usePeopleReport(pipelineId: string | null, from: string, to: string) {
+  return useQuery({
+    queryKey: [CRM_KEY, "report", "people", pipelineId ?? "all", from, to],
+    queryFn: () =>
+      crmRpc<PeopleReport>("crm_people_report", {
+        p_from: from,
+        p_to: to,
+        p_pipeline: pipelineId,
+      }),
+    enabled: !!from && !!to,
+    meta: { errorMessage: "Не удалось загрузить отчёт по сотрудникам" },
+  });
+}
+
+// Сценарии по клиентам клуба (db/migrations/2026-11-19_zz_crm_scenarios.sql) -------
+
+export type CrmScenario = {
+  key: ScenarioKey;
+  enabled: boolean;
+  pipeline_id: string | null;
+  stage_id: string | null;
+  params: { days?: number; left?: number };
+  task_title: string;
+};
+
+export const crmScenariosQuery = queryOptions({
+  queryKey: [CRM_KEY, "scenarios"],
+  queryFn: () =>
+    unwrap<CrmScenario[]>(
+      supabase
+        .from("crm_scenarios")
+        .select("key, enabled, pipeline_id, stage_id, params, task_title")
+        .order("sort_order"),
+    ),
+  staleTime: 60_000,
+  meta: { errorMessage: "Не удалось загрузить сценарии" },
+});
+
+export async function saveScenario(
+  key: ScenarioKey,
+  patch: Partial<Pick<CrmScenario, "enabled" | "stage_id" | "params" | "task_title">>,
+) {
+  const { error } = await supabase.from("crm_scenarios").update(patch).eq("key", key);
+  if (error) throw new Error(error.message);
+}
+
+/** Сколько клиентов подходит под сценарий сейчас (с параметрами из формы). */
+export const previewScenario = (key: ScenarioKey, params: CrmScenario["params"]) =>
+  crmRpc<number>("crm_scenario_preview", { p_key: key, p_params: params });
+
+export type ScenarioReportRow = {
+  key: ScenarioKey;
+  created: number;
+  open: number;
+  won: number;
+  lost: number;
+  won_budget: number;
+};
+
+export function useScenariosReport(from: string, to: string) {
+  return useQuery({
+    queryKey: [CRM_KEY, "report", "scenarios", from, to],
+    queryFn: () => crmRpc<ScenarioReportRow[]>("crm_scenarios_report", { p_from: from, p_to: to }),
+    enabled: !!from && !!to,
+    meta: { errorMessage: "Не удалось загрузить отчёт по сценариям" },
+  });
+}
+
+// Источники и сквозная воронка (db/migrations/2026-11-19_zzz_crm_sources_funnel.sql)
+
+export type CrmLeadForm = {
+  id: string;
+  name: string;
+  token: string;
+  source: string | null;
+  pipeline_id: string | null;
+  studio_id: string | null;
+  is_active: boolean;
+  leads_count: number;
+  last_lead_at: string | null;
+};
+
+export const crmLeadFormsQuery = queryOptions({
+  queryKey: [CRM_KEY, "lead-forms"],
+  queryFn: () =>
+    unwrap<CrmLeadForm[]>(
+      supabase
+        .from("crm_lead_forms")
+        .select(
+          "id, name, token, source, pipeline_id, studio_id, is_active, leads_count, last_lead_at",
+        )
+        .order("created_at"),
+    ),
+  meta: { errorMessage: "Не удалось загрузить формы сайта" },
+});
+
+export type LeadFormInput = Pick<
+  CrmLeadForm,
+  "name" | "source" | "pipeline_id" | "studio_id" | "is_active"
+>;
+
+export async function saveLeadForm(id: string | null, input: LeadFormInput) {
+  const q = id
+    ? supabase.from("crm_lead_forms").update(input).eq("id", id)
+    : supabase.from("crm_lead_forms").insert(input);
+  const { error } = await q;
+  if (error) throw new Error(error.message);
+}
+
+export const deleteLeadForm = (id: string) =>
+  run(supabase.from("crm_lead_forms").delete().eq("id", id));
+
+export type CrmLink = {
+  id: string;
+  code: string;
+  name: string;
+  source: string;
+  campaign: string | null;
+  target_kind: "whatsapp" | "telegram" | "url";
+  target: string;
+  text: string | null;
+  is_active: boolean;
+  clicks: number;
+  last_click_at: string | null;
+};
+
+export const crmLinksQuery = queryOptions({
+  queryKey: [CRM_KEY, "links"],
+  queryFn: () =>
+    unwrap<CrmLink[]>(
+      supabase
+        .from("crm_links")
+        .select(
+          "id, code, name, source, campaign, target_kind, target, text, is_active, clicks, last_click_at",
+        )
+        .order("created_at", { ascending: false }),
+    ),
+  meta: { errorMessage: "Не удалось загрузить ссылки" },
+});
+
+export type LinkInput = Pick<
+  CrmLink,
+  "name" | "source" | "campaign" | "target_kind" | "target" | "text" | "is_active"
+>;
+
+export async function saveLink(id: string | null, input: LinkInput) {
+  const q = id
+    ? supabase.from("crm_links").update(input).eq("id", id)
+    : supabase.from("crm_links").insert(input);
+  const { error } = await q;
+  if (error) throw new Error(error.message);
+}
+
+export const deleteLink = (id: string) => run(supabase.from("crm_links").delete().eq("id", id));
+
+/** Сколько сделок пришло по каждой ссылке. */
+export function useLinkDeals(enabled = true) {
+  return useQuery({
+    queryKey: [CRM_KEY, "links", "deals"],
+    queryFn: async () => {
+      const rows = await unwrap<{ link_id: string }[]>(
+        supabase.from("crm_deals").select("link_id").not("link_id", "is", null).limit(5000),
+      );
+      const map = new Map<string, number>();
+      for (const r of rows) map.set(r.link_id, (map.get(r.link_id) ?? 0) + 1);
+      return map;
+    },
+    enabled,
+    staleTime: 60_000,
+  });
+}
+
+export type CrmAdSpend = {
+  id: string;
+  month: string;
+  source: string;
+  campaign: string | null;
+  studio_id: string | null;
+  amount: number;
+  note: string | null;
+};
+
+export const crmAdSpendQuery = queryOptions({
+  queryKey: [CRM_KEY, "ad-spend"],
+  queryFn: () =>
+    unwrap<CrmAdSpend[]>(
+      supabase
+        .from("crm_ad_spend")
+        .select("id, month, source, campaign, studio_id, amount, note")
+        .order("month", { ascending: false })
+        .order("source")
+        .limit(500),
+    ),
+  meta: { errorMessage: "Не удалось загрузить расходы на рекламу" },
+});
+
+export type AdSpendInput = Omit<CrmAdSpend, "id">;
+
+export async function saveAdSpend(id: string | null, input: AdSpendInput) {
+  const q = id
+    ? supabase.from("crm_ad_spend").update(input).eq("id", id)
+    : supabase.from("crm_ad_spend").insert(input);
+  const { error } = await q;
+  if (error) throw new Error(error.message);
+}
+
+export const deleteAdSpend = (id: string) =>
+  run(supabase.from("crm_ad_spend").delete().eq("id", id));
+
+/** Источники, которые уже встречались в сделках, ссылках, формах и расходах. */
+export const crmSourceNamesQuery = queryOptions({
+  queryKey: [CRM_KEY, "source-names"],
+  queryFn: async () => {
+    const [deals, links, spend] = await Promise.all([
+      unwrap<{ source: string | null }[]>(
+        supabase
+          .from("crm_deals")
+          .select("source")
+          .not("source", "is", null)
+          .order("created_at", { ascending: false })
+          .limit(2000),
+      ),
+      unwrap<{ source: string }[]>(supabase.from("crm_links").select("source")),
+      // Расходы видит только настройка — у остальных список без них.
+      supabase.from("crm_ad_spend").select("source").then((r) => (r.data ?? []) as { source: string }[]),
+    ]);
+    const seen = new Map<string, string>();
+    for (const r of [...deals, ...links, ...spend])
+      if (r.source && !seen.has(r.source.toLowerCase())) seen.set(r.source.toLowerCase(), r.source);
+    return [...seen.values()].sort((a, b) => a.localeCompare(b, "ru"));
+  },
+  staleTime: 5 * 60_000,
+});
+
+export type FunnelReport = { rows: FunnelRow[]; total: FunnelRow };
+
+export function useFunnelReport(
+  group: FunnelGroup,
+  pipelineId: string | null,
+  from: string,
+  to: string,
+) {
+  return useQuery({
+    queryKey: [CRM_KEY, "report", "funnel", group, pipelineId ?? "all", from, to],
+    queryFn: () =>
+      crmRpc<FunnelReport>("crm_funnel_report", {
+        p_from: from,
+        p_to: to,
+        p_group: group,
+        p_pipeline: pipelineId,
+      }),
+    enabled: !!from && !!to,
+    meta: { errorMessage: "Не удалось загрузить сквозную воронку" },
+  });
 }

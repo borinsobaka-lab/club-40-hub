@@ -276,7 +276,7 @@ export function joinDuration(value: number, unit: DurationUnit): number {
   return Math.max(0, Math.round(value)) * UNIT_MINUTES[unit];
 }
 
-function plural(n: number, one: string, few: string, many: string) {
+export function plural(n: number, one: string, few: string, many: string) {
   const d = n % 10;
   const h = n % 100;
   if (d === 1 && h !== 11) return one;
@@ -525,4 +525,184 @@ export function waPhone(raw: string | null | undefined): string | null {
   const d = (raw ?? "").replace(/\D/g, "");
   if (d.length < 8) return null;
   return d.length === 9 && d.startsWith("5") ? `995${d}` : d;
+}
+
+// Скорость ответа (db/migrations/2026-11-19_crm_reply_sla_notifications.sql) ------
+
+export type CrmSettings = {
+  reply_sla_minutes: number;
+  escalate_minutes: number | null;
+  work_from: number;
+  work_to: number;
+};
+
+export const DEFAULT_CRM_SETTINGS: CrmSettings = {
+  reply_sla_minutes: 15,
+  escalate_minutes: 60,
+  work_from: 9,
+  work_to: 21,
+};
+
+/** Тбилиси — без перевода часов, всегда UTC+4. */
+const TBILISI_OFFSET_MS = 4 * 3_600_000;
+
+/**
+ * С какого момента сообщение «ждёт»: в рабочие часы — сразу, иначе с
+ * ближайшего открытия (как crm_work_start в базе).
+ */
+export function workStart(at: Date, s: Pick<CrmSettings, "work_from" | "work_to">): Date {
+  const local = new Date(at.getTime() + TBILISI_OFFSET_MS);
+  const hour = local.getUTCHours();
+  if (hour >= s.work_from && hour < s.work_to) return at;
+  const day = Date.UTC(local.getUTCFullYear(), local.getUTCMonth(), local.getUTCDate());
+  const opens = day + s.work_from * 3_600_000 + (hour >= s.work_to ? 86_400_000 : 0);
+  return new Date(opens - TBILISI_OFFSET_MS);
+}
+
+/** Сколько минут клиент ждёт ответа в рабочее время; null — не ждёт. */
+export function waitingMinutes(
+  waitingSince: string | null | undefined,
+  now: Date,
+  s: Pick<CrmSettings, "work_from" | "work_to">,
+): number | null {
+  if (!waitingSince) return null;
+  const from = workStart(new Date(waitingSince), s);
+  return Math.max(0, Math.floor((now.getTime() - from.getTime()) / 60_000));
+}
+
+export type WaitTone = "ok" | "late" | "critical";
+
+/** В нормативе, дольше норматива, дольше срока эскалации. */
+export function waitTone(minutes: number, s: CrmSettings): WaitTone {
+  if (s.escalate_minutes !== null && minutes >= s.escalate_minutes) return "critical";
+  return minutes >= s.reply_sla_minutes ? "late" : "ok";
+}
+
+// Сценарии по клиентам клуба (db/migrations/2026-11-19_zz_crm_scenarios.sql) -------
+
+export type ScenarioKey =
+  | "expiring"
+  | "trial_no_purchase"
+  | "inactive"
+  | "lapsed"
+  | "overdue_payment";
+
+export const SCENARIOS: Record<
+  ScenarioKey,
+  { label: string; hint: string; daysLabel: string; closes: string }
+> = {
+  expiring: {
+    label: "Продление",
+    hint: "Абонемент скоро закончится — по сроку или по остатку тренировок, а продление ещё не куплено.",
+    daysLabel: "Дней до конца срока",
+    closes: "Закроется сама, когда клиент купит абонемент.",
+  },
+  trial_no_purchase: {
+    label: "После пробного",
+    hint: "Клиент был на пробном занятии и не купил абонемент.",
+    daysLabel: "Дней после пробного",
+    closes: "Закроется сама, когда клиент купит абонемент.",
+  },
+  inactive: {
+    label: "Давно не был",
+    hint: "Абонемент действует, но клиент не приходит и не записан на занятия.",
+    daysLabel: "Дней без посещений",
+    closes: "Закроется сама, когда клиент придёт на занятие или купит абонемент.",
+  },
+  lapsed: {
+    label: "Возврат",
+    hint: "Абонемент закончился, нового клиент не купил (не старше 90 дней).",
+    daysLabel: "Дней после окончания",
+    closes: "Закроется сама, когда клиент купит абонемент.",
+  },
+  overdue_payment: {
+    label: "Долг по оплате",
+    hint: "Платёж по рассрочке просрочен.",
+    daysLabel: "Дней просрочки",
+    closes: "Закроется сама, когда платёж внесут.",
+  },
+};
+
+export const scenarioLabel = (key: string | null | undefined) =>
+  (key && SCENARIOS[key as ScenarioKey]?.label) || "Сценарий";
+
+/** «Когда срабатывает» — строкой с текущими параметрами. */
+export function scenarioRule(key: ScenarioKey, params: { days?: number; left?: number }): string {
+  const days = params.days ?? 0;
+  const dn = `${days} ${plural(days, "день", "дня", "дней")}`;
+  switch (key) {
+    case "expiring":
+      return `До конца срока ${days === 0 ? "сегодня" : `≤ ${dn}`} или осталось ≤ ${params.left ?? 0} ${plural(params.left ?? 0, "тренировка", "тренировки", "тренировок")}`;
+    case "trial_no_purchase":
+      return `Прошло ${dn} после пробного, абонемент не куплен`;
+    case "inactive":
+      return `Не был ${dn} и не записан`;
+    case "lapsed":
+      return `Абонемент закончился ${dn} назад, нового нет`;
+    case "overdue_payment":
+      return `Платёж просрочен на ${dn}`;
+  }
+}
+
+// Сквозная воронка (db/migrations/2026-11-19_zzz_crm_sources_funnel.sql) -----------
+
+export type FunnelGroup = "source" | "campaign" | "studio" | "responsible";
+
+export const FUNNEL_GROUPS: { value: FunnelGroup; label: string }[] = [
+  { value: "source", label: "Источники" },
+  { value: "campaign", label: "Кампании" },
+  { value: "studio", label: "Клубы" },
+  { value: "responsible", label: "Сотрудники" },
+];
+
+export type FunnelRow = {
+  gkey?: string;
+  label?: string;
+  leads: number;
+  replied: number;
+  booked: number;
+  attended: number;
+  trial: number;
+  won: number;
+  lost: number;
+  revenue: number;
+  ltv: number;
+  spend: number;
+};
+
+/** Цена заявки и клиента, окупаемость; null — считать не из чего. */
+export function funnelMoney(row: Pick<FunnelRow, "leads" | "won" | "ltv" | "spend">) {
+  const spend = Number(row.spend) || 0;
+  return {
+    /** Стоимость заявки. */
+    cpl: spend > 0 && row.leads > 0 ? spend / row.leads : null,
+    /** Стоимость клиента (купившего). */
+    cac: spend > 0 && row.won > 0 ? spend / row.won : null,
+    /** Окупаемость: (выручка − расход) / расход, %. */
+    romi: spend > 0 ? Math.round(((Number(row.ltv) - spend) / spend) * 100) : null,
+  };
+}
+
+/** Шаги воронки по порядку: подпись и число. */
+export function funnelSteps(row: FunnelRow): { key: string; label: string; count: number }[] {
+  return [
+    { key: "leads", label: "Заявки", count: row.leads },
+    { key: "replied", label: "Ответили", count: row.replied },
+    { key: "booked", label: "Записаны", count: row.booked },
+    { key: "attended", label: "Пришли", count: row.attended },
+    { key: "won", label: "Купили", count: row.won },
+  ];
+}
+
+/** Первое число месяца даты yyyy-MM-dd. */
+export const monthOf = (iso: string) => `${iso.slice(0, 7)}-01`;
+
+/** «Ноябрь 2026» по первому числу месяца. */
+export function monthLabel(month: string): string {
+  const names = [
+    "Январь", "Февраль", "Март", "Апрель", "Май", "Июнь",
+    "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь",
+  ];
+  const [y, m] = month.split("-").map(Number);
+  return `${names[(m || 1) - 1]} ${y}`;
 }

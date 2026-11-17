@@ -49,6 +49,13 @@ export type CrmDeal = {
   closed_at: string | null;
   created_at: string;
   updated_at: string;
+  /** Сценарий по клиентам клуба (продление, возврат…); у обычной сделки пусто. */
+  scenario?: string | null;
+  utm_source?: string | null;
+  utm_medium?: string | null;
+  utm_campaign?: string | null;
+  utm_content?: string | null;
+  page_url?: string | null;
   contact: CrmContact | null;
 };
 
@@ -129,6 +136,8 @@ export type CrmConversation = {
   last_message_text: string | null;
   last_direction: "in" | "out" | null;
   last_inbound_at: string | null;
+  /** С какого сообщения клиент ждёт ответа; null — не ждёт. */
+  waiting_since?: string | null;
   unread_count: number;
   contact: { id: string; name: string; phone: string | null; client_id: string | null } | null;
   identity: { username: string | null; display_name: string | null } | null;

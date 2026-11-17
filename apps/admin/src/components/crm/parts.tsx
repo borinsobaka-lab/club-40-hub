@@ -9,8 +9,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { crmPeopleQuery } from "@/lib/crm/data";
-import { formatDue, NONE, taskState } from "@/lib/crm/logic";
+import { crmPeopleQuery, crmSettingsQuery } from "@/lib/crm/data";
+import {
+  DEFAULT_CRM_SETTINGS,
+  formatDue,
+  NONE,
+  taskState,
+  waitingMinutes,
+  waitLabel,
+  waitTone,
+} from "@/lib/crm/logic";
 import type { CrmStage } from "@/lib/crm/types";
 import { cn } from "@/lib/utils";
 
@@ -166,6 +174,39 @@ export function TaskDue({
       <Clock className="size-3.5" />
       {state === "overdue" ? "просрочено · " : ""}
       {formatDue(dueAt, now)}
+    </span>
+  );
+}
+
+/**
+ * «ждёт 12 мин» — сколько клиент ждёт ответа в рабочее время: серым в
+ * нормативе, оранжевым — дольше, красным — пора звать руководителя.
+ */
+export function WaitBadge({
+  since,
+  now,
+  className,
+}: {
+  since: string | null | undefined;
+  now: Date;
+  className?: string;
+}) {
+  const { data: settings = DEFAULT_CRM_SETTINGS } = useQuery(crmSettingsQuery);
+  const minutes = waitingMinutes(since, now, settings);
+  if (minutes === null) return null;
+  const tone = waitTone(minutes, settings);
+  return (
+    <span
+      title={`Клиент ждёт ответа. Норматив — ${settings.reply_sla_minutes} мин в рабочее время.`}
+      className={cn(
+        "shrink-0 rounded-full px-1.5 py-0.5 text-[11px] font-medium whitespace-nowrap",
+        tone === "ok" && "bg-muted text-muted-foreground",
+        tone === "late" && "bg-amber-100 text-amber-800",
+        tone === "critical" && "bg-red-100 text-red-700",
+        className,
+      )}
+    >
+      {minutes === 0 ? "ждёт ответа" : `ждёт ${waitLabel(minutes)}`}
     </span>
   );
 }

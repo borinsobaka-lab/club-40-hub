@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/index'
+import { Route as LCodeRouteImport } from './routes/l/$code'
 import { Route as ApiTranscribeRouteImport } from './routes/api/transcribe'
 import { Route as ApiPhoneLoginRouteImport } from './routes/api/phone-login'
 import { Route as ApiChatRouteImport } from './routes/api/chat'
@@ -89,6 +90,7 @@ import { Route as AuthenticatedAccessRolesIndexRouteImport } from './routes/_aut
 import { Route as AuthenticatedAcademyReviewIndexRouteImport } from './routes/_authenticated/academy/review/index'
 import { Route as AuthenticatedAcademyCoursesIndexRouteImport } from './routes/_authenticated/academy/courses/index'
 import { Route as ApiCrmTelegramAccountIdRouteImport } from './routes/api/crm/telegram.$accountId'
+import { Route as ApiCrmLeadTokenRouteImport } from './routes/api/crm/lead.$token'
 import { Route as AuthenticatedKbBaseIdTrashRouteImport } from './routes/_authenticated/kb/$baseId/trash'
 import { Route as AuthenticatedKbBaseIdTemplatesRouteImport } from './routes/_authenticated/kb/$baseId/templates'
 import { Route as AuthenticatedKbBaseIdAnalyticsRouteImport } from './routes/_authenticated/kb/$baseId/analytics'
@@ -115,6 +117,11 @@ const AuthenticatedIndexRoute = AuthenticatedIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const LCodeRoute = LCodeRouteImport.update({
+  id: '/l/$code',
+  path: '/l/$code',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const ApiTranscribeRoute = ApiTranscribeRouteImport.update({
   id: '/api/transcribe',
@@ -539,6 +546,11 @@ const ApiCrmTelegramAccountIdRoute = ApiCrmTelegramAccountIdRouteImport.update({
   path: '/api/crm/telegram/$accountId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiCrmLeadTokenRoute = ApiCrmLeadTokenRouteImport.update({
+  id: '/api/crm/lead/$token',
+  path: '/api/crm/lead/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthenticatedKbBaseIdTrashRoute =
   AuthenticatedKbBaseIdTrashRouteImport.update({
     id: '/kb/$baseId/trash',
@@ -649,6 +661,7 @@ export interface FileRoutesByFullPath {
   '/api/chat': typeof ApiChatRoute
   '/api/phone-login': typeof ApiPhoneLoginRoute
   '/api/transcribe': typeof ApiTranscribeRoute
+  '/l/$code': typeof LCodeRoute
   '/academy/report': typeof AuthenticatedAcademyReportRoute
   '/academy/settings': typeof AuthenticatedAcademySettingsRoute
   '/access/log': typeof AuthenticatedAccessLogRoute
@@ -696,6 +709,7 @@ export interface FileRoutesByFullPath {
   '/kb/$baseId/analytics': typeof AuthenticatedKbBaseIdAnalyticsRoute
   '/kb/$baseId/templates': typeof AuthenticatedKbBaseIdTemplatesRoute
   '/kb/$baseId/trash': typeof AuthenticatedKbBaseIdTrashRoute
+  '/api/crm/lead/$token': typeof ApiCrmLeadTokenRoute
   '/api/crm/telegram/$accountId': typeof ApiCrmTelegramAccountIdRoute
   '/academy/courses/': typeof AuthenticatedAcademyCoursesIndexRoute
   '/academy/review/': typeof AuthenticatedAcademyReviewIndexRoute
@@ -741,6 +755,7 @@ export interface FileRoutesByTo {
   '/api/chat': typeof ApiChatRoute
   '/api/phone-login': typeof ApiPhoneLoginRoute
   '/api/transcribe': typeof ApiTranscribeRoute
+  '/l/$code': typeof LCodeRoute
   '/': typeof AuthenticatedIndexRoute
   '/academy/report': typeof AuthenticatedAcademyReportRoute
   '/academy/settings': typeof AuthenticatedAcademySettingsRoute
@@ -789,6 +804,7 @@ export interface FileRoutesByTo {
   '/kb/$baseId/analytics': typeof AuthenticatedKbBaseIdAnalyticsRoute
   '/kb/$baseId/templates': typeof AuthenticatedKbBaseIdTemplatesRoute
   '/kb/$baseId/trash': typeof AuthenticatedKbBaseIdTrashRoute
+  '/api/crm/lead/$token': typeof ApiCrmLeadTokenRoute
   '/api/crm/telegram/$accountId': typeof ApiCrmTelegramAccountIdRoute
   '/academy/courses': typeof AuthenticatedAcademyCoursesIndexRoute
   '/academy/review': typeof AuthenticatedAcademyReviewIndexRoute
@@ -836,6 +852,7 @@ export interface FileRoutesById {
   '/api/chat': typeof ApiChatRoute
   '/api/phone-login': typeof ApiPhoneLoginRoute
   '/api/transcribe': typeof ApiTranscribeRoute
+  '/l/$code': typeof LCodeRoute
   '/_authenticated/': typeof AuthenticatedIndexRoute
   '/_authenticated/academy/report': typeof AuthenticatedAcademyReportRoute
   '/_authenticated/academy/settings': typeof AuthenticatedAcademySettingsRoute
@@ -884,6 +901,7 @@ export interface FileRoutesById {
   '/_authenticated/kb/$baseId/analytics': typeof AuthenticatedKbBaseIdAnalyticsRoute
   '/_authenticated/kb/$baseId/templates': typeof AuthenticatedKbBaseIdTemplatesRoute
   '/_authenticated/kb/$baseId/trash': typeof AuthenticatedKbBaseIdTrashRoute
+  '/api/crm/lead/$token': typeof ApiCrmLeadTokenRoute
   '/api/crm/telegram/$accountId': typeof ApiCrmTelegramAccountIdRoute
   '/_authenticated/academy/courses/': typeof AuthenticatedAcademyCoursesIndexRoute
   '/_authenticated/academy/review/': typeof AuthenticatedAcademyReviewIndexRoute
@@ -932,6 +950,7 @@ export interface FileRouteTypes {
     | '/api/chat'
     | '/api/phone-login'
     | '/api/transcribe'
+    | '/l/$code'
     | '/academy/report'
     | '/academy/settings'
     | '/access/log'
@@ -979,6 +998,7 @@ export interface FileRouteTypes {
     | '/kb/$baseId/analytics'
     | '/kb/$baseId/templates'
     | '/kb/$baseId/trash'
+    | '/api/crm/lead/$token'
     | '/api/crm/telegram/$accountId'
     | '/academy/courses/'
     | '/academy/review/'
@@ -1024,6 +1044,7 @@ export interface FileRouteTypes {
     | '/api/chat'
     | '/api/phone-login'
     | '/api/transcribe'
+    | '/l/$code'
     | '/'
     | '/academy/report'
     | '/academy/settings'
@@ -1072,6 +1093,7 @@ export interface FileRouteTypes {
     | '/kb/$baseId/analytics'
     | '/kb/$baseId/templates'
     | '/kb/$baseId/trash'
+    | '/api/crm/lead/$token'
     | '/api/crm/telegram/$accountId'
     | '/academy/courses'
     | '/academy/review'
@@ -1118,6 +1140,7 @@ export interface FileRouteTypes {
     | '/api/chat'
     | '/api/phone-login'
     | '/api/transcribe'
+    | '/l/$code'
     | '/_authenticated/'
     | '/_authenticated/academy/report'
     | '/_authenticated/academy/settings'
@@ -1166,6 +1189,7 @@ export interface FileRouteTypes {
     | '/_authenticated/kb/$baseId/analytics'
     | '/_authenticated/kb/$baseId/templates'
     | '/_authenticated/kb/$baseId/trash'
+    | '/api/crm/lead/$token'
     | '/api/crm/telegram/$accountId'
     | '/_authenticated/academy/courses/'
     | '/_authenticated/academy/review/'
@@ -1183,11 +1207,13 @@ export interface RootRouteChildren {
   ApiChatRoute: typeof ApiChatRoute
   ApiPhoneLoginRoute: typeof ApiPhoneLoginRoute
   ApiTranscribeRoute: typeof ApiTranscribeRoute
+  LCodeRoute: typeof LCodeRoute
   ApiCrmMetaRoute: typeof ApiCrmMetaRoute
   ApiCrmSendRoute: typeof ApiCrmSendRoute
   ApiCrmSendTemplateRoute: typeof ApiCrmSendTemplateRoute
   ApiCrmTgStartRoute: typeof ApiCrmTgStartRoute
   ApiCrmTgUserRoute: typeof ApiCrmTgUserRoute
+  ApiCrmLeadTokenRoute: typeof ApiCrmLeadTokenRoute
   ApiCrmTelegramAccountIdRoute: typeof ApiCrmTelegramAccountIdRoute
 }
 
@@ -1213,6 +1239,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/'
       preLoaderRoute: typeof AuthenticatedIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/l/$code': {
+      id: '/l/$code'
+      path: '/l/$code'
+      fullPath: '/l/$code'
+      preLoaderRoute: typeof LCodeRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/api/transcribe': {
       id: '/api/transcribe'
@@ -1753,6 +1786,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiCrmTelegramAccountIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/crm/lead/$token': {
+      id: '/api/crm/lead/$token'
+      path: '/api/crm/lead/$token'
+      fullPath: '/api/crm/lead/$token'
+      preLoaderRoute: typeof ApiCrmLeadTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_authenticated/kb/$baseId/trash': {
       id: '/_authenticated/kb/$baseId/trash'
       path: '/kb/$baseId/trash'
@@ -2022,11 +2062,13 @@ const rootRouteChildren: RootRouteChildren = {
   ApiChatRoute: ApiChatRoute,
   ApiPhoneLoginRoute: ApiPhoneLoginRoute,
   ApiTranscribeRoute: ApiTranscribeRoute,
+  LCodeRoute: LCodeRoute,
   ApiCrmMetaRoute: ApiCrmMetaRoute,
   ApiCrmSendRoute: ApiCrmSendRoute,
   ApiCrmSendTemplateRoute: ApiCrmSendTemplateRoute,
   ApiCrmTgStartRoute: ApiCrmTgStartRoute,
   ApiCrmTgUserRoute: ApiCrmTgUserRoute,
+  ApiCrmLeadTokenRoute: ApiCrmLeadTokenRoute,
   ApiCrmTelegramAccountIdRoute: ApiCrmTelegramAccountIdRoute,
 }
 export const routeTree = rootRouteImport

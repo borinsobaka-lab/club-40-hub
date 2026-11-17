@@ -9,6 +9,13 @@ import { useConfirm } from "@/components/confirm-dialog";
 import { StageDot, StageSelect } from "@/components/crm/parts";
 import { StageAutomations } from "@/components/crm/automations";
 import { DistributionPanel } from "@/components/crm/distribution-settings";
+import {
+  AdSpendPanel,
+  LeadFormsPanel,
+  LinksPanel,
+  ReplySlaPanel,
+  ScenariosPanel,
+} from "@/components/crm/growth-settings";
 import { WaTemplatesPanel } from "@/components/crm/wa-templates-settings";
 import { ChannelsPanel, TaskTypesPanel, TemplatesPanel } from "@/components/crm/channels-settings";
 import { NONE } from "@/lib/crm/logic";
@@ -47,6 +54,8 @@ import { cn } from "@/lib/utils";
 const SETTINGS_TABS = [
   { value: "pipelines", label: "Воронки и этапы" },
   { value: "channels", label: "Каналы и заявки" },
+  { value: "sources", label: "Источники" },
+  { value: "scenarios", label: "Сценарии" },
   { value: "templates", label: "Шаблоны" },
   { value: "lists", label: "Задачи и отказы" },
 ] as const;
@@ -321,6 +330,11 @@ function CrmSettingsPage() {
 
         {setup && tab === "channels" && <ChannelsPanel />}
         {setup && tab === "channels" && <DistributionPanel />}
+        {setup && tab === "channels" && <ReplySlaPanel />}
+        {setup && tab === "sources" && <LeadFormsPanel />}
+        {setup && tab === "sources" && <LinksPanel />}
+        {setup && tab === "sources" && <AdSpendPanel />}
+        {setup && tab === "scenarios" && <ScenariosPanel />}
         {setup && tab === "templates" && <TemplatesPanel />}
         {setup && tab === "templates" && <WaTemplatesPanel />}
         {setup && tab === "lists" && <TaskTypesPanel />}

@@ -7,6 +7,7 @@ import { DealDialog } from "@/components/crm/deal-dialog";
 import { StageDot } from "@/components/crm/parts";
 import { TaskForm, TaskItem } from "@/components/crm/tasks";
 import { StaffAvatar } from "@/components/employee-photo";
+import { CrmNotifyButton } from "@/components/crm/notify-button";
 import { CrmTasksPageSkeleton } from "@/components/page-skeletons";
 import { CardSkeleton } from "@/components/skeletons";
 import { TableToolbar, ToolbarReset } from "@/components/table-toolbar";
@@ -145,6 +146,9 @@ function CrmTasksPage() {
               setTypeId(ALL);
             }}
           />
+          <div className="ml-auto">
+            <CrmNotifyButton />
+          </div>
         </TableToolbar>
 
         {isLoading || waitingForMe ? (

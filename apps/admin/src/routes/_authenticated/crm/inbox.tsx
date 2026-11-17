@@ -8,6 +8,8 @@ import { AdminShell } from "@/components/admin-shell";
 import { ChatThread } from "@/components/crm/chat";
 import { WaReopenButton } from "@/components/crm/client-chat-panel";
 import { DealDialog } from "@/components/crm/deal-dialog";
+import { CrmNotifyButton } from "@/components/crm/notify-button";
+import { WaitBadge } from "@/components/crm/parts";
 import { CrmInboxPageSkeleton } from "@/components/page-skeletons";
 import { Button } from "@/components/ui/button";
 import { CheckboxOption } from "@/components/ui/form-field";
@@ -20,7 +22,13 @@ import {
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CountBadge } from "@/components/ui/status-chip";
-import { crmAccountsQuery, findContactDeal, useConversations, useCrmStudios } from "@/lib/crm/data";
+import {
+  crmAccountsQuery,
+  findContactDeal,
+  useConversations,
+  useCrmStudios,
+  useWaitingCount,
+} from "@/lib/crm/data";
 import { accountLabel, replyBlock, shortTime } from "@/lib/crm/logic";
 import type { CrmConversation } from "@/lib/crm/types";
 import { cn } from "@/lib/utils";
@@ -48,7 +56,13 @@ function CrmInboxPage() {
   const { data: studios = [] } = useCrmStudios();
   const [accountId, setAccountId] = useState("");
   const [unreadOnly, setUnreadOnly] = useState(false);
-  const { data: conversations, isLoading } = useConversations({ accountId, unreadOnly });
+  const [waitingOnly, setWaitingOnly] = useState(false);
+  const { data: conversations, isLoading } = useConversations({
+    accountId,
+    unreadOnly,
+    waitingOnly,
+  });
+  const waitingCount = useWaitingCount();
   const [dealId, setDealId] = useState<string | null>(null);
 
   const accountMap = useMemo(() => new Map(accounts.map((a) => [a.id, a])), [accounts]);
@@ -100,6 +114,10 @@ function CrmInboxPage() {
             <CheckboxOption checked={unreadOnly} onCheckedChange={setUnreadOnly} className="px-1">
               Непрочитанные
             </CheckboxOption>
+            <CheckboxOption checked={waitingOnly} onCheckedChange={setWaitingOnly} className="px-1">
+              Ждут ответа{waitingCount > 0 ? ` · ${waitingCount}` : ""}
+            </CheckboxOption>
+            <CrmNotifyButton />
           </div>
           <div className="min-h-0 flex-1 overflow-y-auto">
             {isLoading ? (
@@ -118,6 +136,8 @@ function CrmInboxPage() {
                     </Link>
                     .
                   </>
+                ) : waitingOnly ? (
+                  "Все клиенты получили ответ."
                 ) : unreadOnly ? (
                   "Непрочитанных нет."
                 ) : (
@@ -160,8 +180,11 @@ function CrmInboxPage() {
                     </span>
                     {c.unread_count > 0 && <CountBadge count={c.unread_count} />}
                   </span>
-                  <span className="truncate text-[11px] text-muted-foreground">
-                    {accountLabel(accountMap.get(c.account_id))}
+                  <span className="flex items-center gap-2">
+                    <span className="min-w-0 flex-1 truncate text-[11px] text-muted-foreground">
+                      {accountLabel(accountMap.get(c.account_id))}
+                    </span>
+                    <WaitBadge since={c.waiting_since} now={now} />
                   </span>
                 </button>
               ))

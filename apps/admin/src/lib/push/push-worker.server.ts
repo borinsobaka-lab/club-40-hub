@@ -158,6 +158,11 @@ function getSigner(admin: SupabaseClient): Promise<VapidSigner> {
   return state.signer;
 }
 
+/** Подпись VAPID — и для уведомлений сотрудникам (CRM): ключи те же. */
+export function getPushSigner(): Promise<VapidSigner> {
+  return getSigner(getSupabaseAdmin());
+}
+
 /** Иконка приложения для Android — своя у каждого формата (app_install_settings). */
 async function loadIcons(admin: SupabaseClient): Promise<Record<string, string>> {
   const rows = check(await admin.from("app_install_settings").select("format, app_icon_path")) as

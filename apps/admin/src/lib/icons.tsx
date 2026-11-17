@@ -32,6 +32,8 @@ import {
   AtSign as AtSignArt,
   BanIcon as BanArt,
   Banknote as BanknoteArt,
+  Bell as BellArt,
+  BellOff as BellOffArt,
   Bold as BoldArt,
   Building2 as Building2Art,
   CalendarIcon as CalendarIconArt,
@@ -182,6 +184,8 @@ export const ArrowUpRight = icon(ArrowUpRightArt, "ArrowUpRight");
 export const AtSign = icon(AtSignArt, "AtSign");
 export const Ban = icon(BanArt, "Ban");
 export const Banknote = icon(BanknoteArt, "Banknote");
+export const Bell = icon(BellArt, "Bell");
+export const BellOff = icon(BellOffArt, "BellOff");
 export const Bold = icon(BoldArt, "Bold");
 export const Building2 = icon(Building2Art, "Building2");
 export const CalendarIcon = icon(CalendarIconArt, "CalendarIcon");

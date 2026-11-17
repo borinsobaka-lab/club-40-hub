@@ -12,7 +12,7 @@ import { ageLabel, sumBudget } from "@/lib/crm/logic";
 import type { CrmDeal, CrmPerson, CrmStage } from "@/lib/crm/types";
 import { formatMoney, formatPhone } from "@/lib/format";
 import { cn } from "@/lib/utils";
-import { TaskDue } from "./parts";
+import { TaskDue, WaitBadge } from "./parts";
 
 const DRAG_TYPE = "crm-deal";
 
@@ -242,12 +242,17 @@ function DealTile({
           ))}
         </div>
       )}
-      {unread && (
+      {unread && !closed && (
         <div className="mt-2 flex items-center gap-1.5 rounded-md bg-brand/10 px-2 py-1 text-xs">
-          <span className="flex h-4 min-w-4 shrink-0 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-semibold text-white">
-            {unread.count}
+          {unread.count > 0 && (
+            <span className="flex h-4 min-w-4 shrink-0 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-semibold text-white">
+              {unread.count}
+            </span>
+          )}
+          <span className="min-w-0 flex-1 truncate font-medium">
+            {unread.text || "Новое сообщение"}
           </span>
-          <span className="truncate font-medium">{unread.text || "Новое сообщение"}</span>
+          <WaitBadge since={unread.waitingSince} now={now} />
         </div>
       )}
       <div className="mt-2 flex items-center justify-between gap-2">
