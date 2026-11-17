@@ -8,3 +8,9 @@ node_modules
 
 # Рабочие копии агентов Claude Code
 .claude/worktrees/
+
+# Скиллы агентов (npx skills add): сам набор не храним — 40 МБ стороннего кода,
+# восстанавливается по skills-lock.json (`npx skills experimental_install`).
+.agents/
+.claude/skills/
+.taste-skill/
