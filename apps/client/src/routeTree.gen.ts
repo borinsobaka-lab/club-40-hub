@@ -22,6 +22,7 @@ import { Route as FeedbackRouteImport } from './routes/feedback'
 import { Route as ClubRouteImport } from './routes/club'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as SitePageRouteImport } from './routes/site.$page'
 import { Route as NewsNewsIdRouteImport } from './routes/news.$newsId'
 import { Route as ApiPushAckRouteImport } from './routes/api/push-ack'
 import { Route as ApiHealthRouteImport } from './routes/api/health'
@@ -91,6 +92,11 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SitePageRoute = SitePageRouteImport.update({
+  id: '/$page',
+  path: '/$page',
+  getParentRoute: () => SiteRoute,
+} as any)
 const NewsNewsIdRoute = NewsNewsIdRouteImport.update({
   id: '/news/$newsId',
   path: '/news/$newsId',
@@ -120,10 +126,11 @@ export interface FileRoutesByFullPath {
   '/privacy': typeof PrivacyRoute
   '/profile': typeof ProfileRoute
   '/schedule': typeof ScheduleRoute
-  '/site': typeof SiteRoute
+  '/site': typeof SiteRouteWithChildren
   '/api/health': typeof ApiHealthRoute
   '/api/push-ack': typeof ApiPushAckRoute
   '/news/$newsId': typeof NewsNewsIdRoute
+  '/site/$page': typeof SitePageRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -138,10 +145,11 @@ export interface FileRoutesByTo {
   '/privacy': typeof PrivacyRoute
   '/profile': typeof ProfileRoute
   '/schedule': typeof ScheduleRoute
-  '/site': typeof SiteRoute
+  '/site': typeof SiteRouteWithChildren
   '/api/health': typeof ApiHealthRoute
   '/api/push-ack': typeof ApiPushAckRoute
   '/news/$newsId': typeof NewsNewsIdRoute
+  '/site/$page': typeof SitePageRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -157,10 +165,11 @@ export interface FileRoutesById {
   '/privacy': typeof PrivacyRoute
   '/profile': typeof ProfileRoute
   '/schedule': typeof ScheduleRoute
-  '/site': typeof SiteRoute
+  '/site': typeof SiteRouteWithChildren
   '/api/health': typeof ApiHealthRoute
   '/api/push-ack': typeof ApiPushAckRoute
   '/news/$newsId': typeof NewsNewsIdRoute
+  '/site/$page': typeof SitePageRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -181,6 +190,7 @@ export interface FileRouteTypes {
     | '/api/health'
     | '/api/push-ack'
     | '/news/$newsId'
+    | '/site/$page'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -199,6 +209,7 @@ export interface FileRouteTypes {
     | '/api/health'
     | '/api/push-ack'
     | '/news/$newsId'
+    | '/site/$page'
   id:
     | '__root__'
     | '/'
@@ -217,6 +228,7 @@ export interface FileRouteTypes {
     | '/api/health'
     | '/api/push-ack'
     | '/news/$newsId'
+    | '/site/$page'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -232,7 +244,7 @@ export interface RootRouteChildren {
   PrivacyRoute: typeof PrivacyRoute
   ProfileRoute: typeof ProfileRoute
   ScheduleRoute: typeof ScheduleRoute
-  SiteRoute: typeof SiteRoute
+  SiteRoute: typeof SiteRouteWithChildren
   ApiHealthRoute: typeof ApiHealthRoute
   ApiPushAckRoute: typeof ApiPushAckRoute
   NewsNewsIdRoute: typeof NewsNewsIdRoute
@@ -331,6 +343,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/site/$page': {
+      id: '/site/$page'
+      path: '/$page'
+      fullPath: '/site/$page'
+      preLoaderRoute: typeof SitePageRouteImport
+      parentRoute: typeof SiteRoute
+    }
     '/news/$newsId': {
       id: '/news/$newsId'
       path: '/news/$newsId'
@@ -355,6 +374,16 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface SiteRouteChildren {
+  SitePageRoute: typeof SitePageRoute
+}
+
+const SiteRouteChildren: SiteRouteChildren = {
+  SitePageRoute: SitePageRoute,
+}
+
+const SiteRouteWithChildren = SiteRoute._addFileChildren(SiteRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthRoute: AuthRoute,
@@ -368,7 +397,7 @@ const rootRouteChildren: RootRouteChildren = {
   PrivacyRoute: PrivacyRoute,
   ProfileRoute: ProfileRoute,
   ScheduleRoute: ScheduleRoute,
-  SiteRoute: SiteRoute,
+  SiteRoute: SiteRouteWithChildren,
   ApiHealthRoute: ApiHealthRoute,
   ApiPushAckRoute: ApiPushAckRoute,
   NewsNewsIdRoute: NewsNewsIdRoute,
