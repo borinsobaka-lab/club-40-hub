@@ -22,7 +22,7 @@ const PAGES: Record<string, SitePage> = {
   "": {
     title: `${BRAND} — студии растяжки для девушек в Тбилиси`,
     description:
-      "Lady Stretch — студии растяжки и аэростретчинга в Тбилиси. Группы до 8 человек, шесть направлений, три студии в Ваке и Сабуртало. Пробное занятие — 14 ₾.",
+      "Lady Stretch: студии растяжки и аэростретчинга в Тбилиси. Группы до 8 человек, шесть направлений, три студии в Ваке и Сабуртало. Пробное занятие за 14 ₾.",
     body: homeHtml,
     preload: "/site/img/hero-neon.webp",
   },
@@ -121,7 +121,7 @@ ${page.preload ? `<link rel="preload" href="${page.preload}" as="image">` : ""}
 <main id="top">
 ${page.body.replace("<!--FINAL-->", finalHtml)}
 </main>
-<div class="mbar" id="mbar"><a class="btn btn-brand" href="/site#trial">Записаться на пробное — 14 ₾</a></div>
+<div class="mbar" id="mbar"><a class="btn btn-brand" href="/site#trial">Записаться на пробное за 14 ₾</a></div>
 <script>${script}</script>
 </body>
 </html>
