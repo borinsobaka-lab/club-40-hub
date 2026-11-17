@@ -123,11 +123,11 @@ const MAX_PAYMENTS_LIMIT = 12;
 
 /**
  * Номенклатура «Зала с пакетами тренировок» (STUDIO_FORMATS.md): пакеты —
- * строки той же таблицы memberships, что и подписки, но без автопродления,
+ * строки таблицы memberships без автопродления,
  * заморозки и безлимита. Рассрочка своя — «сколькими платежами можно
- * оплатить» (max_payments), подписочная installment_enabled не используется. В номенклатуре — только полная цена:
+ * оплатить» (max_payments), installment_enabled не используется. В номенклатуре — только полная цена:
  * скидку (например, постоянному клиенту) дают при продаже, снижая стоимость
- * (решение владельца 2026-10-11). Подписочная номенклатура — memberships.tsx.
+ * (решение владельца 2026-10-11).
  */
 export const Route = createFileRoute("/_authenticated/packages")({
   head: () => ({ meta: [{ title: "Номенклатуры — Base40 Admin" }] }),
@@ -725,8 +725,8 @@ function PackageForm({ onOpenChange, studioId, item, draft, nextSortOrder, onSav
       TRANSLATED_LANGS.some((l) => translationText(translations, l, "tag_text"));
 
     // Всё, чего у пакетов нет, — явно выключено: строка в общей таблице
-    // memberships не должна унаследовать подписочные условия (автопродление
-    // в пакетной студии выключает ещё и триггер в БД).
+    // memberships не должна унаследовать прежние условия (автопродление
+    // выключает ещё и триггер в БД).
     await save({
       name: name.trim(),
       description: description.trim() || null,

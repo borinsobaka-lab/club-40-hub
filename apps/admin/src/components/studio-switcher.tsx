@@ -29,10 +29,7 @@ export function StudioSwitcher({ triggerClassName }: { triggerClassName?: string
         onValueChange={setActiveStudioId}
         disabled={studios.length === 0}
       >
-        <SelectTrigger
-          aria-label="Клуб"
-          className={cn("w-60", triggerClassName)}
-        >
+        <SelectTrigger aria-label="Клуб" className={cn("w-60", triggerClassName)}>
           <SelectValue placeholder={studios.length === 0 ? "Нет клубов" : "Выберите клуб"} />
         </SelectTrigger>
         <SelectContent>

@@ -77,7 +77,7 @@ import {
  * — только на месте данных.
  *
  * Кто показывает: `pendingComponent` роута (пока грузится код страницы), а
- * через RoutePendingSkeleton — AccessGate, каркас до входа и RequireFormat.
+ * через RoutePendingSkeleton — AccessGate и каркас до входа.
  * Тела-скелетоны (ScriptsListSkeleton, NpsSurveysSkeleton…) страницы берут
  * и для своих данных — тогда переход «скелетон роута → страница грузит
  * данные → данные» идёт без смены раскладки.

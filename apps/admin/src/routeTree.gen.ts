@@ -21,7 +21,6 @@ import { Route as AuthenticatedTrainersRouteImport } from './routes/_authenticat
 import { Route as AuthenticatedStudiosRouteImport } from './routes/_authenticated/studios'
 import { Route as AuthenticatedServicesRouteImport } from './routes/_authenticated/services'
 import { Route as AuthenticatedScheduleRouteImport } from './routes/_authenticated/schedule'
-import { Route as AuthenticatedSalesRouteImport } from './routes/_authenticated/sales'
 import { Route as AuthenticatedRequestsRouteImport } from './routes/_authenticated/requests'
 import { Route as AuthenticatedPushTriggersRouteImport } from './routes/_authenticated/push-triggers'
 import { Route as AuthenticatedPushRouteImport } from './routes/_authenticated/push'
@@ -32,7 +31,6 @@ import { Route as AuthenticatedPackagesRouteImport } from './routes/_authenticat
 import { Route as AuthenticatedOtherSalesRouteImport } from './routes/_authenticated/other-sales'
 import { Route as AuthenticatedNpsRouteImport } from './routes/_authenticated/nps'
 import { Route as AuthenticatedNewsRouteImport } from './routes/_authenticated/news'
-import { Route as AuthenticatedMembershipsRouteImport } from './routes/_authenticated/memberships'
 import { Route as AuthenticatedKbBasesRouteImport } from './routes/_authenticated/kb-bases'
 import { Route as AuthenticatedImportCarryoverRouteImport } from './routes/_authenticated/import-carryover'
 import { Route as AuthenticatedImport1cRouteImport } from './routes/_authenticated/import-1c'
@@ -44,7 +42,6 @@ import { Route as AuthenticatedClientsRouteImport } from './routes/_authenticate
 import { Route as AuthenticatedClientMembershipsRouteImport } from './routes/_authenticated/client-memberships'
 import { Route as AuthenticatedCashRouteImport } from './routes/_authenticated/cash'
 import { Route as AuthenticatedBookingsLogRouteImport } from './routes/_authenticated/bookings-log'
-import { Route as AuthenticatedAutorenewCancellationsRouteImport } from './routes/_authenticated/autorenew-cancellations'
 import { Route as AuthenticatedAssistantRouteImport } from './routes/_authenticated/assistant'
 import { Route as AuthenticatedAppSettingsRouteImport } from './routes/_authenticated/app-settings'
 import { Route as AuthenticatedAppAboutRouteImport } from './routes/_authenticated/app-about'
@@ -153,11 +150,6 @@ const AuthenticatedScheduleRoute = AuthenticatedScheduleRouteImport.update({
   path: '/schedule',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const AuthenticatedSalesRoute = AuthenticatedSalesRouteImport.update({
-  id: '/sales',
-  path: '/sales',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
 const AuthenticatedRequestsRoute = AuthenticatedRequestsRouteImport.update({
   id: '/requests',
   path: '/requests',
@@ -209,12 +201,6 @@ const AuthenticatedNewsRoute = AuthenticatedNewsRouteImport.update({
   path: '/news',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const AuthenticatedMembershipsRoute =
-  AuthenticatedMembershipsRouteImport.update({
-    id: '/memberships',
-    path: '/memberships',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
 const AuthenticatedKbBasesRoute = AuthenticatedKbBasesRouteImport.update({
   id: '/kb-bases',
   path: '/kb-bases',
@@ -272,12 +258,6 @@ const AuthenticatedBookingsLogRoute =
   AuthenticatedBookingsLogRouteImport.update({
     id: '/bookings-log',
     path: '/bookings-log',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedAutorenewCancellationsRoute =
-  AuthenticatedAutorenewCancellationsRouteImport.update({
-    id: '/autorenew-cancellations',
-    path: '/autorenew-cancellations',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 const AuthenticatedAssistantRoute = AuthenticatedAssistantRouteImport.update({
@@ -572,7 +552,6 @@ export interface FileRoutesByFullPath {
   '/app-about': typeof AuthenticatedAppAboutRoute
   '/app-settings': typeof AuthenticatedAppSettingsRoute
   '/assistant': typeof AuthenticatedAssistantRoute
-  '/autorenew-cancellations': typeof AuthenticatedAutorenewCancellationsRoute
   '/bookings-log': typeof AuthenticatedBookingsLogRoute
   '/cash': typeof AuthenticatedCashRoute
   '/client-memberships': typeof AuthenticatedClientMembershipsRoute
@@ -584,7 +563,6 @@ export interface FileRoutesByFullPath {
   '/import-1c': typeof AuthenticatedImport1cRoute
   '/import-carryover': typeof AuthenticatedImportCarryoverRoute
   '/kb-bases': typeof AuthenticatedKbBasesRoute
-  '/memberships': typeof AuthenticatedMembershipsRoute
   '/news': typeof AuthenticatedNewsRoute
   '/nps': typeof AuthenticatedNpsRoute
   '/other-sales': typeof AuthenticatedOtherSalesRoute
@@ -595,7 +573,6 @@ export interface FileRoutesByFullPath {
   '/push': typeof AuthenticatedPushRoute
   '/push-triggers': typeof AuthenticatedPushTriggersRoute
   '/requests': typeof AuthenticatedRequestsRoute
-  '/sales': typeof AuthenticatedSalesRoute
   '/schedule': typeof AuthenticatedScheduleRoute
   '/services': typeof AuthenticatedServicesRoute
   '/studios': typeof AuthenticatedStudiosRoute
@@ -656,7 +633,6 @@ export interface FileRoutesByTo {
   '/app-about': typeof AuthenticatedAppAboutRoute
   '/app-settings': typeof AuthenticatedAppSettingsRoute
   '/assistant': typeof AuthenticatedAssistantRoute
-  '/autorenew-cancellations': typeof AuthenticatedAutorenewCancellationsRoute
   '/bookings-log': typeof AuthenticatedBookingsLogRoute
   '/cash': typeof AuthenticatedCashRoute
   '/client-memberships': typeof AuthenticatedClientMembershipsRoute
@@ -668,7 +644,6 @@ export interface FileRoutesByTo {
   '/import-1c': typeof AuthenticatedImport1cRoute
   '/import-carryover': typeof AuthenticatedImportCarryoverRoute
   '/kb-bases': typeof AuthenticatedKbBasesRoute
-  '/memberships': typeof AuthenticatedMembershipsRoute
   '/news': typeof AuthenticatedNewsRoute
   '/nps': typeof AuthenticatedNpsRoute
   '/other-sales': typeof AuthenticatedOtherSalesRoute
@@ -679,7 +654,6 @@ export interface FileRoutesByTo {
   '/push': typeof AuthenticatedPushRoute
   '/push-triggers': typeof AuthenticatedPushTriggersRoute
   '/requests': typeof AuthenticatedRequestsRoute
-  '/sales': typeof AuthenticatedSalesRoute
   '/schedule': typeof AuthenticatedScheduleRoute
   '/services': typeof AuthenticatedServicesRoute
   '/studios': typeof AuthenticatedStudiosRoute
@@ -743,7 +717,6 @@ export interface FileRoutesById {
   '/_authenticated/app-about': typeof AuthenticatedAppAboutRoute
   '/_authenticated/app-settings': typeof AuthenticatedAppSettingsRoute
   '/_authenticated/assistant': typeof AuthenticatedAssistantRoute
-  '/_authenticated/autorenew-cancellations': typeof AuthenticatedAutorenewCancellationsRoute
   '/_authenticated/bookings-log': typeof AuthenticatedBookingsLogRoute
   '/_authenticated/cash': typeof AuthenticatedCashRoute
   '/_authenticated/client-memberships': typeof AuthenticatedClientMembershipsRoute
@@ -755,7 +728,6 @@ export interface FileRoutesById {
   '/_authenticated/import-1c': typeof AuthenticatedImport1cRoute
   '/_authenticated/import-carryover': typeof AuthenticatedImportCarryoverRoute
   '/_authenticated/kb-bases': typeof AuthenticatedKbBasesRoute
-  '/_authenticated/memberships': typeof AuthenticatedMembershipsRoute
   '/_authenticated/news': typeof AuthenticatedNewsRoute
   '/_authenticated/nps': typeof AuthenticatedNpsRoute
   '/_authenticated/other-sales': typeof AuthenticatedOtherSalesRoute
@@ -766,7 +738,6 @@ export interface FileRoutesById {
   '/_authenticated/push': typeof AuthenticatedPushRoute
   '/_authenticated/push-triggers': typeof AuthenticatedPushTriggersRoute
   '/_authenticated/requests': typeof AuthenticatedRequestsRoute
-  '/_authenticated/sales': typeof AuthenticatedSalesRoute
   '/_authenticated/schedule': typeof AuthenticatedScheduleRoute
   '/_authenticated/services': typeof AuthenticatedServicesRoute
   '/_authenticated/studios': typeof AuthenticatedStudiosRoute
@@ -831,7 +802,6 @@ export interface FileRouteTypes {
     | '/app-about'
     | '/app-settings'
     | '/assistant'
-    | '/autorenew-cancellations'
     | '/bookings-log'
     | '/cash'
     | '/client-memberships'
@@ -843,7 +813,6 @@ export interface FileRouteTypes {
     | '/import-1c'
     | '/import-carryover'
     | '/kb-bases'
-    | '/memberships'
     | '/news'
     | '/nps'
     | '/other-sales'
@@ -854,7 +823,6 @@ export interface FileRouteTypes {
     | '/push'
     | '/push-triggers'
     | '/requests'
-    | '/sales'
     | '/schedule'
     | '/services'
     | '/studios'
@@ -915,7 +883,6 @@ export interface FileRouteTypes {
     | '/app-about'
     | '/app-settings'
     | '/assistant'
-    | '/autorenew-cancellations'
     | '/bookings-log'
     | '/cash'
     | '/client-memberships'
@@ -927,7 +894,6 @@ export interface FileRouteTypes {
     | '/import-1c'
     | '/import-carryover'
     | '/kb-bases'
-    | '/memberships'
     | '/news'
     | '/nps'
     | '/other-sales'
@@ -938,7 +904,6 @@ export interface FileRouteTypes {
     | '/push'
     | '/push-triggers'
     | '/requests'
-    | '/sales'
     | '/schedule'
     | '/services'
     | '/studios'
@@ -1001,7 +966,6 @@ export interface FileRouteTypes {
     | '/_authenticated/app-about'
     | '/_authenticated/app-settings'
     | '/_authenticated/assistant'
-    | '/_authenticated/autorenew-cancellations'
     | '/_authenticated/bookings-log'
     | '/_authenticated/cash'
     | '/_authenticated/client-memberships'
@@ -1013,7 +977,6 @@ export interface FileRouteTypes {
     | '/_authenticated/import-1c'
     | '/_authenticated/import-carryover'
     | '/_authenticated/kb-bases'
-    | '/_authenticated/memberships'
     | '/_authenticated/news'
     | '/_authenticated/nps'
     | '/_authenticated/other-sales'
@@ -1024,7 +987,6 @@ export interface FileRouteTypes {
     | '/_authenticated/push'
     | '/_authenticated/push-triggers'
     | '/_authenticated/requests'
-    | '/_authenticated/sales'
     | '/_authenticated/schedule'
     | '/_authenticated/services'
     | '/_authenticated/studios'
@@ -1176,13 +1138,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedScheduleRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/_authenticated/sales': {
-      id: '/_authenticated/sales'
-      path: '/sales'
-      fullPath: '/sales'
-      preLoaderRoute: typeof AuthenticatedSalesRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
     '/_authenticated/requests': {
       id: '/_authenticated/requests'
       path: '/requests'
@@ -1251,13 +1206,6 @@ declare module '@tanstack/react-router' {
       path: '/news'
       fullPath: '/news'
       preLoaderRoute: typeof AuthenticatedNewsRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/memberships': {
-      id: '/_authenticated/memberships'
-      path: '/memberships'
-      fullPath: '/memberships'
-      preLoaderRoute: typeof AuthenticatedMembershipsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/kb-bases': {
@@ -1335,13 +1283,6 @@ declare module '@tanstack/react-router' {
       path: '/bookings-log'
       fullPath: '/bookings-log'
       preLoaderRoute: typeof AuthenticatedBookingsLogRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/autorenew-cancellations': {
-      id: '/_authenticated/autorenew-cancellations'
-      path: '/autorenew-cancellations'
-      fullPath: '/autorenew-cancellations'
-      preLoaderRoute: typeof AuthenticatedAutorenewCancellationsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/assistant': {
@@ -1688,7 +1629,6 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedAppAboutRoute: typeof AuthenticatedAppAboutRoute
   AuthenticatedAppSettingsRoute: typeof AuthenticatedAppSettingsRoute
   AuthenticatedAssistantRoute: typeof AuthenticatedAssistantRoute
-  AuthenticatedAutorenewCancellationsRoute: typeof AuthenticatedAutorenewCancellationsRoute
   AuthenticatedBookingsLogRoute: typeof AuthenticatedBookingsLogRoute
   AuthenticatedCashRoute: typeof AuthenticatedCashRoute
   AuthenticatedClientMembershipsRoute: typeof AuthenticatedClientMembershipsRoute
@@ -1700,7 +1640,6 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedImport1cRoute: typeof AuthenticatedImport1cRoute
   AuthenticatedImportCarryoverRoute: typeof AuthenticatedImportCarryoverRoute
   AuthenticatedKbBasesRoute: typeof AuthenticatedKbBasesRoute
-  AuthenticatedMembershipsRoute: typeof AuthenticatedMembershipsRoute
   AuthenticatedNewsRoute: typeof AuthenticatedNewsRoute
   AuthenticatedNpsRoute: typeof AuthenticatedNpsRoute
   AuthenticatedOtherSalesRoute: typeof AuthenticatedOtherSalesRoute
@@ -1711,7 +1650,6 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedPushRoute: typeof AuthenticatedPushRoute
   AuthenticatedPushTriggersRoute: typeof AuthenticatedPushTriggersRoute
   AuthenticatedRequestsRoute: typeof AuthenticatedRequestsRoute
-  AuthenticatedSalesRoute: typeof AuthenticatedSalesRoute
   AuthenticatedScheduleRoute: typeof AuthenticatedScheduleRoute
   AuthenticatedServicesRoute: typeof AuthenticatedServicesRoute
   AuthenticatedStudiosRoute: typeof AuthenticatedStudiosRoute
@@ -1769,8 +1707,6 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAppAboutRoute: AuthenticatedAppAboutRoute,
   AuthenticatedAppSettingsRoute: AuthenticatedAppSettingsRoute,
   AuthenticatedAssistantRoute: AuthenticatedAssistantRoute,
-  AuthenticatedAutorenewCancellationsRoute:
-    AuthenticatedAutorenewCancellationsRoute,
   AuthenticatedBookingsLogRoute: AuthenticatedBookingsLogRoute,
   AuthenticatedCashRoute: AuthenticatedCashRoute,
   AuthenticatedClientMembershipsRoute: AuthenticatedClientMembershipsRoute,
@@ -1782,7 +1718,6 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedImport1cRoute: AuthenticatedImport1cRoute,
   AuthenticatedImportCarryoverRoute: AuthenticatedImportCarryoverRoute,
   AuthenticatedKbBasesRoute: AuthenticatedKbBasesRoute,
-  AuthenticatedMembershipsRoute: AuthenticatedMembershipsRoute,
   AuthenticatedNewsRoute: AuthenticatedNewsRoute,
   AuthenticatedNpsRoute: AuthenticatedNpsRoute,
   AuthenticatedOtherSalesRoute: AuthenticatedOtherSalesRoute,
@@ -1793,7 +1728,6 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedPushRoute: AuthenticatedPushRoute,
   AuthenticatedPushTriggersRoute: AuthenticatedPushTriggersRoute,
   AuthenticatedRequestsRoute: AuthenticatedRequestsRoute,
-  AuthenticatedSalesRoute: AuthenticatedSalesRoute,
   AuthenticatedScheduleRoute: AuthenticatedScheduleRoute,
   AuthenticatedServicesRoute: AuthenticatedServicesRoute,
   AuthenticatedStudiosRoute: AuthenticatedStudiosRoute,

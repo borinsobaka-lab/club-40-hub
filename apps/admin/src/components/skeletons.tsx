@@ -31,7 +31,7 @@ import { cn } from "@/lib/utils";
  *  - у каждой страницы свой скелетон в components/page-skeletons.tsx
  *    (шапка ShellSkeleton с настоящим заголовком + тело из блоков ниже) и
  *    `pendingComponent` в её роуте. Его же показывают AccessGate, каркас до
- *    входа и RequireFormat — через RoutePendingSkeleton;
+ *    входа — через RoutePendingSkeleton;
  *  - данные внутри уже открытой страницы — TableSkeletonRows в настоящей
  *    таблице, тело-скелетон раздела (например, ScriptsListSkeleton) и т. п.
  *
@@ -356,7 +356,7 @@ export function PageSkeleton() {
  * Скелетон страницы, которая сейчас открывается: pendingComponent её роута
  * (последнего в цепочке). Нужен там, где страница уже известна, а её
  * компонент ещё нельзя показывать: AccessGate (права грузятся), каркас до
- * проверки входа, RequireFormat (формат клуба неизвестен).
+ * проверки входа.
  */
 export function RoutePendingSkeleton() {
   const router = useRouter();
