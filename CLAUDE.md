@@ -1271,6 +1271,18 @@ AUTH_SETUP.md.
   видны все сделки и диалоги обоих) и `crm_contact_search`. Отчёт по
   воронке — `2026-11-17_zzzzzzzz_crm_report.sql`: `crm_report(pipeline,
   from, to)` — security invoker, считает только видимое вызывающему.
+  Задачи (решение владельца 2026-11-18): `db/migrations/2026-11-18_crm_tasks.sql`
+  — типы `crm_task_types` (общие на сеть, правит `crm.manage`),
+  `crm_tasks.type_id` / `note` (комментарий постановщика) / `result` (что
+  получилось — при выполнении, уходит в событие `task_done` ленты вместе с
+  типом); сотрудник правит текст, срок, исполнителя, тип, комментарий.
+  Сделку закрыли — её невыполненные задачи закрываются сами («Сделка
+  закрыта», без событий); сменили ответственного — его невыполненные задачи
+  переходят новому (`crm_deals_tasks_au`). Автозадача правила:
+  `params.assignee` (`responsible` или id сотрудника) и `params.type_id`.
+  Актуальные определения `crm_tasks_biu`, `crm_tasks_done_au`,
+  `crm_automations_biu`, `crm_automations_run` — здесь. Раздел «Задачи» —
+  RPC `crm_tasks_list(assignee, type, done)` (security invoker).
   Рейтинг тренеров и чаевые: `db/migrations/2026-10-11_zzzzzzzzzzzzz_trainer_ratings.sql`
   — `trainer_reviews` (оценка 1–5, одна от учётной записи на тренера; клиент
   читает и правит свою, ставит — тренеру, которого видит в приложении,

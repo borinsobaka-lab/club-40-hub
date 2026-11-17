@@ -740,4 +740,77 @@ describe.skipIf(!url)("CRM (база)", () => {
       const [{ r: all }] = await tx`select crm_report(${pipeline}, current_date - 1, current_date) as r`;
       expect(all.won).toEqual({ count: 2, budget: 1299 });
     }));
+  // Задачи (2026-11-18_crm_tasks.sql) ------------------------------------------
+
+  test("задачи: тип, комментарий, результат в ленте; закрытие сделки и смена ответственного", () =>
+    scenario(async (tx) => {
+      const { s1, admin1, admin2, manager, pipeline, st1, won } = await setup(tx);
+      const [type] = await tx`select id, name from crm_task_types order by sort_order limit 1`;
+      await as(tx, admin1);
+      expect(await failure(tx, () => tx`insert into crm_task_types (name) values ('Свой')`)).toContain("row-level security");
+      const [{ id: deal }] = await tx`
+        insert into crm_deals (title, pipeline_id, stage_id, studio_id, responsible_id)
+        values ('Д', ${pipeline}, ${st1}, ${s1}, ${admin1}) returning id`;
+      const [t1] = await tx`
+        insert into crm_tasks (deal_id, title, due_at, assignee_id, type_id, note, result)
+        values (${deal}, 'Позвонить', now() + interval '1 hour', ${manager}, ${type.id}, '  после 18:00 ', 'рано')
+        returning id, note, result, assignee_id`;
+      expect(t1).toMatchObject({ note: "после 18:00", result: null, assignee_id: manager });
+      const [t2] = await tx`
+        insert into crm_tasks (deal_id, title, due_at) values (${deal}, 'Написать', now() - interval '1 hour') returning id, assignee_id`;
+      expect(t2.assignee_id).toBe(admin1);
+
+      // Список: просроченная — первой; фильтр по исполнителю и типу.
+      const list = await tx`select id, deal_title, stage_name from crm_tasks_list()`;
+      expect(list.map((t) => t.id)).toEqual([t2.id, t1.id]);
+      expect(list[0]).toMatchObject({ deal_title: "Д", stage_name: "Новая" });
+      expect((await tx`select id from crm_tasks_list(${manager})`).map((t) => t.id)).toEqual([t1.id]);
+      expect((await tx`select id from crm_tasks_list(null, ${type.id})`).map((t) => t.id)).toEqual([t1.id]);
+
+      // Перенос и выполнение с результатом.
+      await tx`update crm_tasks set due_at = now() + interval '2 days', assignee_id = ${admin1} where id = ${t1.id}`;
+      await tx`update crm_tasks set done_at = now(), result = ' Договорились на пробное ' where id = ${t1.id}`;
+      const [ev] = await tx`select body, meta from crm_deal_events where deal_id = ${deal} and kind = 'task_done'`;
+      expect(ev.body).toBe("Позвонить");
+      expect(ev.meta).toEqual({ type: type.name, result: "Договорились на пробное" });
+      expect((await tx`select id from crm_tasks_list(null, null, true)`).map((t) => t.id)).toEqual([t1.id]);
+
+      // Смена ответственного — его невыполненные задачи уходят новому.
+      await tx`update crm_deals set responsible_id = ${manager} where id = ${deal}`;
+      expect((await tx`select assignee_id from crm_tasks where id = ${t2.id}`)[0].assignee_id).toBe(manager);
+
+      // Закрытие сделки закрывает задачи без событий в ленте.
+      await tx`update crm_deals set stage_id = ${won} where id = ${deal}`;
+      const [closed] = await tx`select done_at, result from crm_tasks where id = ${t2.id}`;
+      expect(closed.done_at).not.toBeNull();
+      expect(closed.result).toBe("Сделка закрыта");
+      expect((await tx`select 1 from crm_deal_events where deal_id = ${deal} and kind = 'task_done'`).length).toBe(1);
+
+      // Чужой клуб задач не видит.
+      await as(tx, admin2);
+      expect((await tx`select 1 from crm_tasks_list(null, null, true)`).length).toBe(0);
+    }));
+
+  test("автозадача: исполнитель — выбранный сотрудник, тип — из правила", () =>
+    scenario(async (tx) => {
+      const { s1, manager, admin1, admin2, pipeline, st1, st2 } = await setup(tx);
+      const [type] = await tx`select id from crm_task_types order by sort_order limit 1`;
+      await as(tx, manager);
+      await rule(tx, st1, "enter", "task", { title: "Связаться", due_minutes: 15, assignee: admin2, type_id: type.id });
+      await rule(tx, st2, "enter", "task", { title: "Дожать", due_minutes: 0, type_id: crypto.randomUUID() });
+      expect(
+        await failure(tx, () => rule(tx, st1, "enter", "task", { title: "x", assignee: crypto.randomUUID() })),
+      ).toContain("Исполнитель задачи не найден");
+      await asServer(tx);
+      const [{ id: deal }] = await tx`
+        insert into crm_deals (title, pipeline_id, stage_id, studio_id, responsible_id)
+        values ('Д', ${pipeline}, ${st1}, ${s1}, ${admin1}) returning id`;
+      await run(tx);
+      const [a] = await tx`select assignee_id, type_id, auto from crm_tasks where deal_id = ${deal}`;
+      expect(a).toMatchObject({ assignee_id: admin2, type_id: type.id, auto: true });
+      await tx`update crm_deals set stage_id = ${st2} where id = ${deal}`;
+      await run(tx);
+      const [b] = await tx`select assignee_id, type_id from crm_tasks where deal_id = ${deal} and title = 'Дожать'`;
+      expect(b).toMatchObject({ assignee_id: admin1, type_id: null });
+    }));
 });

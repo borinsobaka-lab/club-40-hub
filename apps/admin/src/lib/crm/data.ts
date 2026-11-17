@@ -22,7 +22,8 @@ import type {
   CrmPipeline,
   CrmStage,
   CrmTask,
-  CrmTaskWithDeal,
+  CrmTaskRow,
+  CrmTaskType,
 } from "./types";
 
 export const CRM_KEY = "crm";
@@ -143,7 +144,7 @@ export function useDeal(dealId: string | null) {
         unwrap<CrmTask[]>(
           supabase
             .from("crm_tasks")
-            .select("id, deal_id, title, due_at, assignee_id, auto, done_at, created_at")
+            .select("id, deal_id, title, note, result, due_at, assignee_id, type_id, auto, done_at")
             .eq("deal_id", dealId!)
             .order("due_at", { ascending: true }),
         ),
@@ -155,22 +156,33 @@ export function useDeal(dealId: string | null) {
   });
 }
 
-/** Невыполненные задачи: свои или всех (раздел «Задачи»). */
-export function useOpenTasks(assigneeId: string | null) {
+export const crmTaskTypesQuery = queryOptions({
+  queryKey: [CRM_KEY, "task-types"],
+  queryFn: () =>
+    unwrap<CrmTaskType[]>(
+      supabase.from("crm_task_types").select("id, name, color, sort_order").order("sort_order"),
+    ),
+  staleTime: 5 * 60_000,
+  meta: { errorMessage: "Не удалось загрузить типы задач" },
+});
+
+/**
+ * Раздел «Задачи»: невыполненные (ближайшие и просроченные сверху) или
+ * выполненные за 30 дней; assigneeId null — всех сотрудников.
+ */
+export function useTasksList(opts: {
+  assigneeId: string | null;
+  typeId: string | null;
+  done: boolean;
+}) {
   return useQuery({
-    queryKey: [CRM_KEY, "tasks", assigneeId ?? "all"],
-    queryFn: () => {
-      let q = supabase
-        .from("crm_tasks")
-        .select(
-          "id, deal_id, title, due_at, assignee_id, auto, done_at, created_at, deal:crm_deals(id, title, pipeline_id, contact:crm_contacts(name))",
-        )
-        .is("done_at", null)
-        .order("due_at", { ascending: true })
-        .limit(500);
-      if (assigneeId) q = q.eq("assignee_id", assigneeId);
-      return unwrap<CrmTaskWithDeal[]>(q);
-    },
+    queryKey: [CRM_KEY, "tasks", opts.assigneeId ?? "all", opts.typeId ?? "any", opts.done],
+    queryFn: () =>
+      crmRpc<CrmTaskRow[]>("crm_tasks_list", {
+        p_assignee: opts.assigneeId,
+        p_type: opts.typeId,
+        p_done: opts.done,
+      }),
     refetchInterval: 60_000,
     meta: { errorMessage: "Не удалось загрузить задачи" },
   });
@@ -275,17 +287,24 @@ export const updateNote = (id: string, body: string) =>
 export const deleteNote = (id: string) =>
   run(supabase.from("crm_deal_events").delete().eq("id", id));
 
-export const addTask = (task: {
-  deal_id: string;
+export type TaskInput = {
   title: string;
   due_at: string;
   assignee_id: string | null;
-}) => run(supabase.from("crm_tasks").insert(task));
-export const setTaskDone = (id: string, done: boolean) =>
+  type_id: string | null;
+  note: string | null;
+};
+
+export const addTask = (dealId: string, task: TaskInput) =>
+  run(supabase.from("crm_tasks").insert({ deal_id: dealId, ...task }));
+export const updateTask = (id: string, patch: Partial<TaskInput>) =>
+  run(supabase.from("crm_tasks").update(patch).eq("id", id));
+/** Выполнить с результатом (пишется в ленту сделки) или вернуть в работу. */
+export const setTaskDone = (id: string, done: boolean, result: string | null = null) =>
   run(
     supabase
       .from("crm_tasks")
-      .update({ done_at: done ? new Date().toISOString() : null })
+      .update({ done_at: done ? new Date().toISOString() : null, result: done ? result : null })
       .eq("id", id),
   );
 export const deleteTask = (id: string) => run(supabase.from("crm_tasks").delete().eq("id", id));

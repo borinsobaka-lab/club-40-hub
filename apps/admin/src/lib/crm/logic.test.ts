@@ -9,6 +9,8 @@ import {
   nextTaskByDeal,
   parseBudget,
   parseTags,
+  presetDue,
+  taskGroup,
   percent,
   waitLabel,
   accountLabel,
@@ -237,5 +239,39 @@ describe("CRM — логика", () => {
     expect(waitLabel(90)).toBe("1 ч 30 мин");
     expect(waitLabel(120)).toBe("2 ч");
     expect(waitLabel(4320)).toBe("3 дн");
+  });
+
+  test("задачи: группа по сроку, быстрые сроки, событие с типом и результатом", () => {
+    const now = new Date(2026, 10, 17, 12, 0);
+    const at = (d: number, h: number) => new Date(2026, 10, d, h, 0).toISOString();
+    expect(taskGroup(at(17, 9), now)).toBe("overdue");
+    expect(taskGroup(at(17, 20), now)).toBe("today");
+    expect(taskGroup(at(18, 8), now)).toBe("tomorrow");
+    expect(taskGroup(at(25, 8), now)).toBe("later");
+    expect(presetDue("in15", now).getTime() - now.getTime()).toBe(15 * 60_000);
+    expect(presetDue("evening", now).getHours()).toBe(18);
+    expect(presetDue("evening", new Date(2026, 10, 17, 19, 30)).getHours()).toBe(20);
+    const tomorrow = presetDue("tomorrow", now);
+    expect([tomorrow.getDate(), tomorrow.getHours()]).toEqual([18, 10]);
+    expect(presetDue("week", now).getDate()).toBe(24);
+    expect(
+      eventText({
+        kind: "task_done",
+        body: "Позвонить",
+        meta: { type: "Звонок", result: "Придёт в среду" },
+      }),
+    ).toBe("Задача выполнена (Звонок): Позвонить — Придёт в среду");
+    const names = { stage: () => "", person: () => "Нино" };
+    expect(
+      automationLabel(
+        {
+          trigger: "enter",
+          delay_minutes: 0,
+          action: "task",
+          params: { title: "Связаться", assignee: "u" },
+        },
+        names,
+      ),
+    ).toBe("Сразу при входе в этап → задача «Связаться» для Нино");
   });
 });

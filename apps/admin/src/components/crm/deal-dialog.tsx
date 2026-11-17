@@ -7,6 +7,7 @@ import { ClientCombobox } from "@/components/client-combobox";
 import { ClientNameLink } from "@/components/client-name-link";
 import { useConfirm } from "@/components/confirm-dialog";
 import { ChatThread } from "@/components/crm/chat";
+import { TaskForm, TaskItem } from "@/components/crm/tasks";
 import { Button } from "@/components/ui/button";
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -615,129 +616,72 @@ function Tasks({
   tasks: CrmTask[];
   responsibleId: string | null;
 }) {
-  const qc = useQueryClient();
-  const [adding, setAdding] = useState(false);
-  const [title, setTitle] = useState("");
-  const [due, setDue] = useState(() => toDateTimeLocalValue(defaultTaskDue(new Date())));
-  const [assignee, setAssignee] = useState<string | null>(responsibleId);
-  const [saving, setSaving] = useState(false);
+  const { data: me } = useStaffProfile();
+  const [editing, setEditing] = useState<CrmTask | "new" | null>(null);
+  const [showDone, setShowDone] = useState(false);
   const now = new Date();
   const open = tasks.filter((t) => !t.done_at);
-
-  const act = async (fn: () => Promise<void>) => {
-    try {
-      await fn();
-      await invalidateCrm(qc);
-    } catch (e) {
-      toast.error(crmErrorText(e));
-    }
-  };
-
-  const add = async () => {
-    if (!title.trim()) {
-      toast.error("Напишите, что нужно сделать");
-      return;
-    }
-    if (!due) {
-      toast.error("Укажите срок");
-      return;
-    }
-    setSaving(true);
-    await act(() =>
-      addTask({
-        deal_id: dealId,
-        title: title.trim(),
-        due_at: new Date(due).toISOString(),
-        assignee_id: assignee,
-      }),
-    );
-    setSaving(false);
-    setTitle("");
-    setAdding(false);
-  };
+  const done = tasks.filter((t) => t.done_at).sort((a, b) => b.done_at!.localeCompare(a.done_at!));
 
   return (
     <section className="space-y-2">
       <div className="flex items-center justify-between">
         <h3 className="text-sm font-semibold">Задачи{open.length ? ` · ${open.length}` : ""}</h3>
-        {!adding && (
-          <Button variant="outline" size="xs" onClick={() => setAdding(true)}>
-            <Plus />
-            Задача
-          </Button>
-        )}
+        <Button variant="outline" size="xs" onClick={() => setEditing("new")}>
+          <Plus />
+          Задача
+        </Button>
       </div>
-      {open.length === 0 && !adding && (
+      {open.length === 0 && (
         <p className="text-sm text-muted-foreground">
           Задач нет — поставьте следующую, чтобы сделка не потерялась.
         </p>
       )}
-      {open.map((t) => (
-        <div
-          key={t.id}
-          className="group flex items-start gap-2 rounded-md border bg-background px-3 py-2"
-        >
-          <Checkbox
-            className="mt-0.5"
-            aria-label={`Выполнить: ${t.title}`}
-            onCheckedChange={() => void act(() => setTaskDone(t.id, true))}
-          />
-          <div className="min-w-0 flex-1">
-            <div className="text-sm">{t.title}</div>
-            <TaskDue dueAt={t.due_at} now={now} />
-          </div>
+      {open.length > 0 && (
+        <div className="divide-y rounded-md border bg-background">
+          {open.map((t) => (
+            <TaskItem
+              key={t.id}
+              task={t}
+              now={now}
+              showAssignee={t.assignee_id !== me?.id}
+              onEdit={setEditing}
+            />
+          ))}
+        </div>
+      )}
+      {done.length > 0 && (
+        <>
           <Button
             variant="ghost"
-            size="icon-sm"
-            className="opacity-0 group-hover:opacity-100 focus-visible:opacity-100 max-md:opacity-100"
-            aria-label="Удалить задачу"
-            onClick={() => void act(() => deleteTask(t.id))}
+            size="xs"
+            className="-ml-2"
+            onClick={() => setShowDone((v) => !v)}
           >
-            <X />
+            {showDone ? "Скрыть выполненные" : `Выполненные · ${done.length}`}
           </Button>
-        </div>
-      ))}
-      {adding && (
-        <form
-          className="space-y-2 rounded-md border bg-background p-3"
-          onSubmit={(e) => {
-            e.preventDefault();
-            void add();
-          }}
-        >
-          <Input
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            placeholder="Позвонить, напомнить о пробном…"
-            aria-label="Что сделать"
-            autoFocus
-          />
-          <div className="flex flex-wrap items-center gap-2">
-            <Input
-              type="datetime-local"
-              value={due}
-              onChange={(e) => setDue(e.target.value)}
-              aria-label="Срок"
-              className="w-52"
-            />
-            <PersonSelect
-              value={assignee}
-              onChange={setAssignee}
-              className="w-52"
-              aria-label="Исполнитель"
-            />
-            <div className="ml-auto flex gap-2">
-              <Button variant="ghost" size="sm" onClick={() => setAdding(false)}>
-                Отмена
-              </Button>
-              <Button type="submit" size="sm" disabled={saving}>
-                {saving && <Loader2 className="animate-spin" />}
-                Поставить
-              </Button>
+          {showDone && (
+            <div className="divide-y rounded-md border bg-background">
+              {done.map((t) => (
+                <TaskItem key={t.id} task={t} now={now} showAssignee onEdit={setEditing} />
+              ))}
             </div>
-          </div>
-        </form>
+          )}
+        </>
       )}
+      <Dialog open={!!editing} onOpenChange={(o) => !o && setEditing(null)}>
+        <DialogContent>
+          {editing && (
+            <TaskForm
+              key={editing === "new" ? "new" : editing.id}
+              dealId={dealId}
+              task={editing === "new" ? null : editing}
+              defaultAssigneeId={responsibleId ?? me?.id ?? null}
+              onDone={() => setEditing(null)}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </section>
   );
 }

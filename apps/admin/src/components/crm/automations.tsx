@@ -4,7 +4,7 @@ import { Loader2, Pencil, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { useConfirm } from "@/components/confirm-dialog";
-import { StageSelect } from "@/components/crm/parts";
+import { PersonSelect, StageSelect } from "@/components/crm/parts";
 import { StaffAvatar } from "@/components/employee-photo";
 import { Button } from "@/components/ui/button";
 import {
@@ -27,8 +27,20 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
-import { crmAutomationsQuery, crmErrorText, crmPeopleQuery, invalidateCrm } from "@/lib/crm/data";
-import { automationLabel, joinDuration, splitDuration, type DurationUnit } from "@/lib/crm/logic";
+import {
+  crmAutomationsQuery,
+  crmErrorText,
+  crmPeopleQuery,
+  crmTaskTypesQuery,
+  invalidateCrm,
+} from "@/lib/crm/data";
+import {
+  automationLabel,
+  joinDuration,
+  NONE,
+  splitDuration,
+  type DurationUnit,
+} from "@/lib/crm/logic";
 import type { AutomationAction, AutomationTrigger, CrmAutomation, CrmStage } from "@/lib/crm/types";
 
 const TRIGGERS: { value: AutomationTrigger; label: string }[] = [
@@ -218,6 +230,12 @@ function RuleForm({
   const [action, setAction] = useState<AutomationAction>(item?.action ?? "task");
   const [title, setTitle] = useState(item?.params.title ?? "");
   const [due, setDue] = useState(item?.params.due_minutes ?? 60);
+  const { data: taskTypes = [] } = useQuery(crmTaskTypesQuery);
+  const [taskType, setTaskType] = useState(item?.params.type_id ?? NONE);
+  // null — ответственный сделки.
+  const [taskFor, setTaskFor] = useState<string | null>(
+    item?.params.assignee && item.params.assignee !== "responsible" ? item.params.assignee : null,
+  );
   const [users, setUsers] = useState<string[]>(item?.params.user_ids ?? []);
   const [moveTo, setMoveTo] = useState(item?.params.stage_id ?? others[0]?.id ?? "");
   const [body, setBody] = useState(item?.params.body ?? "");
@@ -227,7 +245,12 @@ function RuleForm({
   const save = async () => {
     const params =
       action === "task"
-        ? { title, due_minutes: due }
+        ? {
+            title,
+            due_minutes: due,
+            assignee: taskFor ?? "responsible",
+            type_id: taskType === NONE ? null : taskType,
+          }
         : action === "responsible"
           ? { user_ids: users }
           : action === "move"
@@ -345,12 +368,34 @@ function RuleForm({
                     maxLength={500}
                   />
                 </FormField>
-                <FormField
-                  label="Срок задачи"
-                  hint="От момента, когда задача поставлена. Исполнитель — ответственный сделки."
-                >
+                <FormField label="Срок задачи" hint="От момента, когда задача поставлена.">
                   <Duration minutes={due} onChange={setDue} label="Срок задачи" />
                 </FormField>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <FormField label="Тип задачи">
+                    <Select value={taskType} onValueChange={setTaskType}>
+                      <SelectTrigger aria-label="Тип задачи">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value={NONE}>Без типа</SelectItem>
+                        {taskTypes.map((t) => (
+                          <SelectItem key={t.id} value={t.id}>
+                            {t.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </FormField>
+                  <FormField label="Кому">
+                    <PersonSelect
+                      value={taskFor}
+                      onChange={setTaskFor}
+                      aria-label="Кому задача"
+                      noneLabel="Ответственному сделки"
+                    />
+                  </FormField>
+                </div>
               </>
             )}
             {action === "responsible" && (

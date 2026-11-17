@@ -138,7 +138,9 @@ export function eventText(e: Pick<CrmEvent, "kind" | "body" | "meta">): string {
         ? `Ответственный: ${m.from ? `${m.from} → ` : ""}${m.to}`
         : `Ответственный снят${m.from ? ` (был ${m.from})` : ""}`;
     case "task_done":
-      return `Задача выполнена: ${e.body ?? ""}`.trim();
+      return `Задача выполнена${m.type ? ` (${m.type})` : ""}: ${e.body ?? ""}${
+        m.result ? ` — ${m.result}` : ""
+      }`.trim();
     case "auto":
       return `Автоматизация: ${e.body ?? ""}`;
     default:
@@ -294,7 +296,14 @@ export function automationLabel(
     trigger: string;
     delay_minutes: number;
     action: string;
-    params: { title?: string; user_ids?: string[]; stage_id?: string; body?: string; tag?: string };
+    params: {
+      title?: string;
+      assignee?: string;
+      user_ids?: string[];
+      stage_id?: string;
+      body?: string;
+      tag?: string;
+    };
   },
   names: { stage: (id: string) => string; person: (id: string) => string },
 ): string {
@@ -319,7 +328,9 @@ export function automationLabel(
   const ids = p.user_ids ?? [];
   const what =
     a.action === "task"
-      ? `задача «${p.title ?? ""}»`
+      ? `задача «${p.title ?? ""}»${
+          p.assignee && p.assignee !== "responsible" ? ` для ${names.person(p.assignee)}` : ""
+        }`
       : a.action === "responsible"
         ? ids.length > 1
           ? `ответственный по очереди: ${ids.map(names.person).join(", ")}`
@@ -359,4 +370,59 @@ export function replyBlock(
   if (!replyWindowOpen(account.kind, lastInboundAt, now))
     return "Прошло больше 24 часов с последнего сообщения клиента. По правилам канала ответить можно, когда он напишет снова.";
   return null;
+}
+
+// Задачи -------------------------------------------------------------------------
+
+export type TaskGroup = "overdue" | "today" | "tomorrow" | "later";
+
+export const TASK_GROUP_LABEL: Record<TaskGroup, string> = {
+  overdue: "Просрочено",
+  today: "Сегодня",
+  tomorrow: "Завтра",
+  later: "Позже",
+};
+
+/** Группа невыполненной задачи по сроку. */
+export function taskGroup(dueAt: string, now: Date): TaskGroup {
+  const state = taskState(dueAt, now);
+  if (state !== "future") return state;
+  const tomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+  return new Date(dueAt).toDateString() === tomorrow.toDateString() ? "tomorrow" : "later";
+}
+
+export type DuePreset = "in15" | "in1h" | "evening" | "tomorrow" | "in3d" | "week";
+
+export const DUE_PRESETS: { key: DuePreset; label: string }[] = [
+  { key: "in15", label: "Через 15 мин" },
+  { key: "in1h", label: "Через час" },
+  { key: "evening", label: "Сегодня вечером" },
+  { key: "tomorrow", label: "Завтра" },
+  { key: "in3d", label: "Через 3 дня" },
+  { key: "week", label: "Через неделю" },
+];
+
+/** Срок по быстрой кнопке; «завтра» и дальше — в 10:00, «вечером» — в 18:00. */
+export function presetDue(preset: DuePreset, now: Date): Date {
+  const d = new Date(now);
+  const at = (days: number, hour: number) => {
+    d.setDate(d.getDate() + days);
+    d.setHours(hour, 0, 0, 0);
+    return d;
+  };
+  switch (preset) {
+    case "in15":
+      return new Date(now.getTime() + 15 * 60_000);
+    case "in1h":
+      return new Date(now.getTime() + 60 * 60_000);
+    case "evening":
+      // Уже вечер — через час, а не в прошлое.
+      return now.getHours() >= 17 ? new Date(now.getTime() + 60 * 60_000) : at(0, 18);
+    case "tomorrow":
+      return at(1, 10);
+    case "in3d":
+      return at(3, 10);
+    default:
+      return at(7, 10);
+  }
 }

@@ -77,16 +77,27 @@ export type CrmTask = {
   id: string;
   deal_id: string;
   title: string;
+  /** Комментарий постановщика. */
+  note: string | null;
+  /** Что получилось — пишется при выполнении. */
+  result: string | null;
   due_at: string;
   assignee_id: string | null;
+  type_id: string | null;
   auto: boolean;
   done_at: string | null;
-  created_at: string;
 };
 
-/** Задача со сделкой — раздел «Задачи». */
-export type CrmTaskWithDeal = CrmTask & {
-  deal: { id: string; title: string; pipeline_id: string; contact: { name: string } | null } | null;
+export type CrmTaskType = { id: string; name: string; color: string; sort_order: number };
+
+/** Строка раздела «Задачи» (RPC crm_tasks_list): задача со сделкой. */
+export type CrmTaskRow = CrmTask & {
+  created_by: string | null;
+  deal_title: string;
+  contact_name: string | null;
+  stage_name: string;
+  stage_color: string;
+  studio_id: string | null;
 };
 
 /** Кого можно назначить ответственным (RPC crm_people). */
@@ -167,6 +178,9 @@ export type CrmAutomation = {
   params: {
     title?: string;
     due_minutes?: number;
+    /** Исполнитель автозадачи: "responsible" или id сотрудника. */
+    assignee?: string;
+    type_id?: string | null;
     user_ids?: string[];
     stage_id?: string;
     body?: string;

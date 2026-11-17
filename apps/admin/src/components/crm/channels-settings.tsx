@@ -17,6 +17,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { FormField, InfoNote } from "@/components/ui/form-field";
+import { ColorInput } from "@/components/ui/color-input";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -39,12 +40,13 @@ import {
   crmAccountsQuery,
   crmErrorText,
   crmSetupQuery,
+  crmTaskTypesQuery,
   crmTemplatesQuery,
   invalidateCrm,
   useCrmStudios,
 } from "@/lib/crm/data";
 import { CHANNEL_LABEL, NONE } from "@/lib/crm/logic";
-import type { CrmChannelAccount, CrmReplyTemplate } from "@/lib/crm/types";
+import type { CrmChannelAccount, CrmReplyTemplate, CrmTaskType } from "@/lib/crm/types";
 
 const TIPS = {
   token:
@@ -599,6 +601,170 @@ function TemplateForm({
                 onChange={(e) => setBody(e.target.value)}
                 maxLength={4000}
                 placeholder="Здравствуйте, {имя}! …"
+              />
+            </FormField>
+          </div>
+        </DialogBody>
+        <DialogFooter>
+          <Button type="submit" disabled={saving}>
+            {saving && <Loader2 className="animate-spin" />}
+            Сохранить
+          </Button>
+        </DialogFooter>
+      </DialogForm>
+    </>
+  );
+}
+
+const TYPE_COLORS = [
+  { hex: "#0ea5e9", label: "Голубой" },
+  { hex: "#16a34a", label: "Зелёный" },
+  { hex: "#a855f7", label: "Фиолетовый" },
+  { hex: "#f59e0b", label: "Янтарный" },
+  { hex: "#ef4444", label: "Красный" },
+  { hex: "#64748b", label: "Серый" },
+];
+
+/** «Типы задач»: что нужно сделать — «Связаться», «Звонок», «Встреча»… */
+export function TaskTypesPanel() {
+  const qc = useQueryClient();
+  const { data: types = [] } = useQuery(crmTaskTypesQuery);
+  const { confirm, confirmDialog } = useConfirm();
+  const [editing, setEditing] = useState<CrmTaskType | "new" | null>(null);
+
+  const remove = async (t: CrmTaskType) => {
+    if (
+      !(await confirm({
+        title: `Удалить тип «${t.name}»?`,
+        description: "Задачи этого типа останутся, но без типа.",
+      }))
+    )
+      return;
+    const { error } = await supabase.from("crm_task_types").delete().eq("id", t.id);
+    if (error) toast.error(crmErrorText(new Error(error.message)));
+    await invalidateCrm(qc);
+  };
+
+  return (
+    <Panel
+      title="Типы задач"
+      action={
+        <Button variant="outline" size="xs" onClick={() => setEditing("new")}>
+          <Plus />
+          Тип
+        </Button>
+      }
+    >
+      {types.length === 0 ? (
+        <p className="px-3 py-4 text-center text-sm text-muted-foreground">Типов нет.</p>
+      ) : (
+        <ul className="divide-y">
+          {types.map((t) => (
+            <li key={t.id} className="flex items-center gap-2 px-3 py-1.5">
+              <span
+                aria-hidden
+                className="size-2.5 shrink-0 rounded-full"
+                style={{ backgroundColor: t.color }}
+              />
+              <span className="min-w-0 flex-1 truncate text-sm">{t.name}</span>
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                aria-label="Изменить тип"
+                onClick={() => setEditing(t)}
+              >
+                <Pencil />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                aria-label="Удалить тип"
+                onClick={() => void remove(t)}
+              >
+                <Trash2 />
+              </Button>
+            </li>
+          ))}
+        </ul>
+      )}
+      <Dialog open={!!editing} onOpenChange={(open) => !open && setEditing(null)}>
+        <DialogContent className="sm:max-w-md">
+          {editing && (
+            <TaskTypeForm
+              key={editing === "new" ? "new" : editing.id}
+              item={editing === "new" ? null : editing}
+              nextOrder={types.length + 1}
+              onDone={() => setEditing(null)}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
+      {confirmDialog}
+    </Panel>
+  );
+}
+
+function TaskTypeForm({
+  item,
+  nextOrder,
+  onDone,
+}: {
+  item: CrmTaskType | null;
+  nextOrder: number;
+  onDone: () => void;
+}) {
+  const qc = useQueryClient();
+  const [name, setName] = useState(item?.name ?? "");
+  const [color, setColor] = useState(item?.color ?? TYPE_COLORS[0].hex);
+  const [saving, setSaving] = useState(false);
+
+  const save = async () => {
+    if (!name.trim()) {
+      toast.error("Укажите название");
+      return;
+    }
+    setSaving(true);
+    try {
+      const row = { name: name.trim(), color };
+      const { error } = item
+        ? await supabase.from("crm_task_types").update(row).eq("id", item.id)
+        : await supabase.from("crm_task_types").insert({ ...row, sort_order: nextOrder });
+      if (error) throw new Error(error.message);
+      await invalidateCrm(qc);
+      onDone();
+    } catch (e) {
+      toast.error(crmErrorText(e));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <>
+      <DialogHeader>
+        <DialogTitle>{item ? "Изменить тип задачи" : "Новый тип задачи"}</DialogTitle>
+        <DialogDescription>
+          Тип выбирают при постановке задачи; по нему задачи фильтруются.
+        </DialogDescription>
+      </DialogHeader>
+      <DialogForm onSubmit={() => void save()}>
+        <DialogBody>
+          <div className="space-y-4">
+            <FormField label="Название" required>
+              <Input
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                maxLength={40}
+                autoFocus
+                placeholder="Звонок"
+              />
+            </FormField>
+            <FormField label="Цвет">
+              <ColorInput
+                value={color}
+                onChange={setColor}
+                fallback={TYPE_COLORS[0].hex}
+                swatches={TYPE_COLORS}
               />
             </FormField>
           </div>
