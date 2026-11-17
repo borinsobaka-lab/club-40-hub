@@ -161,11 +161,17 @@ export function PackWorkoutCard({
               <SubstitutionChip />
             </div>
           )}
-          {isWaitlisted && (
-            <div className="mt-0.5 text-xs font-semibold text-blue-600 dark:text-blue-400">
-              {t("В листе ожидания")}
-            </div>
-          )}
+          {isWaitlisted &&
+            (left !== 0 && !bookingClosed ? (
+              // Место освободилось (2026-11-17): записаться — в окне тренировки.
+              <div className="mt-0.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+                {t("Место освободилось — успейте записаться")}
+              </div>
+            ) : (
+              <div className="mt-0.5 text-xs font-semibold text-blue-600 dark:text-blue-400">
+                {t("В листе ожидания")}
+              </div>
+            ))}
           {trainers.length > 0 && (
             <div className="mt-1.5 flex flex-col gap-1">
               {trainers.map((tr) => (

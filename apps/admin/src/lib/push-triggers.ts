@@ -160,6 +160,18 @@ export const PUSH_TRIGGERS: TriggerDef[] = [
     vars: CLASS_VARS,
   },
   {
+    // 2026-11-17, db/migrations/2026-11-17_waitlist_spot_push.sql.
+    key: "waitlist_spot_open",
+    group: "classes",
+    name: "Освободилось место",
+    formats: BOTH,
+    defaults: {},
+    describe: () =>
+      "Сразу, когда на заполненном занятии освободилось место (клиент отменил запись, запись удалили, вместимость увеличили), — всем из листа ожидания; записывается тот, кто успел первым. Не приходит, если до начала меньше 15 минут, и повторно тому же человеку в течение 10 минут. Приходит в любое время суток.",
+    params: [],
+    vars: CLASS_VARS,
+  },
+  {
     key: "trainer_substitution",
     group: "classes",
     name: "Замена тренера",

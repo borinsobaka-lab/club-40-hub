@@ -111,6 +111,7 @@ export function WorkoutDrawer({
   cancelMinutes,
   bookingNote,
   trainerMode = false,
+  onBookFromWaitlist,
 }: {
   data: WorkoutDrawerData | null;
   open: boolean;
@@ -129,6 +130,12 @@ export function WorkoutDrawer({
    * тренировке» (тренеры, замена, описание); кнопок записи нет.
    */
   trainerMode?: boolean;
+  /**
+   * Клиент в листе ожидания, а место освободилось (2026-11-17): вместо одной
+   * «Выйти из очереди» — ещё и «Записаться» (book_schedule_entry переводит
+   * из очереди в «Записан»). Не передан — мест нет.
+   */
+  onBookFromWaitlist?: () => void;
 }) {
   const t = useT();
   const loc = useLocalize();
@@ -306,7 +313,9 @@ export function WorkoutDrawer({
                 {isBooked || trainerMode ? null : isWaitlisted ? (
                   <div className="mt-6 rounded-2xl bg-blue-50 p-4 text-sm text-blue-700 dark:bg-blue-950/40 dark:text-blue-300">
                     {t(
-                      "Вы в листе ожидания. Если освободится место, с вами свяжется администратор.",
+                      onBookFromWaitlist
+                        ? "Место освободилось — успейте записаться, пока его не занял кто-то другой."
+                        : "Вы в листе ожидания. Освободится место — пришлём уведомление: запишется тот, кто успеет первым.",
                     )}
                   </div>
                 ) : bookingNote ? (
@@ -353,6 +362,28 @@ export function WorkoutDrawer({
                   >
                     <Calendar weight="BoldDuotone" />
                     {t("В календарь")}
+                  </button>
+                </div>
+              ) : isWaitlisted && onBookFromWaitlist ? (
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => onBook()}
+                    disabled={isPending}
+                    className={cn(
+                      buttonVariants(),
+                      "flex-1 border border-foreground bg-white text-red-500 hover:bg-white/90 disabled:opacity-60",
+                    )}
+                  >
+                    {t("Выйти из очереди")}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onBookFromWaitlist()}
+                    disabled={isPending}
+                    className={cn(buttonVariants(), "flex-1 disabled:opacity-60")}
+                  >
+                    {isPending ? "..." : t("Записаться")}
                   </button>
                 </div>
               ) : isWaitlisted ? (

@@ -22,6 +22,9 @@ const dict: Dictionary = {
   "Вы не были записаны на эту тренировку": "You weren't booked for this workout",
   "Вы вышли из листа ожидания": "You've left the waitlist",
   "Запись отменена": "Booking cancelled",
+  "Место освободилось — успейте записаться": "A spot opened up — book now",
+  "Место уже заняли — вы остаётесь в листе ожидания":
+    "Someone already took the spot — you're still on the waitlist",
   "Мест нет — вы в листе ожидания": "Fully booked — you're on the waitlist",
   "Вы записаны на тренировку": "You're booked for the workout",
   "Не удалось выполнить действие: {reason}": "Something went wrong: {reason}",

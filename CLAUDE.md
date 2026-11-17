@@ -54,8 +54,9 @@ Start (SSR) + React 19 + Tailwind 4 + shadcn/radix, пакетный менед�
   `db/trainer-app.test.ts`, абонемента переноса `db/carryover.test.ts`,
   оплаты групповых по числу людей `db/studio-pay.test.ts`, смены почты и
   телефона клиента `db/client-contact-sync.test.ts`, запрета одинаковых
-  контактов `db/client-contacts-unique.test.ts` и комментариев клиентов о
-  тренерах `db/client-trainer-comments.test.ts`
+  контактов `db/client-contacts-unique.test.ts`, комментариев клиентов о
+  тренерах `db/client-trainer-comments.test.ts` и пуша «Освободилось место»
+  листа ожидания `db/waitlist-push.test.ts`
   (`TEST_SCHEMA_DATABASE_URL` — база с полной схемой; собирает её
   `bash db/test/build-schema.sh <url>`: заглушки Supabase, старые db/\*.sql,
   все миграции). Без переменных пропускаются; сценарии откатываются.
@@ -1192,6 +1193,21 @@ AUTH_SETUP.md.
   (`db/migrations/2026-11-15_zz_trainer_app_admin_on_shift.sql`: только
   тренеру, только пакетная студия; имя, фото, Telegram сегодняшней смены
   `admin_shifts`). Тесты — `db/trainer-app.test.ts`.
+  **Лист ожидания — пуш «Освободилось место»** (решение владельца
+  2026-11-17, оба формата): `db/migrations/2026-11-17_waitlist_spot_push.sql`
+  — триггер `push_triggers` `waitlist_spot_open`: у будущего группового
+  занятия уменьшился `booked_count` (отмена или удаление записи) или
+  изменилась вместимость, и место есть — пуш всем из листа ожидания
+  (`waitlist_spot_push`, отложенный constraint trigger
+  `schedule_entries_waitlist_spot_push_au` — проверка при фиксации
+  транзакции, отменённое клубом занятие пуша не даёт; не ближе 15 минут до
+  начала, не в закрытую запись, тому же человеку по занятию — не чаще раза в
+  10 минут). Автоперевода из очереди нет: `book_schedule_entry` (актуальное
+  определение — здесь) записывает из листа ожидания, если место есть
+  (`from_waitlist: true`), кто первый — тот и занял. Там же
+  `bookings_log_status_check` принимает `waitlist` (в
+  `db/bookings_statuses_v2.sql` его не было — запись в очередь падала на
+  журнале). Тесты — `db/waitlist-push.test.ts`.
   Рейтинг тренеров и чаевые: `db/migrations/2026-10-11_zzzzzzzzzzzzz_trainer_ratings.sql`
   — `trainer_reviews` (оценка 1–5, одна от учётной записи на тренера; клиент
   читает и правит свою, ставит — тренеру, которого видит в приложении,

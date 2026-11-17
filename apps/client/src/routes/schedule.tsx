@@ -254,12 +254,14 @@ function SchedulePage() {
     return () => el.removeEventListener("wheel", onWheel);
   }, [loading, error, activeTab, shiftDay]);
 
-  async function toggleBooking(entryId: string) {
+  // fromWaitlist — записаться из листа ожидания, когда место освободилось
+  // (2026-11-17): без него нажатие у ожидающего — выход из очереди.
+  async function toggleBooking(entryId: string, fromWaitlist = false) {
     if (pendingId) return;
     setPendingId(entryId);
     const wasBooked = bookedIds.has(entryId);
     const wasWaitlisted = waitlistedIds.has(entryId);
-    const isActive = wasBooked || wasWaitlisted;
+    const isActive = !fromWaitlist && (wasBooked || wasWaitlisted);
     const fn = isActive ? ("cancel_schedule_booking" as const) : ("book_schedule_entry" as const);
     // Пакетный формат: продление могло стать действующим — иначе запись
     // ответила бы «нет абонемента».
@@ -333,6 +335,11 @@ function SchedulePage() {
         toast.success(t("Мест нет — вы в листе ожидания"));
       } else {
         setBookedIds((prev) => new Set(prev).add(entryId));
+        setWaitlistedIds((prev) => {
+          const next = new Set(prev);
+          next.delete(entryId);
+          return next;
+        });
         setEntries((prev) =>
           prev.map((e) =>
             e.id === entryId
@@ -356,6 +363,16 @@ function SchedulePage() {
       }
     } else if (res?.reason === "already_waitlisted") {
       setWaitlistedIds((prev) => new Set(prev).add(entryId));
+      if (fromWaitlist) {
+        // Место успели занять, пока клиент открывал приложение.
+        if (typeof res.booked_count === "number") {
+          const newCount = res.booked_count;
+          setEntries((prev) =>
+            prev.map((e) => (e.id === entryId ? { ...e, booked_count: newCount } : e)),
+          );
+        }
+        toast.info(t("Место уже заняли — вы остаётесь в листе ожидания"));
+      }
     } else if (res?.reason === "no_membership" || res?.reason === "no_visits_left") {
       toast.info(reasonMessages[res.reason]);
       navigate({ to: "/memberships" });
@@ -406,6 +423,13 @@ function SchedulePage() {
     { key: "all", label: t("Все") },
     ...availableTypes.map((type) => ({ key: type, label: t(workoutTypeMeta(type).label) })),
   ];
+
+  const openEntryFull = (() => {
+    if (!openEntry) return false;
+    const e = entries.find((x) => x.id === openEntry.id);
+    const cap = e?.capacity ?? e?.workout?.capacity ?? null;
+    return cap != null && cap > 0 && (e?.booked_count ?? 0) >= cap;
+  })();
 
   return (
     <PageShell
@@ -610,11 +634,20 @@ function SchedulePage() {
                                   <div className="font-medium break-words leading-snug">
                                     {c.workout?.name ?? t("Занятие")}
                                   </div>
-                                  {isWaitlisted && (
-                                    <div className="text-xs mt-0.5 font-semibold text-blue-600 dark:text-blue-400">
-                                      {t("В листе ожидания")}
-                                    </div>
-                                  )}
+                                  {isWaitlisted &&
+                                    (remainingSpots(
+                                      c.capacity ?? c.workout?.capacity ?? null,
+                                      c.booked_count,
+                                    ) !== 0 && !bookingClosed ? (
+                                      // Место освободилось (2026-11-17): записаться — в окне.
+                                      <div className="text-xs mt-0.5 font-semibold text-emerald-600 dark:text-emerald-400">
+                                        {t("Место освободилось — успейте записаться")}
+                                      </div>
+                                    ) : (
+                                      <div className="text-xs mt-0.5 font-semibold text-blue-600 dark:text-blue-400">
+                                        {t("В листе ожидания")}
+                                      </div>
+                                    ))}
                                   {(() => {
                                     const names = (c.trainers ?? [])
                                       .map((row) => row.trainer?.full_name)
@@ -733,18 +766,18 @@ function SchedulePage() {
         }}
         isBooked={openEntry ? bookedIds.has(openEntry.id) : false}
         isWaitlisted={openEntry ? waitlistedIds.has(openEntry.id) : false}
-        isFull={(() => {
-          if (!openEntry) return false;
-          const e = entries.find((x) => x.id === openEntry.id);
-          const cap = e?.capacity ?? e?.workout?.capacity ?? null;
-          return cap != null && cap > 0 && (e?.booked_count ?? 0) >= cap;
-        })()}
+        isFull={openEntryFull}
         isPending={openEntry ? pendingId === openEntry.id : false}
         cancelMinutes={clubSettings.cancel_booking_minutes}
         bookingNote={bookingClosed ? t("Запись пока закрыта") : null}
         onBook={() => {
           if (openEntry) toggleBooking(openEntry.id);
         }}
+        onBookFromWaitlist={
+          openEntry && !bookingClosed && waitlistedIds.has(openEntry.id) && !openEntryFull
+            ? () => toggleBooking(openEntry.id, true)
+            : undefined
+        }
       />
       {/* Уже в расписании: «Выбрать время» закрывает шторку тренировки. */}
       <RescheduleOfferDialog

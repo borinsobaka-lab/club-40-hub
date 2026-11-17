@@ -28,6 +28,7 @@ import {
   entryColor,
   entryTrainers,
   packEntryToDrawerData,
+  spotsLeft,
   trainerInitials,
   trainerPhoto,
   trainerRating,
@@ -186,11 +187,13 @@ export function PackagesSchedulePage() {
     return () => el.removeEventListener("wheel", onWheel);
   }, [loading, error, activeTab, shiftDay]);
 
-  async function toggleBooking(entryId: string) {
+  // fromWaitlist — записаться из листа ожидания, когда место освободилось
+  // (2026-11-17): без него нажатие у ожидающего — выход из очереди.
+  async function toggleBooking(entryId: string, fromWaitlist = false) {
     if (pendingId) return;
     const wasBooked = bookedIds.has(entryId);
     const wasWaitlisted = waitlistedIds.has(entryId);
-    const isActive = wasBooked || wasWaitlisted;
+    const isActive = !fromWaitlist && (wasBooked || wasWaitlisted);
     setPendingId(entryId);
     const fn = isActive ? ("cancel_schedule_booking" as const) : ("book_schedule_entry" as const);
     // Продление могло стать действующим — иначе запись ответила бы «нет абонемента».
@@ -266,7 +269,10 @@ export function PackagesSchedulePage() {
         addTo("waitlist", entryId);
         toast.success(t("Мест нет — вы в листе ожидания"), noMembershipNote);
       } else {
-        addTo("booked", entryId);
+        updateMine((m) => ({
+          booked: m.booked.includes(entryId) ? m.booked : [...m.booked, entryId],
+          waitlist: m.waitlist.filter((id) => id !== entryId),
+        }));
         setCount((e) =>
           typeof res.booked_count === "number" ? res.booked_count : e.booked_count + 1,
         );
@@ -287,6 +293,11 @@ export function PackagesSchedulePage() {
       }
     } else if (res?.reason === "already_waitlisted") {
       addTo("waitlist", entryId);
+      if (fromWaitlist) {
+        // Место успели занять, пока клиент открывал приложение.
+        queryClient.invalidateQueries({ queryKey: scheduleQuery.queryKey });
+        toast.info(t("Место уже заняли — вы остаётесь в листе ожидания"));
+      }
     } else if (res?.reason === "no_membership" || res?.reason === "no_visits_left") {
       toast.info(reasonMessages[res.reason]);
       navigate({ to: "/memberships" });
@@ -558,6 +569,15 @@ export function PackagesSchedulePage() {
         onBook={() => {
           if (openEntry) toggleBooking(openEntry.id);
         }}
+        onBookFromWaitlist={
+          openEntry &&
+          openEntryRow &&
+          !bookingClosed &&
+          waitlistedIds.has(openEntry.id) &&
+          spotsLeft(openEntryRow) !== 0
+            ? () => toggleBooking(openEntry.id, true)
+            : undefined
+        }
       />
       {/* Уже в расписании: «Выбрать время» закрывает шторку тренировки. */}
       <RescheduleOfferDialog
