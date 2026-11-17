@@ -53,6 +53,7 @@ import { Route as AuthenticatedCrmIndexRouteImport } from './routes/_authenticat
 import { Route as AuthenticatedAnalyticsIndexRouteImport } from './routes/_authenticated/analytics/index'
 import { Route as AuthenticatedAccessIndexRouteImport } from './routes/_authenticated/access/index'
 import { Route as AuthenticatedAcademyIndexRouteImport } from './routes/_authenticated/academy/index'
+import { Route as ApiCrmSendTemplateRouteImport } from './routes/api/crm/send-template'
 import { Route as ApiCrmSendRouteImport } from './routes/api/crm/send'
 import { Route as ApiCrmMetaRouteImport } from './routes/api/crm/meta'
 import { Route as AuthenticatedScriptsSettingsRouteImport } from './routes/_authenticated/scripts/settings'
@@ -330,6 +331,11 @@ const AuthenticatedAcademyIndexRoute =
     path: '/academy/',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const ApiCrmSendTemplateRoute = ApiCrmSendTemplateRouteImport.update({
+  id: '/api/crm/send-template',
+  path: '/api/crm/send-template',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiCrmSendRoute = ApiCrmSendRouteImport.update({
   id: '/api/crm/send',
   path: '/api/crm/send',
@@ -659,6 +665,7 @@ export interface FileRoutesByFullPath {
   '/scripts/settings': typeof AuthenticatedScriptsSettingsRoute
   '/api/crm/meta': typeof ApiCrmMetaRoute
   '/api/crm/send': typeof ApiCrmSendRoute
+  '/api/crm/send-template': typeof ApiCrmSendTemplateRoute
   '/academy/': typeof AuthenticatedAcademyIndexRoute
   '/access/': typeof AuthenticatedAccessIndexRoute
   '/analytics/': typeof AuthenticatedAnalyticsIndexRoute
@@ -749,6 +756,7 @@ export interface FileRoutesByTo {
   '/scripts/settings': typeof AuthenticatedScriptsSettingsRoute
   '/api/crm/meta': typeof ApiCrmMetaRoute
   '/api/crm/send': typeof ApiCrmSendRoute
+  '/api/crm/send-template': typeof ApiCrmSendTemplateRoute
   '/academy': typeof AuthenticatedAcademyIndexRoute
   '/access': typeof AuthenticatedAccessIndexRoute
   '/analytics': typeof AuthenticatedAnalyticsIndexRoute
@@ -841,6 +849,7 @@ export interface FileRoutesById {
   '/_authenticated/scripts/settings': typeof AuthenticatedScriptsSettingsRoute
   '/api/crm/meta': typeof ApiCrmMetaRoute
   '/api/crm/send': typeof ApiCrmSendRoute
+  '/api/crm/send-template': typeof ApiCrmSendTemplateRoute
   '/_authenticated/academy/': typeof AuthenticatedAcademyIndexRoute
   '/_authenticated/access/': typeof AuthenticatedAccessIndexRoute
   '/_authenticated/analytics/': typeof AuthenticatedAnalyticsIndexRoute
@@ -933,6 +942,7 @@ export interface FileRouteTypes {
     | '/scripts/settings'
     | '/api/crm/meta'
     | '/api/crm/send'
+    | '/api/crm/send-template'
     | '/academy/'
     | '/access/'
     | '/analytics/'
@@ -1023,6 +1033,7 @@ export interface FileRouteTypes {
     | '/scripts/settings'
     | '/api/crm/meta'
     | '/api/crm/send'
+    | '/api/crm/send-template'
     | '/academy'
     | '/access'
     | '/analytics'
@@ -1114,6 +1125,7 @@ export interface FileRouteTypes {
     | '/_authenticated/scripts/settings'
     | '/api/crm/meta'
     | '/api/crm/send'
+    | '/api/crm/send-template'
     | '/_authenticated/academy/'
     | '/_authenticated/access/'
     | '/_authenticated/analytics/'
@@ -1149,6 +1161,7 @@ export interface RootRouteChildren {
   ApiTranscribeRoute: typeof ApiTranscribeRoute
   ApiCrmMetaRoute: typeof ApiCrmMetaRoute
   ApiCrmSendRoute: typeof ApiCrmSendRoute
+  ApiCrmSendTemplateRoute: typeof ApiCrmSendTemplateRoute
   ApiCrmTelegramAccountIdRoute: typeof ApiCrmTelegramAccountIdRoute
 }
 
@@ -1461,6 +1474,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/academy/'
       preLoaderRoute: typeof AuthenticatedAcademyIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/api/crm/send-template': {
+      id: '/api/crm/send-template'
+      path: '/api/crm/send-template'
+      fullPath: '/api/crm/send-template'
+      preLoaderRoute: typeof ApiCrmSendTemplateRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/api/crm/send': {
       id: '/api/crm/send'
@@ -1964,6 +1984,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiTranscribeRoute: ApiTranscribeRoute,
   ApiCrmMetaRoute: ApiCrmMetaRoute,
   ApiCrmSendRoute: ApiCrmSendRoute,
+  ApiCrmSendTemplateRoute: ApiCrmSendTemplateRoute,
   ApiCrmTelegramAccountIdRoute: ApiCrmTelegramAccountIdRoute,
 }
 export const routeTree = rootRouteImport

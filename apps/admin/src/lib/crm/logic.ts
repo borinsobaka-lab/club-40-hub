@@ -3,6 +3,8 @@
  * состояние задач, подписи событий ленты. Тест — logic.test.ts.
  */
 import { replyWindowOpen } from "./meta";
+
+export { replyWindowOpen };
 import type { CrmDeal, CrmEvent, CrmStage, CrmTask, StageKind } from "./types";
 
 const KIND_ORDER: Record<StageKind, number> = { open: 0, won: 1, lost: 2 };
@@ -368,7 +370,9 @@ export function replyBlock(
   if (!account) return null;
   if (account.status === "disabled") return "Аккаунт канала отключён — ответить нельзя.";
   if (!replyWindowOpen(account.kind, lastInboundAt, now))
-    return "Прошло больше 24 часов с последнего сообщения клиента. По правилам канала ответить можно, когда он напишет снова.";
+    return account.kind === "whatsapp"
+      ? "Прошло больше 24 часов с последнего сообщения клиента — WhatsApp пропустит только одобренный шаблон."
+      : "Прошло больше 7 дней с последнего сообщения клиента. По правилам канала ответить можно, когда он напишет снова.";
   return null;
 }
 
@@ -425,4 +429,100 @@ export function presetDue(preset: DuePreset, now: Date): Date {
     default:
       return at(7, 10);
   }
+}
+
+// Шаблоны WhatsApp ----------------------------------------------------------------
+
+export const WA_STATUS_LABEL: Record<string, string> = {
+  PENDING: "на проверке",
+  APPROVED: "одобрен",
+  REJECTED: "отклонён",
+  PAUSED: "приостановлен",
+  DISABLED: "отключён Meta",
+  IN_APPEAL: "апелляция",
+  PENDING_DELETION: "удаляется",
+};
+
+export const WA_VAR_LABEL: Record<string, string> = { name: "имя", studio: "клуб", text: "текст" };
+
+/**
+ * Текст шаблона для Meta: наши {имя} и {клуб} и свободные {текст} — в
+ * позиционные {{1}}, {{2}}… (одна и та же переменная — один номер, каждый
+ * {текст} — свой). vars — что подставлять в каждый номер.
+ */
+export function toWaTemplate(body: string): { body: string; vars: string[] } {
+  const vars: string[] = [];
+  const out = body.replace(/\{(имя|клуб|текст)\}/gi, (_, raw: string) => {
+    const key =
+      raw.toLowerCase() === "имя" ? "name" : raw.toLowerCase() === "клуб" ? "studio" : "text";
+    let index = key === "text" ? -1 : vars.indexOf(key);
+    if (index < 0) {
+      vars.push(key);
+      index = vars.length - 1;
+    }
+    return `{{${index + 1}}}`;
+  });
+  return { body: out, vars };
+}
+
+/** Обратно — для показа: {{1}} → {имя}. */
+export function fromWaTemplate(body: string, vars: string[]): string {
+  return body.replace(/\{\{(\d+)\}\}/g, (m, n: string) => {
+    const v = vars[Number(n) - 1];
+    return v ? `{${WA_VAR_LABEL[v] ?? v}}` : m;
+  });
+}
+
+/** Текст сообщения с подставленными значениями. */
+export function renderWaTemplate(body: string, values: string[]): string {
+  return body.replace(/\{\{(\d+)\}\}/g, (m, n: string) => values[Number(n) - 1] || m);
+}
+
+/** Сколько переменных {{n}} в тексте шаблона (наибольший номер). */
+export function waVarCount(body: string): number {
+  let max = 0;
+  for (const m of body.matchAll(/\{\{(\d+)\}\}/g)) max = Math.max(max, Number(m[1]));
+  return max;
+}
+
+/** Значения переменных по умолчанию: имя контакта (первое слово), клуб. */
+export function waDefaultValues(
+  vars: string[],
+  count: number,
+  ctx: { name?: string | null; studio?: string | null },
+): string[] {
+  return Array.from({ length: Math.max(count, vars.length) }, (_, i) =>
+    vars[i] === "name"
+      ? ((ctx.name ?? "").trim().split(/\s+/)[0] ?? "")
+      : vars[i] === "studio"
+        ? (ctx.studio ?? "")
+        : "",
+  );
+}
+
+/** Правила Meta к тексту шаблона; null — годится. */
+export function waBodyProblem(body: string): string | null {
+  const text = body.trim();
+  if (!text) return "Напишите текст шаблона";
+  if (text.length > 1024) return "Текст длиннее 1024 знаков";
+  if (/^\{\{\d+\}\}/.test(text) || /\{\{\d+\}\}$/.test(text))
+    return "Текст не может начинаться или заканчиваться переменной — добавьте слова до и после";
+  if (/\{\{\d+\}\}\s*\{\{\d+\}\}/.test(text)) return "Между двумя переменными должен быть текст";
+  return null;
+}
+
+/** Имя шаблона для Meta из названия: латиница, цифры и «_». */
+export function waTemplateName(raw: string): string {
+  return raw
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "")
+    .slice(0, 60);
+}
+
+/** Номер для WhatsApp: только цифры с кодом страны («5XX…» — грузинский). */
+export function waPhone(raw: string | null | undefined): string | null {
+  const d = (raw ?? "").replace(/\D/g, "");
+  if (d.length < 8) return null;
+  return d.length === 9 && d.startsWith("5") ? `995${d}` : d;
 }

@@ -1,9 +1,14 @@
 import type React from "react";
-import { useState } from "react";
+import { lazy, Suspense, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Loader2, Pencil, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { AmoCrmLinkIcon } from "@/components/amocrm-icon";
+import { ClientChatPanel } from "@/components/crm/client-chat-panel";
+import { useAdminAccess } from "@/hooks/use-admin-access";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { hasRight } from "@/lib/admin-access";
+import { useClientConversations } from "@/lib/crm/data";
 import { supabase } from "@/integrations/supabase/client";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -278,10 +283,12 @@ export function ClientCardDialog({
   onOpenChange: (v: boolean) => void;
   client: ClientLike | null;
 }) {
+  const crm = useCrmAccess();
   if (!client) return null;
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl">
+      {/* С доступом к CRM карточка шире: справа — переписка с клиентом. */}
+      <DialogContent className={crm ? "max-w-2xl md:h-[85vh] md:max-w-6xl" : "max-w-2xl"}>
         {/*
           Содержимое монтируется при каждом открытии, а запросы привязаны к
           клиенту ключом: запоздавший ответ по прошлому клиенту в карточку
@@ -293,8 +300,27 @@ export function ClientCardDialog({
   );
 }
 
+// Карточка сделки открывается из карточки клиента и сама открывает карточку
+// клиента — грузим её отдельным чанком, чтобы модули не зависели по кругу.
+const DealDialog = lazy(() =>
+  import("@/components/crm/deal-dialog").then((m) => ({ default: m.DealDialog })),
+);
+
+/** Открыт ли сотруднику раздел CRM (переписка и сделки в карточке клиента). */
+function useCrmAccess(): boolean {
+  const access = useAdminAccess();
+  return hasRight(access, "crm.view") || hasRight(access, "crm.manage");
+}
+
 function ClientCard({ client: initial, onClose }: { client: ClientLike; onClose: () => void }) {
   const queryClient = useQueryClient();
+  const crm = useCrmAccess();
+  const isMobile = useIsMobile();
+  // Переписка: на компьютере — колонкой справа, на телефоне — вкладкой.
+  const chatAside = crm && !isMobile;
+  const [dealId, setDealId] = useState<string | null>(null);
+  const { data: chats } = useClientConversations(initial.id, crm);
+  const unreadChats = (chats ?? []).reduce((n, c) => n + c.unread_count, 0);
   const [editOpen, setEditOpen] = useState(false);
   const [expiredEditOpen, setExpiredEditOpen] = useState(false);
   const [saleOpen, setSaleOpen] = useState(false);
@@ -425,6 +451,14 @@ function ClientCard({ client: initial, onClose }: { client: ClientLike; onClose:
   const photo = client.photo_url || "";
 
   const contacts = [client.phone, client.phone2, client.email].filter(Boolean).join(" · ");
+  const chatClient = {
+    id: client.id,
+    name,
+    phone: client.phone ?? null,
+    phone2: client.phone2 ?? null,
+    email: client.email ?? null,
+    studioId: cardStudioId ?? null,
+  };
 
   return (
     <>
@@ -447,166 +481,190 @@ function ClientCard({ client: initial, onClose }: { client: ClientLike; onClose:
           </div>
         </div>
       </DialogHeader>
-      <DialogBody>
-        {/* Комментарии — над вкладками: видны, откуда бы карточку ни открыли
+      <DialogBody
+        className={cn(
+          chatAside && "grid grid-cols-[minmax(0,1fr)_24rem] overflow-hidden p-0 sm:px-0",
+        )}
+      >
+        <div className={cn(chatAside && "min-h-0 overflow-y-auto px-6 py-4")}>
+          {/* Комментарии — над вкладками: видны, откуда бы карточку ни открыли
             и какая вкладка ни выбрана (решение владельца 2026-10-19); лента
             о клиенте и всех его абонементах — 2026-11-01. */}
-        <ClientCommentsCard clientId={client.id} clientName={name} />
-        <Tabs defaultValue="card" className="w-full">
-          {/* На телефоне четыре вкладки не помещаются в строку — прокручиваются. */}
-          <TabsList className="max-w-full justify-start overflow-x-auto">
-            <TabsTrigger value="card">Карточка</TabsTrigger>
-            <TabsTrigger value="visits">Посещения</TabsTrigger>
-            <TabsTrigger value="profile">Анкета</TabsTrigger>
-            <TabsTrigger value="app">Приложение</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="card" className="mt-4 space-y-5">
-            <div className="grid grid-cols-2 gap-x-6 gap-y-3 rounded-lg border p-3">
-              <Field label="Пол" value={genderLabel(client.gender)} />
-              <Field label="Дата рождения" value={formatDate(client.birthday)} />
-              <Field label="Регистрация" value={formatDate(client.registration_date)} />
-              <Field label="Последний визит" value={formatDate(client.last_visit_date)} />
-            </div>
-
-            <div>
-              <div className="mb-2 flex min-h-9 items-center justify-between">
-                <SectionLabel>Активный абонемент</SectionLabel>
-                {active && (
-                  <Button variant="outline" size="sm" onClick={() => setEditOpen(true)}>
-                    <Pencil />
-                    Редактировать
-                  </Button>
-                )}
-              </div>
-              {loadingActive ? (
-                <Skeleton className="h-24 w-full rounded-lg" />
-              ) : !active ? (
-                <InfoNote variant="empty">Нет активного абонемента.</InfoNote>
-              ) : (
-                <div className="rounded-lg border bg-background p-3 text-sm">
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="font-medium">{membershipName(active.memberships)}</div>
-                    <StatusChip tone="neutral">{saleSourceLabel(active.source)}</StatusChip>
-                  </div>
-                  <div className="mt-1 text-xs text-muted-foreground">
-                    {active.started_at ? (
-                      <>
-                        {formatDate(active.started_at)} →{" "}
-                        {active.ends_at ? formatDate(active.ends_at) : "бессрочно"}
-                      </>
-                    ) : (
-                      "срок — с первого посещения"
-                    )}
-                  </div>
-                  <BalanceLines m={active.memberships} left={active} />
-                  <div className="mt-2 flex flex-wrap items-center gap-1.5">
-                    <MembershipStatusBadge m={active} />
-                  </div>
-                  {/* Цвет статуса несут бейджи выше; здесь только подробности. */}
-                  {active.status === "frozen" && active.frozen_until && (
-                    <div className="mt-2 text-xs text-muted-foreground">
-                      Заморожен до {formatDate(active.frozen_until)}
-                    </div>
-                  )}
-                  {active.cancelled_at && (
-                    <div className="mt-2 text-xs text-muted-foreground">
-                      Отменён: {formatDate(active.cancelled_at)}
-                      {active.cancel_reason ? ` · ${active.cancel_reason}` : ""}
-                    </div>
-                  )}
-                </div>
+          <ClientCommentsCard clientId={client.id} clientName={name} />
+          <Tabs defaultValue="card" className="w-full">
+            {/* На телефоне четыре вкладки не помещаются в строку — прокручиваются. */}
+            <TabsList className="max-w-full justify-start overflow-x-auto">
+              <TabsTrigger value="card">Карточка</TabsTrigger>
+              <TabsTrigger value="visits">Посещения</TabsTrigger>
+              <TabsTrigger value="profile">Анкета</TabsTrigger>
+              <TabsTrigger value="app">Приложение</TabsTrigger>
+              {crm && isMobile && (
+                <TabsTrigger value="chat">
+                  Переписка{unreadChats > 0 ? ` · ${unreadChats}` : ""}
+                </TabsTrigger>
               )}
-            </div>
+            </TabsList>
 
-            <div>
-              <div className="mb-2 flex min-h-9 items-center justify-between">
-                <SectionLabel>История продаж</SectionLabel>
-                <div className="flex flex-wrap items-center justify-end gap-2">
-                  {lastExpired && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setExpiredEditOpen(true)}
-                      disabled={loadingActive}
-                    >
+            <TabsContent value="card" className="mt-4 space-y-5">
+              <div className="grid grid-cols-2 gap-x-6 gap-y-3 rounded-lg border p-3">
+                <Field label="Пол" value={genderLabel(client.gender)} />
+                <Field label="Дата рождения" value={formatDate(client.birthday)} />
+                <Field label="Регистрация" value={formatDate(client.registration_date)} />
+                <Field label="Последний визит" value={formatDate(client.last_visit_date)} />
+              </div>
+
+              <div>
+                <div className="mb-2 flex min-h-9 items-center justify-between">
+                  <SectionLabel>Активный абонемент</SectionLabel>
+                  {active && (
+                    <Button variant="outline" size="sm" onClick={() => setEditOpen(true)}>
                       <Pencil />
                       Редактировать
                     </Button>
                   )}
-                  {/* Новая продажа сразу с этим клиентом — без перехода в «Абонементы». */}
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={startSale}
-                    disabled={!studioId || loadingSales}
-                  >
-                    <Plus />
-                    Добавить продажу
-                  </Button>
                 </div>
+                {loadingActive ? (
+                  <Skeleton className="h-24 w-full rounded-lg" />
+                ) : !active ? (
+                  <InfoNote variant="empty">Нет активного абонемента.</InfoNote>
+                ) : (
+                  <div className="rounded-lg border bg-background p-3 text-sm">
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="font-medium">{membershipName(active.memberships)}</div>
+                      <StatusChip tone="neutral">{saleSourceLabel(active.source)}</StatusChip>
+                    </div>
+                    <div className="mt-1 text-xs text-muted-foreground">
+                      {active.started_at ? (
+                        <>
+                          {formatDate(active.started_at)} →{" "}
+                          {active.ends_at ? formatDate(active.ends_at) : "бессрочно"}
+                        </>
+                      ) : (
+                        "срок — с первого посещения"
+                      )}
+                    </div>
+                    <BalanceLines m={active.memberships} left={active} />
+                    <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                      <MembershipStatusBadge m={active} />
+                    </div>
+                    {/* Цвет статуса несут бейджи выше; здесь только подробности. */}
+                    {active.status === "frozen" && active.frozen_until && (
+                      <div className="mt-2 text-xs text-muted-foreground">
+                        Заморожен до {formatDate(active.frozen_until)}
+                      </div>
+                    )}
+                    {active.cancelled_at && (
+                      <div className="mt-2 text-xs text-muted-foreground">
+                        Отменён: {formatDate(active.cancelled_at)}
+                        {active.cancel_reason ? ` · ${active.cancel_reason}` : ""}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
-              {loadingSales ? (
-                <CardSkeleton rows={2} />
-              ) : sales.length === 0 ? (
-                <InfoNote variant="empty">Продаж пока нет.</InfoNote>
-              ) : (
-                <ul className="divide-y rounded-lg border bg-background">
-                  {sales.map((s) => {
-                    const cm = s.client_memberships?.[0] ?? null;
-                    return (
-                      <li
-                        key={s.id}
-                        className="flex items-center justify-between gap-3 px-3 py-2 text-sm"
+
+              <div>
+                <div className="mb-2 flex min-h-9 items-center justify-between">
+                  <SectionLabel>История продаж</SectionLabel>
+                  <div className="flex flex-wrap items-center justify-end gap-2">
+                    {lastExpired && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setExpiredEditOpen(true)}
+                        disabled={loadingActive}
                       >
-                        <div className="min-w-0">
-                          <div className="flex items-center gap-2">
-                            <div className="font-medium truncate">
-                              {membershipName(s.memberships)}
+                        <Pencil />
+                        Редактировать
+                      </Button>
+                    )}
+                    {/* Новая продажа сразу с этим клиентом — без перехода в «Абонементы». */}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={startSale}
+                      disabled={!studioId || loadingSales}
+                    >
+                      <Plus />
+                      Добавить продажу
+                    </Button>
+                  </div>
+                </div>
+                {loadingSales ? (
+                  <CardSkeleton rows={2} />
+                ) : sales.length === 0 ? (
+                  <InfoNote variant="empty">Продаж пока нет.</InfoNote>
+                ) : (
+                  <ul className="divide-y rounded-lg border bg-background">
+                    {sales.map((s) => {
+                      const cm = s.client_memberships?.[0] ?? null;
+                      return (
+                        <li
+                          key={s.id}
+                          className="flex items-center justify-between gap-3 px-3 py-2 text-sm"
+                        >
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2">
+                              <div className="font-medium truncate">
+                                {membershipName(s.memberships)}
+                              </div>
+                              {cm && <MembershipStatusBadge m={cm} />}
                             </div>
-                            {cm && <MembershipStatusBadge m={cm} />}
+                            <div className="text-xs text-muted-foreground">
+                              {formatDate(s.sold_at)}
+                              {/* Продажа другого клуба сети — правит её только тот клуб. */}
+                              {s.studio_id !== studioId && ` · клуб «${s.studio?.name ?? "—"}»`}
+                              {" · "}
+                              {saleSourceLabel(s.source)}
+                              {s.admin_name ? ` · ${s.admin_name}` : ""}
+                              {s.remaining_installments > 0
+                                ? ` · рассрочка 1 + ${s.remaining_installments}, первый взнос ${formatMoney(Number(s.down_payment_amount))}`
+                                : ""}
+                            </div>
+                            {cm && <BalanceLines m={s.memberships} left={cm} />}
                           </div>
-                          <div className="text-xs text-muted-foreground">
-                            {formatDate(s.sold_at)}
-                            {/* Продажа другого клуба сети — правит её только тот клуб. */}
-                            {s.studio_id !== studioId && ` · клуб «${s.studio?.name ?? "—"}»`}
-                            {" · "}
-                            {saleSourceLabel(s.source)}
-                            {s.admin_name ? ` · ${s.admin_name}` : ""}
-                            {s.remaining_installments > 0
-                              ? ` · рассрочка 1 + ${s.remaining_installments}, первый взнос ${formatMoney(Number(s.down_payment_amount))}`
-                              : ""}
+                          <div className="shrink-0 font-medium tabular-nums">
+                            {formatMoney(Number(s.total_amount))}
                           </div>
-                          {cm && <BalanceLines m={s.memberships} left={cm} />}
-                        </div>
-                        <div className="shrink-0 font-medium tabular-nums">
-                          {formatMoney(Number(s.total_amount))}
-                        </div>
-                      </li>
-                    );
-                  })}
-                </ul>
-              )}
-            </div>
-          </TabsContent>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+              </div>
+            </TabsContent>
 
-          <TabsContent value="visits" className="mt-4">
-            <VisitsTab clientId={client.id} userId={userId} studioId={studioId} />
-          </TabsContent>
+            <TabsContent value="visits" className="mt-4">
+              <VisitsTab clientId={client.id} userId={userId} studioId={studioId} />
+            </TabsContent>
 
-          <TabsContent value="profile" className="mt-4 space-y-4">
-            <ProfileTab profile={profile} loading={loadingProfile} hasUser={!!userId} />
-            {/* Что написали тренеры в мобильном приложении (2026-11-05). */}
-            <TrainerCommentsBlock clientId={client.id} />
-          </TabsContent>
+            <TabsContent value="profile" className="mt-4 space-y-4">
+              <ProfileTab profile={profile} loading={loadingProfile} hasUser={!!userId} />
+              {/* Что написали тренеры в мобильном приложении (2026-11-05). */}
+              <TrainerCommentsBlock clientId={client.id} />
+            </TabsContent>
 
-          {/* Устройства, уведомления и активность в мобильном приложении. */}
-          <TabsContent value="app" className="mt-4 space-y-4">
-            {/* Пользователь приложения — тренер (2026-11-05). */}
-            <ClientTrainerField clientId={client.id} cardStudioId={cardStudioId} />
-            <ClientAppTab clientId={client.id} hasUser={!!userId} />
-          </TabsContent>
-        </Tabs>
+            {/* Устройства, уведомления и активность в мобильном приложении. */}
+            <TabsContent value="app" className="mt-4 space-y-4">
+              {/* Пользователь приложения — тренер (2026-11-05). */}
+              <ClientTrainerField clientId={client.id} cardStudioId={cardStudioId} />
+              <ClientAppTab clientId={client.id} hasUser={!!userId} />
+            </TabsContent>
+
+            {crm && isMobile && (
+              <TabsContent value="chat" className="mt-4">
+                <div className="flex h-[60dvh] flex-col overflow-hidden rounded-lg border">
+                  <ClientChatPanel client={chatClient} onOpenDeal={setDealId} />
+                </div>
+              </TabsContent>
+            )}
+          </Tabs>
+        </div>
+        {chatAside && (
+          <aside className="flex min-h-0 flex-col border-l bg-background">
+            <ClientChatPanel client={chatClient} onOpenDeal={setDealId} />
+          </aside>
+        )}
       </DialogBody>
       <DialogFooter>
         <Button variant="outline" onClick={onClose}>
@@ -617,6 +675,12 @@ function ClientCard({ client: initial, onClose }: { client: ClientLike; onClose:
           Редактировать
         </Button>
       </DialogFooter>
+
+      {dealId && (
+        <Suspense fallback={null}>
+          <DealDialog dealId={dealId} onClose={() => setDealId(null)} />
+        </Suspense>
+      )}
 
       <EditActiveMembershipDialog
         open={editOpen}

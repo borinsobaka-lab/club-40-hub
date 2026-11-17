@@ -2,12 +2,13 @@
  * Graph API Meta — сеть (только сервер): WhatsApp Cloud API, Messenger и
  * Instagram (через страницу Facebook и её токен). Токены — секреты аккаунта
  * канала; секрет приложения и токен проверки вебхука — переменные сервера
- * META_APP_SECRET и META_VERIFY_TOKEN. Версия API — META_GRAPH_VERSION.
+ * META_APP_SECRET и META_VERIFY_TOKEN. Версия API — META_GRAPH_VERSION (по
+ * умолчанию v26.0: v27.0 на 2026-11-18 в журнале изменений Meta не значится).
  */
 import { createHmac, timingSafeEqual } from "node:crypto";
 
 const TIMEOUT_MS = 20_000;
-const graph = () => `https://graph.facebook.com/${process.env.META_GRAPH_VERSION ?? "v27.0"}`;
+const graph = () => `https://graph.facebook.com/${process.env.META_GRAPH_VERSION ?? "v26.0"}`;
 
 export class MetaError extends Error {
   constructor(
@@ -149,6 +150,109 @@ export async function waDownload(
   }
 }
 
+// Шаблоны WhatsApp --------------------------------------------------------------
+
+export type WaTemplateRemote = {
+  id: string;
+  name: string;
+  language: string;
+  status: string;
+  category: string;
+  rejected_reason?: string;
+  components?: { type: string; text?: string }[];
+};
+
+/** Заявка шаблона на проверку Meta; ответ — id и статус (обычно PENDING). */
+export const waTemplateCreate = (
+  token: string,
+  wabaId: string,
+  t: {
+    name: string;
+    language: string;
+    category: string;
+    body: string;
+    footer: string | null;
+    examples: string[];
+  },
+) =>
+  call<{ id: string; status: string; category?: string }>(token, `${wabaId}/message_templates`, {
+    body: {
+      name: t.name,
+      language: t.language,
+      category: t.category,
+      parameter_format: "positional",
+      components: [
+        {
+          type: "BODY",
+          text: t.body,
+          ...(t.examples.length ? { example: { body_text: [t.examples] } } : {}),
+        },
+        ...(t.footer ? [{ type: "FOOTER", text: t.footer }] : []),
+      ],
+    },
+  });
+
+/** Все шаблоны аккаунта WhatsApp Business (до 500). */
+export async function waTemplatesList(token: string, wabaId: string): Promise<WaTemplateRemote[]> {
+  const out: WaTemplateRemote[] = [];
+  let after: string | undefined;
+  for (let page = 0; page < 5; page++) {
+    const res = await call<{
+      data?: WaTemplateRemote[];
+      paging?: { cursors?: { after?: string }; next?: string };
+    }>(
+      token,
+      `${wabaId}/message_templates?fields=id,name,language,status,category,rejected_reason,components&limit=100${
+        after ? `&after=${encodeURIComponent(after)}` : ""
+      }`,
+    );
+    out.push(...(res.data ?? []));
+    after = res.paging?.next ? res.paging.cursors?.after : undefined;
+    if (!after) break;
+  }
+  return out;
+}
+
+export const waTemplateDelete = (
+  token: string,
+  wabaId: string,
+  name: string,
+  metaId: string | null,
+) =>
+  call<{ success: boolean }>(
+    token,
+    `${wabaId}/message_templates?name=${encodeURIComponent(name)}${metaId ? `&hsm_id=${encodeURIComponent(metaId)}` : ""}`,
+    { method: "DELETE" },
+  );
+
+export async function waSendTemplate(
+  token: string,
+  phoneNumberId: string,
+  to: string,
+  t: { name: string; language: string; values: string[] },
+): Promise<string> {
+  const res = await call<{ messages?: { id: string }[] }>(token, `${phoneNumberId}/messages`, {
+    body: {
+      messaging_product: "whatsapp",
+      recipient_type: "individual",
+      to,
+      type: "template",
+      template: {
+        name: t.name,
+        language: { code: t.language },
+        ...(t.values.length
+          ? {
+              components: [
+                { type: "body", parameters: t.values.map((text) => ({ type: "text", text })) },
+              ],
+            }
+          : {}),
+      },
+    },
+  });
+  return res.messages?.[0]?.id ?? "";
+}
+
 // Страница Facebook и Instagram (токен страницы) -----------------------------------
 
 export const pageInfo = (pageToken: string) =>
@@ -191,10 +295,18 @@ export async function pageSend(
   recipientId: string,
   body: string,
   attachment: { url: string; mime: string } | null,
+  /** Позже 24 ч (до 7 дней) — ответ человека с меткой HUMAN_AGENT. */
+  humanAgent = false,
 ): Promise<string> {
   const send = (message: Record<string, unknown>) =>
     call<{ message_id?: string }>(pageToken, "me/messages", {
-      body: { recipient: { id: recipientId }, messaging_type: "RESPONSE", message },
+      body: {
+        recipient: { id: recipientId },
+        ...(humanAgent
+          ? { messaging_type: "MESSAGE_TAG", tag: "HUMAN_AGENT" }
+          : { messaging_type: "RESPONSE" }),
+        message,
+      },
     });
   let id = "";
   if (attachment) {

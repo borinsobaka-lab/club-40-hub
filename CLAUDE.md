@@ -1283,6 +1283,16 @@ AUTH_SETUP.md.
   Актуальные определения `crm_tasks_biu`, `crm_tasks_done_au`,
   `crm_automations_biu`, `crm_automations_run` — здесь. Раздел «Задачи» —
   RPC `crm_tasks_list(assignee, type, done)` (security invoker).
+  Шаблоны WhatsApp и «написать первым» (решение владельца 2026-11-18):
+  `db/migrations/2026-11-18_zz_crm_wa_templates.sql` —
+  `crm_channel_accounts.waba_id` (аккаунт WhatsApp Business: шаблоны — его),
+  `crm_wa_templates` (имя, язык, категория MARKETING / UTILITY, текст с
+  `{{1}}…`, `vars` — что подставлять: `name` / `studio` / `text`, статус как
+  у Meta, причина отказа, `meta_id`; **пишет только сервер**, читают все с
+  правом CRM), `crm_messages.template_id`, `crm_conversation_start`
+  (service_role) — диалог для сообщения первыми: контакт по id в канале, по
+  карточке клиента, по телефону или новый; сделку не заводит (её заведёт
+  ответ клиента).
   Рейтинг тренеров и чаевые: `db/migrations/2026-10-11_zzzzzzzzzzzzz_trainer_ratings.sql`
   — `trainer_reviews` (оценка 1–5, одна от учётной записи на тренера; клиент
   читает и правит свою, ставит — тренеру, которого видит в приложении,

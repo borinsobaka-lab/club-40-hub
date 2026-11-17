@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { AlertTriangle, FileText, Loader2, Paperclip, Send, X } from "lucide-react";
 import { toast } from "sonner";
@@ -32,12 +32,15 @@ export function ChatThread({
   contactName,
   studioName,
   disabledReason,
+  disabledAction,
 }: {
   conversationId: string;
   contactName?: string | null;
   studioName?: string | null;
   /** Почему ответить нельзя (аккаунт отключён) — вместо поля ввода. */
   disabledReason?: string | null;
+  /** Что можно сделать вместо ответа («Отправить шаблон» WhatsApp). */
+  disabledAction?: ReactNode;
 }) {
   const qc = useQueryClient();
   const { data: messages, isLoading } = useMessages(conversationId);
@@ -89,8 +92,9 @@ export function ChatThread({
         )}
       </div>
       {disabledReason ? (
-        <div className="border-t bg-muted/40 px-4 py-3 text-sm text-muted-foreground">
-          {disabledReason}
+        <div className="flex flex-wrap items-center gap-3 border-t bg-muted/40 px-4 py-3 text-sm text-muted-foreground">
+          <span className="min-w-0 flex-1">{disabledReason}</span>
+          {disabledAction}
         </div>
       ) : (
         <Composer
@@ -292,7 +296,8 @@ function Composer({
               void send();
             }
           }}
-          placeholder="Сообщение клиенту. Enter — отправить, Shift+Enter — новая строка"
+          placeholder="Сообщение клиенту"
+          title="Enter — отправить, Shift+Enter — новая строка"
           aria-label="Сообщение клиенту"
           className="max-h-40 min-h-10 flex-1 resize-none"
         />

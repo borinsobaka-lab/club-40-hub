@@ -6,7 +6,10 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import {
   connectMetaAccount,
   connectTelegramBot,
+  createWaTemplate,
   deleteChannel,
+  deleteWaTemplate,
+  syncWaTemplates,
   setChannelEnabled,
 } from "@/lib/crm/channels.server";
 import { isBotToken } from "@/lib/crm/telegram";
@@ -93,5 +96,54 @@ export const deleteChannelFn = createServerFn({ method: "POST" })
   .handler(async ({ context, data }) => {
     await requireManage(context.supabase);
     await deleteChannel(data.id);
+    return { ok: true };
+  });
+
+// Шаблоны WhatsApp («Настройки» → «Шаблоны WhatsApp») -----------------------------
+
+export const createWaTemplateFn = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data) =>
+    parse(
+      z.object({
+        accountId: z.string().uuid(),
+        name: z
+          .string()
+          .trim()
+          .regex(
+            /^[a-z0-9_]{3,60}$/,
+            "Имя шаблона — латиница в нижнем регистре, цифры и «_», от 3 знаков",
+          ),
+        language: z.enum(["ru", "en", "ka"]),
+        category: z.enum(["MARKETING", "UTILITY"]),
+        body: z
+          .string()
+          .trim()
+          .min(1, "Напишите текст шаблона")
+          .max(1024, "Текст длиннее 1024 знаков"),
+        footer: z.string().trim().max(60, "Подпись длиннее 60 знаков").nullable(),
+      }),
+      data,
+    ),
+  )
+  .handler(async ({ context, data }) => {
+    await requireManage(context.supabase);
+    return createWaTemplate({ ...data, userId: context.userId });
+  });
+
+export const syncWaTemplatesFn = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data) => parse(z.object({ accountId: z.string().uuid() }), data))
+  .handler(async ({ context, data }) => {
+    await requireManage(context.supabase);
+    return { count: await syncWaTemplates(data.accountId) };
+  });
+
+export const deleteWaTemplateFn = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data) => parse(z.object({ id: z.string().uuid() }), data))
+  .handler(async ({ context, data }) => {
+    await requireManage(context.supabase);
+    await deleteWaTemplate(data.id);
     return { ok: true };
   });

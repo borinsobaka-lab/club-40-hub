@@ -11,6 +11,7 @@ import { unwrap } from "@/lib/query";
 import { sortStages } from "./logic";
 import type {
   CrmAutomation,
+  CrmWaTemplate,
   CrmChannelAccount,
   CrmConversation,
   CrmMessage,
@@ -558,4 +559,150 @@ export function useCrmReport(pipelineId: string | null, from: string, to: string
     enabled: !!pipelineId && !!from && !!to,
     meta: { errorMessage: "Не удалось загрузить отчёт" },
   });
+}
+
+// Клиент портала в CRM: его диалоги и сделки (карточка клиента) -------------------
+
+/** Диалоги всех контактов CRM, привязанных к карточке клиента. */
+export function useClientConversations(clientId: string | null, enabled = true) {
+  return useQuery({
+    queryKey: [CRM_KEY, "conversations", "client", clientId],
+    queryFn: () =>
+      unwrap<CrmConversation[]>(
+        supabase
+          .from("crm_conversations")
+          .select(
+            "id, contact_id, account_id, studio_id, last_message_at, last_message_text, last_direction, last_inbound_at, unread_count, contact:crm_contacts!inner(id, name, phone, client_id), identity:crm_contact_identities(username, display_name)",
+          )
+          .eq("contact.client_id", clientId!)
+          .order("last_message_at", { ascending: false, nullsFirst: false }),
+      ),
+    enabled: enabled && !!clientId,
+    refetchInterval: 8_000,
+    meta: { errorMessage: "Не удалось загрузить переписку" },
+  });
+}
+
+export type ClientDeal = {
+  id: string;
+  title: string;
+  stage_id: string;
+  closed_at: string | null;
+  created_at: string;
+};
+
+/** Сделки клиента (через его контакты CRM): открытые первыми. */
+export function useClientDeals(clientId: string | null, enabled = true) {
+  return useQuery({
+    queryKey: [CRM_KEY, "deals", "client", clientId],
+    queryFn: () =>
+      unwrap<ClientDeal[]>(
+        supabase
+          .from("crm_deals")
+          .select(
+            "id, title, stage_id, closed_at, created_at, contact:crm_contacts!inner(client_id)",
+          )
+          .eq("contact.client_id", clientId!)
+          .order("closed_at", { ascending: false, nullsFirst: true })
+          .order("created_at", { ascending: false })
+          .limit(20),
+      ),
+    enabled: enabled && !!clientId,
+    meta: { errorMessage: "Не удалось загрузить сделки клиента" },
+  });
+}
+
+/** Сделка для клиента портала: контакт CRM берётся его или заводится по карточке. */
+export async function createDealForClient(input: {
+  clientId: string;
+  name: string;
+  phone: string | null;
+  email: string | null;
+  pipelineId: string;
+  stageId: string;
+  studioId: string | null;
+  responsibleId: string | null;
+}): Promise<string> {
+  const existing = await unwrap<{ id: string }[]>(
+    supabase
+      .from("crm_contacts")
+      .select("id")
+      .eq("client_id", input.clientId)
+      .order("created_at")
+      .limit(1),
+  );
+  let contactId = existing[0]?.id;
+  if (!contactId) {
+    const rows = await unwrap<{ id: string }[]>(
+      supabase
+        .from("crm_contacts")
+        .insert({
+          name: input.name,
+          phone: input.phone,
+          email: input.email,
+          client_id: input.clientId,
+        })
+        .select("id"),
+    );
+    contactId = rows[0].id;
+  }
+  const rows = await unwrap<{ id: string }[]>(
+    supabase
+      .from("crm_deals")
+      .insert({
+        title: input.name,
+        pipeline_id: input.pipelineId,
+        stage_id: input.stageId,
+        contact_id: contactId,
+        studio_id: input.studioId,
+        responsible_id: input.responsibleId,
+      })
+      .select("id"),
+  );
+  return rows[0].id;
+}
+
+// Шаблоны WhatsApp ----------------------------------------------------------------
+
+export const crmWaTemplatesQuery = queryOptions({
+  queryKey: [CRM_KEY, "wa-templates"],
+  queryFn: () =>
+    unwrap<CrmWaTemplate[]>(
+      supabase
+        .from("crm_wa_templates")
+        .select(
+          "id, account_id, name, language, category, body, footer, vars, status, rejected_reason, synced_at",
+        )
+        .order("created_at", { ascending: false }),
+    ),
+  staleTime: 60_000,
+  meta: { errorMessage: "Не удалось загрузить шаблоны WhatsApp" },
+});
+
+/**
+ * Отправить шаблон WhatsApp: в существующий диалог или первым — по номеру
+ * (диалог заведётся). Возвращает id диалога.
+ */
+export async function sendWaTemplate(input: {
+  templateId: string;
+  values: string[];
+  conversationId?: string;
+  start?: { accountId: string; phone: string; name: string; clientId: string | null };
+}): Promise<string> {
+  const { data } = await supabase.auth.getSession();
+  const res = await fetch("/api/crm/send-template", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${data.session?.access_token ?? ""}`,
+    },
+    body: JSON.stringify(input),
+  });
+  const json = (await res.json().catch(() => null)) as {
+    error?: string;
+    conversation_id?: string;
+  } | null;
+  if (!res.ok || !json?.conversation_id)
+    throw new Error(json?.error ?? "Не удалось отправить шаблон");
+  return json.conversation_id;
 }

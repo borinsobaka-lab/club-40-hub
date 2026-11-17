@@ -7,7 +7,7 @@
  * два контейнера при выкатке берут разные задания (skip locked).
  */
 import { getSupabaseAdmin, hasSupabaseAdmin } from "@/integrations/supabase/client.server";
-import { sendAutoMessage } from "./channels.server";
+import { sendAutoMessage, syncPendingWaTemplates } from "./channels.server";
 
 const TICK_MS = 10_000;
 
@@ -23,6 +23,8 @@ export function startCrmAutomations() {
   if (state.started || !hasSupabaseAdmin() || process.env.PUSH_WORKER === "off") return;
   state.started = true;
   setInterval(() => void runCrmAutomations(), TICK_MS);
+  // Шаблоны WhatsApp на проверке Meta: статус приходит вебхуком, это запас.
+  setInterval(() => void syncPendingWaTemplates().catch(() => {}), 15 * 60_000);
 }
 
 export async function runCrmAutomations(): Promise<void> {

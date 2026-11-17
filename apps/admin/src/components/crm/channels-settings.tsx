@@ -169,7 +169,7 @@ export function ChannelsPanel() {
                 </div>
                 <div className="truncate text-xs text-muted-foreground">
                   {CHANNEL_LABEL[a.kind]}
-                  {a.username ? ` · @${a.username}` : ""}
+                  {a.username ? ` · ${a.kind === "whatsapp" ? "" : "@"}${a.username}` : ""}
                   {` · ${studios.find((s) => s.id === a.studio_id)?.name ?? "без клуба"}`}
                   {a.status_note ? ` · ${a.status_note}` : ""}
                 </div>
@@ -354,8 +354,12 @@ function MetaForm({
   const pipelines = (setup?.pipelines ?? []).filter((p) => !p.is_archived);
 
   const save = async () => {
-    if (!token.trim() || (kind === "whatsapp" && !phoneNumberId.trim())) {
-      toast.error(kind === "whatsapp" ? "Заполните токен и Phone number ID" : "Вставьте токен");
+    if (!token.trim() || (kind === "whatsapp" && (!phoneNumberId.trim() || !wabaId.trim()))) {
+      toast.error(
+        kind === "whatsapp"
+          ? "Заполните токен, Phone number ID и ID аккаунта WhatsApp Business"
+          : "Вставьте токен",
+      );
       return;
     }
     setSaving(true);
@@ -415,7 +419,8 @@ function MetaForm({
                 </FormField>
                 <FormField
                   label="ID аккаунта WhatsApp Business"
-                  hint="Там же. С ним приложение само подпишется на сообщения аккаунта."
+                  required
+                  hint="Там же. По нему приложение подписывается на сообщения и работают шаблоны."
                 >
                   <Input
                     value={wabaId}

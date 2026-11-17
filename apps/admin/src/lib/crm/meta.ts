@@ -30,6 +30,9 @@ export type MetaIncoming = {
   files: MetaFile[];
 };
 
+/** Meta изменила статус шаблона WhatsApp (проверка, пауза, отключение). */
+export type MetaTemplateEvent = { metaId: string; status: string; reason: string | null };
+
 export type MetaStatus = {
   externalId: string;
   status: "sent" | "delivered" | "read" | "failed";
@@ -168,16 +171,39 @@ function messaging(
 export function parseMetaWebhook(payload: unknown): {
   messages: MetaIncoming[];
   statuses: MetaStatus[];
+  templates: MetaTemplateEvent[];
 } {
   const root = rec(payload);
   const object = str(root.object);
   const messages: MetaIncoming[] = [];
   const statuses: MetaStatus[] = [];
+  const templates: MetaTemplateEvent[] = [];
   for (const entry of arr(root.entry)) {
     const entryId = str(entry.id);
     if (object === "whatsapp_business_account") {
-      for (const c of arr(entry.changes))
+      for (const c of arr(entry.changes)) {
         if (c.field === "messages") whatsapp(rec(c.value), messages, statuses);
+        if (c.field === "message_template_status_update") {
+          const v = rec(c.value);
+          const metaId = str(v.message_template_id);
+          const event = str(v.event);
+          // REINSTATED / UNARCHIVED — шаблон снова работает.
+          const status = event === "REINSTATED" || event === "UNARCHIVED" ? "APPROVED" : event;
+          const reason = str(v.reason);
+          if (metaId && status)
+            templates.push({
+              metaId,
+              status,
+              reason:
+                [
+                  reason && reason !== "NONE" ? reason : null,
+                  str(rec(v.rejection_info).recommendation),
+                ]
+                  .filter(Boolean)
+                  .join(". ") || null,
+            });
+        }
+      }
     } else if ((object === "page" || object === "instagram") && entryId) {
       const kind = object === "page" ? "facebook" : "instagram";
       messaging(kind, entryId, arr(entry.messaging), messages);
@@ -192,12 +218,26 @@ export function parseMetaWebhook(payload: unknown): {
       );
     }
   }
-  return { messages, statuses };
+  return { messages, statuses, templates };
 }
 
-/** Окно ответа 24 ч (WhatsApp, Instagram, Facebook): можно ли ещё ответить. */
+const HOUR = 3600_000;
+
+/**
+ * Можно ли ещё ответить свободным текстом. WhatsApp — 24 часа после
+ * сообщения клиента (дальше только шаблон); Instagram и Facebook — 7 дней
+ * (после 24 часов — с меткой «оператор», HUMAN_AGENT); Telegram — всегда.
+ */
 export function replyWindowOpen(kind: string, lastInboundAt: string | null, now: Date): boolean {
   if (kind !== "whatsapp" && kind !== "instagram" && kind !== "facebook") return true;
   if (!lastInboundAt) return false;
-  return now.getTime() - new Date(lastInboundAt).getTime() < 24 * 3600_000;
+  const age = now.getTime() - new Date(lastInboundAt).getTime();
+  return age < (kind === "whatsapp" ? 24 : 7 * 24) * HOUR;
+}
+
+/** Instagram и Facebook позже 24 часов: ответ уходит с меткой HUMAN_AGENT. */
+export function needsHumanAgentTag(kind: string, lastInboundAt: string | null, now: Date): boolean {
+  if (kind !== "instagram" && kind !== "facebook") return false;
+  if (!lastInboundAt) return true;
+  return now.getTime() - new Date(lastInboundAt).getTime() >= 24 * HOUR;
 }

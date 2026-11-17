@@ -183,7 +183,8 @@ runtime, Secret → Redeploy): `META_APP_SECRET` (уже есть из Част�
 **B3. Вебхук приложения** (developers.facebook.com → приложение Base40 CRM):
 адрес обратного вызова `https://admin.base40.fit/api/crm/meta`, токен
 проверки — `META_VERIFY_TOKEN`. Настраивается в трёх продуктах:
-WhatsApp → Конфигурация (поле `messages`); Messenger → Настройки →
+WhatsApp → Конфигурация (поля `messages` и
+`message_template_status_update` — статусы проверки шаблонов); Messenger → Настройки →
 Webhooks (объект Page, поле `messages`); Instagram → Webhooks (поле
 `messages`). «Подтвердить и сохранить» должно пройти без ошибки; ошибка —
 значит B2 не применилось (Redeploy) или токен не совпал.
@@ -218,13 +219,16 @@ Business (история переписки на телефоне пропадё
 удалить аккаунт WhatsApp Business этого номера; WhatsApp Manager → Номера
 телефонов → Добавить номер → подтверждение кодом; в CRM «Каналы» →
 «WhatsApp»: токен системного пользователя, Phone number ID, ID аккаунта
-WhatsApp Business. Проверка сообщением.
+WhatsApp Business. Проверка сообщением. Затем «Настройки» → «Шаблоны WhatsApp» →
+«Шаблон»: текст даёт владелец; после одобрения Meta (до суток, «Обновить
+статусы») — проверка: карточка клиента с телефоном → «Написать в WhatsApp».
 
 **B7. Проверка Meta (App Review)** — когда B5 работает: URL политики
 конфиденциальности и удаления данных в настройках приложения; по каждому
 разрешению (`pages_messaging`, `pages_manage_metadata`, `pages_show_list`,
 `pages_read_engagement`, `instagram_basic`, `instagram_manage_messages`,
-`business_management`) — запись экрана: подключение страницы в CRM,
+`business_management`, функция **Human Agent** — ответ до 7 дней в
+Instagram и Messenger) — запись экрана: подключение страницы в CRM,
 входящее сообщение, ответ из CRM; отправить заявку; после одобрения —
 режим Live.
 

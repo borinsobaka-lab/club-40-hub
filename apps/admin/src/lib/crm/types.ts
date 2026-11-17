@@ -189,3 +189,23 @@ export type CrmAutomation = {
   is_active: boolean;
   sort_order: number;
 };
+
+// Шаблоны WhatsApp (db/migrations/2026-11-18_zz_crm_wa_templates.sql) ----------
+
+/** Что подставляется в переменную шаблона {{n}}. */
+export type WaVar = "name" | "studio" | "text";
+
+export type CrmWaTemplate = {
+  id: string;
+  account_id: string;
+  name: string;
+  language: string;
+  category: "MARKETING" | "UTILITY" | "AUTHENTICATION";
+  body: string;
+  footer: string | null;
+  vars: WaVar[];
+  /** Как у Meta: PENDING, APPROVED, REJECTED, PAUSED, DISABLED, IN_APPEAL… */
+  status: string;
+  rejected_reason: string | null;
+  synced_at: string | null;
+};

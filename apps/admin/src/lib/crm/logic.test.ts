@@ -9,6 +9,15 @@ import {
   nextTaskByDeal,
   parseBudget,
   parseTags,
+  fromWaTemplate,
+  renderWaTemplate,
+  replyBlock,
+  toWaTemplate,
+  waBodyProblem,
+  waDefaultValues,
+  waPhone,
+  waTemplateName,
+  waVarCount,
   presetDue,
   taskGroup,
   percent,
@@ -273,5 +282,46 @@ describe("CRM — логика", () => {
         names,
       ),
     ).toBe("Сразу при входе в этап → задача «Связаться» для Нино");
+  });
+
+  test("шаблон WhatsApp: переменные, проверка, подстановка", () => {
+    const t = toWaTemplate(
+      "Здравствуйте, {имя}! Ждём вас {текст} в {клуб}. {Имя}, до встречи {текст}!",
+    );
+    expect(t.body).toBe("Здравствуйте, {{1}}! Ждём вас {{2}} в {{3}}. {{1}}, до встречи {{4}}!");
+    expect(t.vars).toEqual(["name", "text", "studio", "text"]);
+    expect(fromWaTemplate("Привет, {{1}} из {{2}}! {{3}}", ["name", "studio"])).toBe(
+      "Привет, {имя} из {клуб}! {{3}}",
+    );
+    expect(waVarCount(t.body)).toBe(4);
+    expect(waDefaultValues(t.vars, 4, { name: "Анна Иванова", studio: "Ваке" })).toEqual([
+      "Анна",
+      "",
+      "Ваке",
+      "",
+    ]);
+    expect(renderWaTemplate("Привет, {{1}}! Ждём {{2}}.", ["Анна", ""])).toBe(
+      "Привет, Анна! Ждём {{2}}.",
+    );
+    expect(waBodyProblem("")).not.toBeNull();
+    expect(waBodyProblem("{{1}}, здравствуйте")).toContain("начинаться");
+    expect(waBodyProblem("Здравствуйте, {{1}}")).toContain("заканчиваться");
+    expect(waBodyProblem("Ждём {{1}} {{2}} у нас")).toContain("Между");
+    expect(waBodyProblem("Здравствуйте, {{1}}! Ждём вас.")).toBeNull();
+    expect(waTemplateName(" Приглашение Trial-Invite 2! ")).toBe("trial_invite_2");
+    expect(waPhone("+995 555 12-34-56")).toBe("995555123456");
+    expect(waPhone("555123456")).toBe("995555123456");
+    expect(waPhone("123")).toBeNull();
+  });
+
+  test("почему нельзя ответить: отключён, окно WhatsApp 24 ч, Instagram 7 дней", () => {
+    const now = new Date("2026-11-17T12:00:00Z");
+    const acc = (kind: string, status = "active") => ({ kind, status });
+    expect(replyBlock(acc("telegram_bot"), null, now)).toBeNull();
+    expect(replyBlock(acc("telegram_bot", "disabled"), null, now)).toContain("отключён");
+    expect(replyBlock(acc("whatsapp"), "2026-11-17T01:00:00Z", now)).toBeNull();
+    expect(replyBlock(acc("whatsapp"), "2026-11-16T01:00:00Z", now)).toContain("шаблон");
+    expect(replyBlock(acc("instagram"), "2026-11-14T01:00:00Z", now)).toBeNull();
+    expect(replyBlock(acc("instagram"), "2026-11-01T01:00:00Z", now)).toContain("7 дней");
   });
 });

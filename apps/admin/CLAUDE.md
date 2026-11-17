@@ -829,20 +829,51 @@ kb`. Доступ — ролями «Пользователей и ролей» 
   задачи — сделка, контакт, этап и клуб (нажатие открывает сделку). Типы —
   «Настройки» → «Типы задач» (`TaskTypesPanel`). В правиле этапа «Поставить
   задачу» — тип и «Кому» (ответственному сделки или сотруднику).
+  **Карточка клиента с перепиской (2026-11-18)**: у сотрудника с правом CRM
+  `ClientCardDialog` шире (`md:max-w-6xl`) — слева прежняя карточка
+  (комментарии, вкладки), справа `components/crm/client-chat-panel.tsx`
+  (`ClientChatPanel`): сделки клиента (чипы этапов, «+ Сделка» —
+  `createDealForClient`), переписка всех его контактов CRM
+  (`useClientConversations`, вкладка на канал) и ответ; на телефоне —
+  вкладка «Переписка». Нет переписки — «Написать в WhatsApp». Сделка из
+  карточки открывается `DealDialog` (lazy — модули не по кругу). В карточке
+  сделки у привязанного контакта — сводка клиента
+  (`components/crm/client-summary.tsx`: статус клуба, абонементы с остатком
+  и сроком, последний визит, просроченный платёж) и «Карточка клиента и
+  переписка».
+  **Шаблоны WhatsApp (2026-11-18)** — писать первым и позже 24 часов:
+  «Настройки» → «Шаблоны WhatsApp» (`wa-templates-settings.tsx`; виден,
+  когда подключён WhatsApp): новый шаблон (имя латиницей, язык ru / ka / en,
+  вид «Сервисный / Маркетинговый», текст с `{имя}`, `{клуб}`, `{текст}` —
+  `toWaTemplate` переводит в `{{1}}…`, проверка `waBodyProblem`) уходит на
+  проверку Meta (`createWaTemplateFn` → `createWaTemplate`), статусы — вебхук
+  `message_template_status_update`, «Обновить статусы» (`syncWaTemplates`:
+  шаблоны из кабинета Meta тоже подтягиваются) и фоновая сверка раз в 15
+  минут; удаление — и в Meta. Отправка — `WaTemplateDialog`
+  (`wa-template-send.tsx`): одобренный шаблон, значения переменных, «как
+  увидит клиент» → `POST /api/crm/send-template` (`sendWaTemplateMessage`).
+  Где: «Отправить шаблон» под закрытым окном диалога WhatsApp
+  (`WaReopenButton` — «Диалоги», сделка, карточка клиента), «Написать в
+  WhatsApp» в карточке клиента и сделки (диалог заводит
+  `crm_conversation_start`). Instagram и Facebook: после 24 часов и до 7
+  дней ответ уходит с меткой `HUMAN_AGENT` (`needsHumanAgentTag`; нужна
+  функция Human Agent в проверке приложения Meta).
   **Каналы Meta** (WhatsApp Cloud API, Messenger, Instagram через страницу
   Facebook; код написан по документации Graph API v27.0, **на живых
   аккаунтах не проверен** — проверка в AGENT_TASKS.md, Задача 18, часть B):
   общий вебхук `/api/crm/meta` (GET — проверка адреса `META_VERIFY_TOKEN`,
   POST — подпись `X-Hub-Signature-256` секретом `META_APP_SECRET`; без этих
   переменных — 503), разбор — `lib/crm/meta.ts` (+ тест), Graph API —
-  `meta.server.ts` (`META_GRAPH_VERSION`, по умолчанию v27.0), приём и
+  `meta.server.ts` (`META_GRAPH_VERSION`), приём и
   статусы доставки — `handleMetaWebhook`, отправка всех каналов —
   `deliver` в `channels.server.ts` (файл сначала кладётся в `crm-media`;
   Messenger и Instagram забирают его по подписанной ссылке). Подключение —
   «Настройки» → «Каналы»: токен (системного пользователя — WhatsApp +
   Phone number ID, страницы — Facebook и Instagram), сервер проверяет его и
   подписывает приложение на сообщения. Окно 24 ч — `replyBlock` /
-  `replyWindowOpen`: вместо поля ответа — пояснение.
+  `replyWindowOpen` (WhatsApp — 24 часа, Instagram и Facebook — 7 дней):
+  вместо поля ответа — пояснение и, у WhatsApp, «Отправить шаблон».
+  Версия Graph API по умолчанию — v26.0.
 - **Контролы (2026-10-11) — только из набора, по инструкции**
   `.interface-design/system.md`, раздел «Контролы»: кнопки — пилюли
   (`Button`, круглые иконки), поля и фильтры — прямоугольники (вид —

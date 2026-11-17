@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
-import { parseMetaWebhook, replyWindowOpen } from "./meta";
+import { needsHumanAgentTag, parseMetaWebhook, replyWindowOpen } from "./meta";
 
 describe("вебхук Meta: разбор", () => {
   test("WhatsApp: текст, документ, статусы", () => {
@@ -157,7 +157,7 @@ describe("вебхук Meta: разбор", () => {
   });
 
   test("мусор не роняет разбор", () => {
-    expect(parseMetaWebhook(null)).toEqual({ messages: [], statuses: [] });
+    expect(parseMetaWebhook(null)).toEqual({ messages: [], statuses: [], templates: [] });
     expect(
       parseMetaWebhook({ object: "page", entry: [{ id: "P", messaging: "x" }] }).messages,
     ).toEqual([]);
@@ -168,7 +168,47 @@ describe("вебхук Meta: разбор", () => {
     const now = new Date("2026-11-17T12:00:00Z");
     expect(replyWindowOpen("telegram_bot", null, now)).toBe(true);
     expect(replyWindowOpen("whatsapp", "2026-11-17T00:00:00Z", now)).toBe(true);
-    expect(replyWindowOpen("instagram", "2026-11-16T11:59:00Z", now)).toBe(false);
+    expect(replyWindowOpen("whatsapp", "2026-11-16T11:59:00Z", now)).toBe(false);
+    expect(replyWindowOpen("instagram", "2026-11-16T11:59:00Z", now)).toBe(true);
+    expect(needsHumanAgentTag("instagram", "2026-11-16T11:59:00Z", now)).toBe(true);
+    expect(needsHumanAgentTag("instagram", "2026-11-17T11:00:00Z", now)).toBe(false);
+    expect(needsHumanAgentTag("whatsapp", null, now)).toBe(false);
+    expect(replyWindowOpen("instagram", "2026-11-09T11:59:00Z", now)).toBe(false);
     expect(replyWindowOpen("facebook", null, now)).toBe(false);
+  });
+
+  test("статус шаблона WhatsApp", () => {
+    const { templates } = parseMetaWebhook({
+      object: "whatsapp_business_account",
+      entry: [
+        {
+          id: "WABA",
+          changes: [
+            {
+              field: "message_template_status_update",
+              value: {
+                event: "REJECTED",
+                message_template_id: 123,
+                reason: "INVALID_FORMAT",
+                rejection_info: { reason: "r", recommendation: "Уберите переменную в начале" },
+              },
+            },
+            {
+              field: "message_template_status_update",
+              value: { event: "APPROVED", message_template_id: 5, reason: "NONE" },
+            },
+            {
+              field: "message_template_status_update",
+              value: { event: "REINSTATED", message_template_id: 6 },
+            },
+          ],
+        },
+      ],
+    });
+    expect(templates).toEqual([
+      { metaId: "123", status: "REJECTED", reason: "INVALID_FORMAT. Уберите переменную в начале" },
+      { metaId: "5", status: "APPROVED", reason: null },
+      { metaId: "6", status: "APPROVED", reason: null },
+    ]);
   });
 });

@@ -6,6 +6,7 @@ import { toast } from "sonner";
 
 import { AdminShell } from "@/components/admin-shell";
 import { ChatThread } from "@/components/crm/chat";
+import { WaReopenButton } from "@/components/crm/client-chat-panel";
 import { DealDialog } from "@/components/crm/deal-dialog";
 import { CrmInboxPageSkeleton } from "@/components/page-skeletons";
 import { Button } from "@/components/ui/button";
@@ -205,6 +206,14 @@ function CrmInboxPage() {
                 contactName={selected.contact?.name}
                 studioName={studios.find((s) => s.id === selected.studio_id)?.name}
                 disabledReason={replyBlock(account, selected.last_inbound_at)}
+                disabledAction={
+                  <WaReopenButton
+                    conversation={selected}
+                    account={account}
+                    contactName={selected.contact?.name ?? null}
+                    studioName={studios.find((s) => s.id === selected.studio_id)?.name}
+                  />
+                }
               />
             </>
           ) : (

@@ -8,6 +8,7 @@ import { AdminShell } from "@/components/admin-shell";
 import { useConfirm } from "@/components/confirm-dialog";
 import { StageDot, StageSelect } from "@/components/crm/parts";
 import { StageAutomations } from "@/components/crm/automations";
+import { WaTemplatesPanel } from "@/components/crm/wa-templates-settings";
 import { ChannelsPanel, TaskTypesPanel, TemplatesPanel } from "@/components/crm/channels-settings";
 import { NONE } from "@/lib/crm/logic";
 import { DropIndicator } from "@/components/kb/drop-indicator";
@@ -291,6 +292,7 @@ function CrmSettingsPage() {
         )}
 
         {setup && <ChannelsPanel />}
+        {setup && <WaTemplatesPanel />}
         {setup && <TemplatesPanel />}
         {setup && <TaskTypesPanel />}
         {setup && (

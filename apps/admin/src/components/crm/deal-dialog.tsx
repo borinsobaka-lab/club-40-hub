@@ -7,6 +7,9 @@ import { ClientCombobox } from "@/components/client-combobox";
 import { ClientNameLink } from "@/components/client-name-link";
 import { useConfirm } from "@/components/confirm-dialog";
 import { ChatThread } from "@/components/crm/chat";
+import { WaReopenButton } from "@/components/crm/client-chat-panel";
+import { ClientSummary } from "@/components/crm/client-summary";
+import { WaTemplateDialog } from "@/components/crm/wa-template-send";
 import { TaskForm, TaskItem } from "@/components/crm/tasks";
 import { Button } from "@/components/ui/button";
 import { SegmentedControl } from "@/components/ui/segmented-control";
@@ -318,11 +321,18 @@ function RightPane({
   const tab = picked ?? unread ?? "feed";
   const conversation = conversations.find((c) => c.id === tab);
   const account = accounts.find((a) => a.id === conversation?.account_id);
+  // Написать первым: WhatsApp подключён, у контакта есть телефон и ещё нет
+  // диалога в WhatsApp.
+  const [waOpen, setWaOpen] = useState(false);
+  const canStartWa =
+    !!deal.contact?.phone &&
+    accounts.some((a) => a.kind === "whatsapp" && a.status === "active") &&
+    !conversations.some((c) => accounts.find((a) => a.id === c.account_id)?.kind === "whatsapp");
 
   return (
     <div className="flex min-h-0 flex-col max-md:min-h-[70dvh]">
-      {conversations.length > 0 && (
-        <div className="overflow-x-auto border-b px-4 py-2 sm:px-5">
+      {(conversations.length > 0 || canStartWa) && (
+        <div className="flex items-center gap-2 overflow-x-auto border-b px-4 py-2 sm:px-5">
           <SegmentedControl
             aria-label="Лента или переписка"
             value={conversation ? tab : "feed"}
@@ -336,8 +346,29 @@ function RightPane({
               })),
             ]}
           />
+          {canStartWa && (
+            <Button
+              variant="outline"
+              size="xs"
+              className="ml-auto shrink-0"
+              onClick={() => setWaOpen(true)}
+            >
+              Написать в WhatsApp
+            </Button>
+          )}
         </div>
       )}
+      <WaTemplateDialog
+        open={waOpen}
+        onOpenChange={setWaOpen}
+        target={{
+          phones: deal.contact?.phone ? [deal.contact.phone] : [],
+          clientId: deal.contact?.client_id ?? null,
+        }}
+        contactName={deal.contact?.name ?? null}
+        studioName={studioName}
+        onSent={setPicked}
+      />
       {conversation ? (
         <ChatThread
           key={conversation.id}
@@ -345,6 +376,14 @@ function RightPane({
           contactName={deal.contact?.name}
           studioName={studioName}
           disabledReason={replyBlock(account, conversation.last_inbound_at)}
+          disabledAction={
+            <WaReopenButton
+              conversation={conversation}
+              account={account}
+              contactName={deal.contact?.name ?? null}
+              studioName={studioName}
+            />
+          }
         />
       ) : (
         feed
@@ -461,17 +500,22 @@ function ContactBlock({ deal }: { deal: CrmDeal }) {
       <div className="border-t pt-3">
         <div className="mb-1 text-xs text-muted-foreground">Клиент клуба</div>
         {contact.client_id ? (
-          <div className="flex items-center justify-between gap-2">
-            <ClientNameLink clientId={contact.client_id}>Открыть карточку клиента</ClientNameLink>
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              aria-label="Отвязать от клиента"
-              title="Отвязать от клиента"
-              onClick={() => void save({ client_id: null })}
-            >
-              <X />
-            </Button>
+          <div className="space-y-2">
+            <ClientSummary clientId={contact.client_id} />
+            <div className="flex items-center justify-between gap-2">
+              <ClientNameLink clientId={contact.client_id}>
+                Карточка клиента и переписка
+              </ClientNameLink>
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                aria-label="Отвязать от клиента"
+                title="Отвязать от клиента"
+                onClick={() => void save({ client_id: null })}
+              >
+                <X />
+              </Button>
+            </div>
           </div>
         ) : linking ? (
           <ClientCombobox

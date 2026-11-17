@@ -813,4 +813,47 @@ describe.skipIf(!url)("CRM (база)", () => {
       const [b] = await tx`select assignee_id, type_id from crm_tasks where deal_id = ${deal} and title = 'Дожать'`;
       expect(b).toMatchObject({ assignee_id: admin1, type_id: null });
     }));
+
+  // Шаблоны WhatsApp и «написать первым» (2026-11-18_zz_crm_wa_templates.sql) -----
+
+  test("написать первым: диалог по карточке клиента, по телефону или новый; шаблоны пишет только сервер", () =>
+    scenario(async (tx) => {
+      const { s1, admin1 } = await setup(tx);
+      const wa = await account(tx, "whatsapp", s1);
+      const [{ id: client }] = await tx`
+        insert into clients (studio_id, first_name, last_name, phone)
+        values (${s1}, 'Анна', 'Иванова', '+995555123456') returning id`;
+      const start = async (chat: string, name: string, phone: string, clientId: string | null) =>
+        (await tx`select crm_conversation_start(${wa}, ${chat}, ${name}, ${phone}, ${clientId}) as r`)[0].r as {
+          conversation_id: string;
+          contact_id: string;
+        };
+
+      // Нового контакта заводит и привязывает к клиенту; сделки не создаёт.
+      const a = await start("995555123456", "Анна Иванова", "+995555123456", client);
+      const [contact] = await tx`select name, client_id from crm_contacts where id = ${a.contact_id}`;
+      expect(contact).toMatchObject({ name: "Анна Иванова", client_id: client });
+      expect((await tx`select 1 from crm_deals where contact_id = ${a.contact_id}`).length).toBe(0);
+      // Повтор — тот же диалог.
+      expect((await start("995555123456", "Анна", "+995555123456", client)).conversation_id).toBe(a.conversation_id);
+      // Клиент ответил — тот же контакт и диалог, сделка появилась.
+      const reply = await ingest(tx, wa, "995555123456", { external_id: "995555123456", name: "Anna", phone: "+995555123456" }, { external_id: "w1", body: "Да" });
+      expect(reply.conversation_id).toBe(a.conversation_id);
+      expect(reply.contact_id).toBe(a.contact_id);
+      expect(reply.deal_id).toBeTruthy();
+      // Контакт с тем же телефоном без клиента — находится по номеру.
+      const [{ id: other }] = await tx`insert into crm_contacts (name, phone) values ('Нино', '+995 599 00 00 01') returning id`;
+      expect((await start("995599000001", "Нино", "+995599000001", null)).contact_id).toBe(other);
+
+      await tx`insert into crm_wa_templates (account_id, name, language, category, body, vars, status)
+               values (${wa}, 'trial_invite', 'ru', 'UTILITY', 'Здравствуйте, {{1}}! Ждём вас.', '{name}', 'APPROVED')`;
+      await as(tx, admin1);
+      expect((await tx`select status from crm_wa_templates`).map((t) => t.status)).toEqual(["APPROVED"]);
+      for (const run of [
+        () => tx`insert into crm_wa_templates (account_id, name, language, category, body) values (${wa}, 'x_y_z', 'ru', 'UTILITY', 'текст')`,
+        () => tx`update crm_wa_templates set status = 'APPROVED'`,
+        () => tx`select crm_conversation_start(${wa}, '1', 'x', '+1', null)`,
+      ])
+        expect(await failure(tx, run)).toMatch(/permission denied|row-level security/);
+    }));
 });

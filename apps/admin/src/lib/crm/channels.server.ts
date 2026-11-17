@@ -9,7 +9,8 @@ import { randomBytes, timingSafeEqual } from "node:crypto";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { getSupabaseAdmin } from "@/integrations/supabase/client.server";
-import { parseMetaWebhook, type MetaIncoming, type MetaKind } from "./meta";
+import { renderWaTemplate, toWaTemplate, waBodyProblem, waPhone, waVarCount } from "./logic";
+import { needsHumanAgentTag, parseMetaWebhook, type MetaIncoming, type MetaKind } from "./meta";
 import {
   fetchUrl,
   messagingProfile,
@@ -20,8 +21,12 @@ import {
   waDownload,
   waPhoneInfo,
   waSendFile,
+  waSendTemplate,
   waSendText,
   waSubscribe,
+  waTemplateCreate,
+  waTemplateDelete,
+  waTemplatesList,
 } from "./meta.server";
 import { attachmentKind, parseTelegramUpdate, safeFileName, type IncomingFile } from "./telegram";
 import {
@@ -64,6 +69,20 @@ function channelError(e: unknown): string {
       return "Прошло больше 24 часов с последнего сообщения клиента — ответить можно, когда он напишет снова";
     if (e.code === 190)
       return "Meta не приняла токен — он отозван или истёк, подключите аккаунт заново";
+    if (e.code === 132001) return "Шаблон не одобрен или удалён в Meta — обновите статусы шаблонов";
+    if (e.code === 132000 || e.code === 132012)
+      return "Meta не приняла значения переменных шаблона";
+    if (e.code === 132015 || e.code === 132016)
+      return "Meta приостановила или отключила этот шаблон";
+    if (e.code === 131026)
+      return "Сообщение не доставить: номер не в WhatsApp или клиент не принимает сообщения";
+    if (e.code === 131049)
+      return "WhatsApp не доставил рекламный шаблон этому клиенту (лимит маркетинговых сообщений) — попробуйте позже";
+    if (e.code === 131050) return "Клиент отказался от рекламных сообщений в WhatsApp";
+    if (e.code === 131048 || e.code === 130429 || e.code === 131056)
+      return "WhatsApp ограничил частоту отправки — попробуйте через несколько минут";
+    if (e.code === 200)
+      return "У токена нет права на это действие (нужно whatsapp_business_management)";
     return `Meta: ${e.message}`;
   }
   return e instanceof Error ? e.message : "Ошибка канала";
@@ -229,6 +248,8 @@ export async function connectMetaAccount(input: {
   try {
     if (input.kind === "whatsapp") {
       if (!input.phoneNumberId) throw new Error("Укажите Phone number ID");
+      if (!input.wabaId)
+        throw new Error("Укажите ID аккаунта WhatsApp Business — без него не работают шаблоны");
       const info = await waPhoneInfo(token, input.phoneNumberId);
       externalId = info.id;
       username = info.display_phone_number ?? null;
@@ -258,6 +279,7 @@ export async function connectMetaAccount(input: {
     pipeline_id: input.pipelineId,
     external_id: externalId,
     username,
+    waba_id: input.kind === "whatsapp" ? input.wabaId : null,
     status: "active",
     status_note: null,
   };
@@ -452,7 +474,7 @@ async function ingestMeta(m: MetaIncoming): Promise<void> {
  * (повтор сообщение не задвоит).
  */
 export async function handleMetaWebhook(payload: unknown): Promise<boolean> {
-  const { messages, statuses } = parseMetaWebhook(payload);
+  const { messages, statuses, templates } = parseMetaWebhook(payload);
   let ok = true;
   // События могут прийти не по порядку — раскладываем по времени.
   messages.sort((a, b) => a.message.sent_at.localeCompare(b.message.sent_at));
@@ -465,6 +487,15 @@ export async function handleMetaWebhook(payload: unknown): Promise<boolean> {
     }
   }
   const admin = getSupabaseAdmin();
+  for (const t of templates)
+    await admin
+      .from("crm_wa_templates")
+      .update({
+        status: t.status,
+        rejected_reason: t.status === "APPROVED" ? null : t.reason,
+        synced_at: new Date().toISOString(),
+      })
+      .eq("meta_id", t.metaId);
   for (const s of statuses) {
     // «Прочитано» не откатываем к «доставлено», если статусы пришли не по порядку.
     let q = admin
@@ -481,7 +512,13 @@ export async function handleMetaWebhook(payload: unknown): Promise<boolean> {
 
 // Отправка --------------------------------------------------------------------
 
-type OutAccount = { id: string; kind: string; status: string; external_id: string | null };
+type OutAccount = {
+  id: string;
+  kind: string;
+  status: string;
+  external_id: string | null;
+  waba_id?: string | null;
+};
 type OutFile = { file: File; path: string };
 
 /** Отправить в канал аккаунта; возвращает id сообщения в канале. */
@@ -491,6 +528,7 @@ async function deliver(
   chatId: string,
   body: string,
   out: OutFile | null,
+  lastInboundAt: string | null = null,
 ): Promise<string> {
   if (account.kind === "telegram_bot")
     return out
@@ -512,13 +550,19 @@ async function deliver(
       if (!data?.signedUrl) throw new Error("Не удалось подготовить файл");
       attachment = { url: data.signedUrl, mime: out.file.type || "application/octet-stream" };
     }
-    return pageSend(secret.token, chatId, body, attachment);
+    return pageSend(
+      secret.token,
+      chatId,
+      body,
+      attachment,
+      needsHumanAgentTag(account.kind, lastInboundAt, new Date()),
+    );
   }
   throw new Error("Отправка в этот канал пока не поддерживается");
 }
 
 const ACCOUNT_COLUMNS =
-  "id, external_chat_id, account:crm_channel_accounts(id, kind, status, external_id)";
+  "id, external_chat_id, last_inbound_at, account:crm_channel_accounts(id, kind, status, external_id, waba_id)";
 
 /**
  * Ответ сотрудника в диалог. `user` — клиент от имени сотрудника: диалог
@@ -565,7 +609,14 @@ export async function sendToConversation(input: {
 
   let externalId: string;
   try {
-    externalId = await deliver(account, secret, chatId, body, out);
+    externalId = await deliver(
+      account,
+      secret,
+      chatId,
+      body,
+      out,
+      (conv.last_inbound_at as string | null) ?? null,
+    );
   } catch (e) {
     if (out) await admin.storage.from(CRM_MEDIA_BUCKET).remove([out.path]);
     const note = channelError(e);
@@ -646,4 +697,278 @@ export async function sendAutoMessage(conversationId: string, body: string): Pro
     auto: true,
   });
   if (insErr) console.error("[crm] auto message:", insErr.message);
+}
+
+// Шаблоны WhatsApp --------------------------------------------------------------
+
+type WaAccount = {
+  id: string;
+  kind: string;
+  status: string;
+  external_id: string | null;
+  waba_id: string | null;
+  studio_id: string | null;
+};
+
+async function waAccount(accountId: string): Promise<{ account: WaAccount; secret: Secret }> {
+  const { data } = await getSupabaseAdmin()
+    .from("crm_channel_accounts")
+    .select("id, kind, status, external_id, waba_id, studio_id")
+    .eq("id", accountId)
+    .maybeSingle();
+  const account = data as WaAccount | null;
+  if (!account || account.kind !== "whatsapp") throw new Error("Аккаунт WhatsApp не найден");
+  if (!account.waba_id)
+    throw new Error("У аккаунта не указан ID аккаунта WhatsApp Business — подключите его заново");
+  const secret = await loadSecret(account.id);
+  if (!secret) throw new Error("У аккаунта нет токена — подключите его заново");
+  return { account, secret };
+}
+
+const WA_EXAMPLE: Record<string, string> = {
+  name: "Анна",
+  studio: "Lady Stretch",
+  text: "завтра в 19:00",
+};
+
+/**
+ * Новый шаблон: текст с {имя}, {клуб} и {текст} переводится в {{1}}… и
+ * уходит на проверку Meta (до 24 часов). Статус потом приходит вебхуком и
+ * при «Обновить статусы».
+ */
+export async function createWaTemplate(input: {
+  accountId: string;
+  name: string;
+  language: string;
+  category: "MARKETING" | "UTILITY";
+  body: string;
+  footer: string | null;
+  userId: string;
+}): Promise<{ id: string; status: string }> {
+  const { account, secret } = await waAccount(input.accountId);
+  const { body, vars } = toWaTemplate(input.body.trim());
+  const problem = waBodyProblem(body);
+  if (problem) throw new Error(problem);
+  let created;
+  try {
+    created = await waTemplateCreate(secret.token, account.waba_id!, {
+      name: input.name,
+      language: input.language,
+      category: input.category,
+      body,
+      footer: input.footer,
+      examples: vars.map((v) => WA_EXAMPLE[v] ?? "текст"),
+    });
+  } catch (e) {
+    throw new Error(channelError(e));
+  }
+  const { data, error } = await getSupabaseAdmin()
+    .from("crm_wa_templates")
+    .upsert(
+      {
+        account_id: account.id,
+        name: input.name,
+        language: input.language,
+        category: created.category ?? input.category,
+        body,
+        footer: input.footer,
+        vars,
+        status: created.status ?? "PENDING",
+        rejected_reason: null,
+        meta_id: created.id,
+        created_by: input.userId,
+        updated_at: new Date().toISOString(),
+        synced_at: new Date().toISOString(),
+      },
+      { onConflict: "account_id,name,language" },
+    )
+    .select("id, status")
+    .single();
+  if (error) throw new Error(error.message);
+  return { id: data.id as string, status: data.status as string };
+}
+
+/**
+ * Сверить шаблоны аккаунта с Meta: статусы, причины отказа; шаблоны,
+ * созданные в кабинете Meta, появляются у нас, удалённые там — исчезают.
+ */
+export async function syncWaTemplates(accountId: string): Promise<number> {
+  const { account, secret } = await waAccount(accountId);
+  const admin = getSupabaseAdmin();
+  let remote;
+  try {
+    remote = await waTemplatesList(secret.token, account.waba_id!);
+  } catch (e) {
+    throw new Error(channelError(e));
+  }
+  const { data: local } = await admin
+    .from("crm_wa_templates")
+    .select("id, name, language, meta_id")
+    .eq("account_id", account.id);
+  const now = new Date().toISOString();
+  const seen = new Set<string>();
+  for (const r of remote) {
+    const mine = (local ?? []).find(
+      (l) => l.meta_id === r.id || (l.name === r.name && l.language === r.language),
+    );
+    const patch = {
+      status: r.status,
+      category: r.category,
+      rejected_reason: r.rejected_reason && r.rejected_reason !== "NONE" ? r.rejected_reason : null,
+      meta_id: r.id,
+      synced_at: now,
+    };
+    if (mine) {
+      seen.add(mine.id as string);
+      await admin.from("crm_wa_templates").update(patch).eq("id", mine.id);
+    } else {
+      const body = r.components?.find((c) => c.type === "BODY")?.text;
+      if (!body || !["MARKETING", "UTILITY", "AUTHENTICATION"].includes(r.category)) continue;
+      await admin.from("crm_wa_templates").insert({
+        ...patch,
+        account_id: account.id,
+        name: r.name,
+        language: r.language,
+        body: body.slice(0, 1024),
+        footer: r.components?.find((c) => c.type === "FOOTER")?.text?.slice(0, 60) ?? null,
+        // Что значат переменные шаблона из кабинета Meta, мы не знаем.
+        vars: Array.from({ length: waVarCount(body) }, () => "text"),
+      });
+    }
+  }
+  const gone = (local ?? []).filter((l) => !seen.has(l.id as string)).map((l) => l.id as string);
+  if (gone.length) await admin.from("crm_wa_templates").delete().in("id", gone);
+  return remote.length;
+}
+
+/** Фоновая сверка: аккаунты, у которых есть шаблоны на проверке. */
+export async function syncPendingWaTemplates(): Promise<void> {
+  const { data } = await getSupabaseAdmin()
+    .from("crm_wa_templates")
+    .select("account_id")
+    .in("status", ["PENDING", "IN_APPEAL"]);
+  for (const id of new Set((data ?? []).map((r) => r.account_id as string)))
+    await syncWaTemplates(id).catch((e) =>
+      console.error("[crm] шаблоны WhatsApp:", e instanceof Error ? e.message : e),
+    );
+}
+
+export async function deleteWaTemplate(templateId: string): Promise<void> {
+  const admin = getSupabaseAdmin();
+  const { data: t } = await admin
+    .from("crm_wa_templates")
+    .select("id, account_id, name, meta_id")
+    .eq("id", templateId)
+    .maybeSingle();
+  if (!t) return;
+  const { account, secret } = await waAccount(t.account_id as string);
+  try {
+    await waTemplateDelete(
+      secret.token,
+      account.waba_id!,
+      t.name as string,
+      (t.meta_id as string | null) ?? null,
+    );
+  } catch (e) {
+    // В Meta шаблона уже нет — убираем и у себя.
+    if (!(e instanceof MetaError) || ![100, 132001].includes(e.code))
+      throw new Error(channelError(e));
+  }
+  const { error } = await admin.from("crm_wa_templates").delete().eq("id", templateId);
+  if (error) throw new Error(error.message);
+}
+
+/**
+ * Отправить одобренный шаблон: в диалог (окно 24 ч закрыто) или первым — по
+ * номеру (контакт и диалог заводятся). `user` — клиент от имени сотрудника:
+ * диалог и право CRM проверяются через RLS.
+ */
+export async function sendWaTemplateMessage(input: {
+  user: SupabaseClient;
+  userId: string;
+  templateId: string;
+  values: string[];
+  conversationId?: string;
+  start?: { accountId: string; phone: string; name: string; clientId: string | null };
+}): Promise<{ conversationId: string }> {
+  const admin = getSupabaseAdmin();
+  const { data: tpl } = await admin
+    .from("crm_wa_templates")
+    .select("id, account_id, name, language, body, status")
+    .eq("id", input.templateId)
+    .maybeSingle();
+  if (!tpl) throw new Error("Шаблон не найден");
+  if (tpl.status !== "APPROVED") throw new Error("Шаблон ещё не одобрен Meta");
+  const count = waVarCount(tpl.body as string);
+  const values = input.values.slice(0, count).map((v) => v.trim());
+  if (values.length < count || values.some((v) => !v))
+    throw new Error("Заполните все переменные шаблона");
+  const { account, secret } = await waAccount(tpl.account_id as string);
+  if (account.status !== "active") throw new Error("Аккаунт WhatsApp отключён");
+
+  let conversationId: string;
+  let chatId: string;
+  if (input.conversationId) {
+    const { data: conv, error } = await input.user
+      .from("crm_conversations")
+      .select("id, external_chat_id, account_id")
+      .eq("id", input.conversationId)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    if (!conv || conv.account_id !== account.id) throw new Error("Диалог не найден");
+    conversationId = conv.id as string;
+    chatId = conv.external_chat_id as string;
+  } else if (input.start && input.start.accountId === account.id) {
+    // Писать первым может тот, кто потом увидит этот диалог.
+    const { data: canView } = await input.user.rpc("auth_crm_can_view");
+    const { data: studios, error } = await input.user.rpc("auth_crm_studio_ids");
+    if (error) throw new Error(error.message);
+    if (
+      canView !== true ||
+      (account.studio_id && !((studios as string[] | null) ?? []).includes(account.studio_id))
+    )
+      throw new Error("Недостаточно прав, чтобы писать с этого номера");
+    const phone = waPhone(input.start.phone);
+    if (!phone) throw new Error("Неверный номер телефона");
+    const { data, error: startErr } = await admin.rpc("crm_conversation_start", {
+      p_account: account.id,
+      p_chat: phone,
+      p_name: input.start.name,
+      p_phone: `+${phone}`,
+      p_client: input.start.clientId,
+    });
+    if (startErr) throw new Error(startErr.message);
+    conversationId = (data as { conversation_id: string }).conversation_id;
+    chatId = phone;
+  } else {
+    throw new Error("Не указано, куда отправить шаблон");
+  }
+
+  let externalId: string;
+  try {
+    externalId = await waSendTemplate(secret.token, account.external_id!, chatId, {
+      name: tpl.name as string,
+      language: tpl.language as string,
+      values,
+    });
+  } catch (e) {
+    throw new Error(channelError(e));
+  }
+  const { data: profile } = await admin
+    .from("profiles")
+    .select("full_name")
+    .eq("id", input.userId)
+    .maybeSingle();
+  const { error: insErr } = await admin.from("crm_messages").insert({
+    conversation_id: conversationId,
+    direction: "out",
+    body: renderWaTemplate(tpl.body as string, values),
+    external_id: externalId || null,
+    status: "sent",
+    sent_by: input.userId,
+    sent_by_name: (profile?.full_name as string | null)?.trim() || null,
+    template_id: tpl.id,
+  });
+  if (insErr) console.error("[crm] template message:", insErr.message);
+  return { conversationId };
 }
