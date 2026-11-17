@@ -2799,3 +2799,85 @@ export function DashboardControlPageSkeleton() {
     </ShellSkeleton>
   );
 }
+
+// ---------------------------------------------------------------------------
+// CRM (шапка без поиска клиента — ShellSkeleton network)
+
+export function CrmDealsPageSkeleton() {
+  return (
+    <ShellSkeleton title="Сделки" network actions={[{ label: "Новая сделка", icon: true }]}>
+      <div className="flex h-full min-h-0 flex-col gap-3">
+        <ToolbarSkeleton search controls={["w-52", "w-44", "w-24"]} />
+        <div className="flex gap-3 overflow-hidden">
+          {Array.from({ length: 5 }, (_, i) => (
+            <div key={i} className="w-72 shrink-0 rounded-lg border bg-background">
+              <div className="space-y-1.5 border-b px-3 py-2">
+                <Skeleton className="h-4 w-32" />
+                <Skeleton className="h-3 w-20" />
+              </div>
+              <div className="space-y-2 p-2">
+                {Array.from({ length: 3 - (i % 2) }, (_, j) => (
+                  <Skeleton key={j} className="h-20 w-full rounded-md" />
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </ShellSkeleton>
+  );
+}
+
+export function CrmTasksPageSkeleton() {
+  return (
+    <ShellSkeleton title="Задачи" network>
+      <div className="mx-auto max-w-3xl space-y-3">
+        <ToolbarSkeleton controls={["w-32"]} />
+        {Array.from({ length: 2 }, (_, i) => (
+          <div key={i} className="rounded-lg border bg-background">
+            <div className="border-b bg-muted/50 px-4 py-2">
+              <Skeleton className="h-4 w-28" />
+            </div>
+            {Array.from({ length: 3 }, (_, j) => (
+              <div key={j} className="flex gap-3 border-b px-4 py-2.5 last:border-b-0">
+                <Skeleton className="size-4 rounded-sm" />
+                <div className="flex-1 space-y-1.5">
+                  <Skeleton className="h-4 w-2/3" />
+                  <Skeleton className="h-3 w-1/3" />
+                </div>
+              </div>
+            ))}
+          </div>
+        ))}
+      </div>
+    </ShellSkeleton>
+  );
+}
+
+export function CrmSettingsPageSkeleton() {
+  const panel = (rows: number, title: string) => (
+    <div className="self-start rounded-lg border bg-background">
+      <div className="flex items-center justify-between border-b bg-muted/50 px-3 py-2">
+        <span className="text-sm font-semibold">{title}</span>
+        <Skeleton className="h-7 w-20 rounded-full" />
+      </div>
+      <div className="space-y-2 p-3">
+        {Array.from({ length: rows }, (_, i) => (
+          <Skeleton key={i} className="h-5 w-full" />
+        ))}
+      </div>
+    </div>
+  );
+  return (
+    <ShellSkeleton title="Настройки CRM" network>
+      <div className="mx-auto max-w-5xl space-y-4">
+        <Skeleton className="h-14 w-full rounded-lg" />
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-[18rem_1fr]">
+          {panel(2, "Воронки")}
+          {panel(7, "Этапы")}
+        </div>
+        {panel(6, "Причины отказа")}
+      </div>
+    </ShellSkeleton>
+  );
+}

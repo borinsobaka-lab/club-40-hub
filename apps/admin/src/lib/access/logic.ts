@@ -35,6 +35,8 @@ export const ACCESS_RIGHTS = [
   "analytics.view",
   "analytics.cities",
   "analytics.manage",
+  "crm.view",
+  "crm.manage",
 ] as const;
 export type AccessRight = (typeof ACCESS_RIGHTS)[number];
 

@@ -49,6 +49,7 @@ import { Route as AuthenticatedAdminShiftsRouteImport } from './routes/_authenti
 import { Route as AuthenticatedScriptsIndexRouteImport } from './routes/_authenticated/scripts/index'
 import { Route as AuthenticatedKbIndexRouteImport } from './routes/_authenticated/kb/index'
 import { Route as AuthenticatedDashboardIndexRouteImport } from './routes/_authenticated/dashboard/index'
+import { Route as AuthenticatedCrmIndexRouteImport } from './routes/_authenticated/crm/index'
 import { Route as AuthenticatedAnalyticsIndexRouteImport } from './routes/_authenticated/analytics/index'
 import { Route as AuthenticatedAccessIndexRouteImport } from './routes/_authenticated/access/index'
 import { Route as AuthenticatedAcademyIndexRouteImport } from './routes/_authenticated/academy/index'
@@ -59,6 +60,8 @@ import { Route as AuthenticatedDashboardMarketingRouteImport } from './routes/_a
 import { Route as AuthenticatedDashboardControlRouteImport } from './routes/_authenticated/dashboard/control'
 import { Route as AuthenticatedDashboardClientsRouteImport } from './routes/_authenticated/dashboard/clients'
 import { Route as AuthenticatedDashboardClassesRouteImport } from './routes/_authenticated/dashboard/classes'
+import { Route as AuthenticatedCrmTasksRouteImport } from './routes/_authenticated/crm/tasks'
+import { Route as AuthenticatedCrmSettingsRouteImport } from './routes/_authenticated/crm/settings'
 import { Route as AuthenticatedAnalyticsZeroRouteImport } from './routes/_authenticated/analytics/zero'
 import { Route as AuthenticatedAnalyticsUploadRouteImport } from './routes/_authenticated/analytics/upload'
 import { Route as AuthenticatedAnalyticsTrialsRouteImport } from './routes/_authenticated/analytics/trials'
@@ -299,6 +302,11 @@ const AuthenticatedDashboardIndexRoute =
     path: '/dashboard/',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedCrmIndexRoute = AuthenticatedCrmIndexRouteImport.update({
+  id: '/crm/',
+  path: '/crm/',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedAnalyticsIndexRoute =
   AuthenticatedAnalyticsIndexRouteImport.update({
     id: '/analytics/',
@@ -357,6 +365,17 @@ const AuthenticatedDashboardClassesRoute =
   AuthenticatedDashboardClassesRouteImport.update({
     id: '/dashboard/classes',
     path: '/dashboard/classes',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedCrmTasksRoute = AuthenticatedCrmTasksRouteImport.update({
+  id: '/crm/tasks',
+  path: '/crm/tasks',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedCrmSettingsRoute =
+  AuthenticatedCrmSettingsRouteImport.update({
+    id: '/crm/settings',
+    path: '/crm/settings',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 const AuthenticatedAnalyticsZeroRoute =
@@ -597,6 +616,8 @@ export interface FileRoutesByFullPath {
   '/analytics/trials': typeof AuthenticatedAnalyticsTrialsRoute
   '/analytics/upload': typeof AuthenticatedAnalyticsUploadRoute
   '/analytics/zero': typeof AuthenticatedAnalyticsZeroRoute
+  '/crm/settings': typeof AuthenticatedCrmSettingsRoute
+  '/crm/tasks': typeof AuthenticatedCrmTasksRoute
   '/dashboard/classes': typeof AuthenticatedDashboardClassesRoute
   '/dashboard/clients': typeof AuthenticatedDashboardClientsRoute
   '/dashboard/control': typeof AuthenticatedDashboardControlRoute
@@ -607,6 +628,7 @@ export interface FileRoutesByFullPath {
   '/academy/': typeof AuthenticatedAcademyIndexRoute
   '/access/': typeof AuthenticatedAccessIndexRoute
   '/analytics/': typeof AuthenticatedAnalyticsIndexRoute
+  '/crm/': typeof AuthenticatedCrmIndexRoute
   '/dashboard/': typeof AuthenticatedDashboardIndexRoute
   '/kb/': typeof AuthenticatedKbIndexRoute
   '/scripts/': typeof AuthenticatedScriptsIndexRoute
@@ -679,6 +701,8 @@ export interface FileRoutesByTo {
   '/analytics/trials': typeof AuthenticatedAnalyticsTrialsRoute
   '/analytics/upload': typeof AuthenticatedAnalyticsUploadRoute
   '/analytics/zero': typeof AuthenticatedAnalyticsZeroRoute
+  '/crm/settings': typeof AuthenticatedCrmSettingsRoute
+  '/crm/tasks': typeof AuthenticatedCrmTasksRoute
   '/dashboard/classes': typeof AuthenticatedDashboardClassesRoute
   '/dashboard/clients': typeof AuthenticatedDashboardClientsRoute
   '/dashboard/control': typeof AuthenticatedDashboardControlRoute
@@ -689,6 +713,7 @@ export interface FileRoutesByTo {
   '/academy': typeof AuthenticatedAcademyIndexRoute
   '/access': typeof AuthenticatedAccessIndexRoute
   '/analytics': typeof AuthenticatedAnalyticsIndexRoute
+  '/crm': typeof AuthenticatedCrmIndexRoute
   '/dashboard': typeof AuthenticatedDashboardIndexRoute
   '/kb': typeof AuthenticatedKbIndexRoute
   '/scripts': typeof AuthenticatedScriptsIndexRoute
@@ -763,6 +788,8 @@ export interface FileRoutesById {
   '/_authenticated/analytics/trials': typeof AuthenticatedAnalyticsTrialsRoute
   '/_authenticated/analytics/upload': typeof AuthenticatedAnalyticsUploadRoute
   '/_authenticated/analytics/zero': typeof AuthenticatedAnalyticsZeroRoute
+  '/_authenticated/crm/settings': typeof AuthenticatedCrmSettingsRoute
+  '/_authenticated/crm/tasks': typeof AuthenticatedCrmTasksRoute
   '/_authenticated/dashboard/classes': typeof AuthenticatedDashboardClassesRoute
   '/_authenticated/dashboard/clients': typeof AuthenticatedDashboardClientsRoute
   '/_authenticated/dashboard/control': typeof AuthenticatedDashboardControlRoute
@@ -773,6 +800,7 @@ export interface FileRoutesById {
   '/_authenticated/academy/': typeof AuthenticatedAcademyIndexRoute
   '/_authenticated/access/': typeof AuthenticatedAccessIndexRoute
   '/_authenticated/analytics/': typeof AuthenticatedAnalyticsIndexRoute
+  '/_authenticated/crm/': typeof AuthenticatedCrmIndexRoute
   '/_authenticated/dashboard/': typeof AuthenticatedDashboardIndexRoute
   '/_authenticated/kb/': typeof AuthenticatedKbIndexRoute
   '/_authenticated/scripts/': typeof AuthenticatedScriptsIndexRoute
@@ -847,6 +875,8 @@ export interface FileRouteTypes {
     | '/analytics/trials'
     | '/analytics/upload'
     | '/analytics/zero'
+    | '/crm/settings'
+    | '/crm/tasks'
     | '/dashboard/classes'
     | '/dashboard/clients'
     | '/dashboard/control'
@@ -857,6 +887,7 @@ export interface FileRouteTypes {
     | '/academy/'
     | '/access/'
     | '/analytics/'
+    | '/crm/'
     | '/dashboard/'
     | '/kb/'
     | '/scripts/'
@@ -929,6 +960,8 @@ export interface FileRouteTypes {
     | '/analytics/trials'
     | '/analytics/upload'
     | '/analytics/zero'
+    | '/crm/settings'
+    | '/crm/tasks'
     | '/dashboard/classes'
     | '/dashboard/clients'
     | '/dashboard/control'
@@ -939,6 +972,7 @@ export interface FileRouteTypes {
     | '/academy'
     | '/access'
     | '/analytics'
+    | '/crm'
     | '/dashboard'
     | '/kb'
     | '/scripts'
@@ -1012,6 +1046,8 @@ export interface FileRouteTypes {
     | '/_authenticated/analytics/trials'
     | '/_authenticated/analytics/upload'
     | '/_authenticated/analytics/zero'
+    | '/_authenticated/crm/settings'
+    | '/_authenticated/crm/tasks'
     | '/_authenticated/dashboard/classes'
     | '/_authenticated/dashboard/clients'
     | '/_authenticated/dashboard/control'
@@ -1022,6 +1058,7 @@ export interface FileRouteTypes {
     | '/_authenticated/academy/'
     | '/_authenticated/access/'
     | '/_authenticated/analytics/'
+    | '/_authenticated/crm/'
     | '/_authenticated/dashboard/'
     | '/_authenticated/kb/'
     | '/_authenticated/scripts/'
@@ -1334,6 +1371,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedDashboardIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/crm/': {
+      id: '/_authenticated/crm/'
+      path: '/crm'
+      fullPath: '/crm/'
+      preLoaderRoute: typeof AuthenticatedCrmIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/analytics/': {
       id: '/_authenticated/analytics/'
       path: '/analytics'
@@ -1402,6 +1446,20 @@ declare module '@tanstack/react-router' {
       path: '/dashboard/classes'
       fullPath: '/dashboard/classes'
       preLoaderRoute: typeof AuthenticatedDashboardClassesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/crm/tasks': {
+      id: '/_authenticated/crm/tasks'
+      path: '/crm/tasks'
+      fullPath: '/crm/tasks'
+      preLoaderRoute: typeof AuthenticatedCrmTasksRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/crm/settings': {
+      id: '/_authenticated/crm/settings'
+      path: '/crm/settings'
+      fullPath: '/crm/settings'
+      preLoaderRoute: typeof AuthenticatedCrmSettingsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/analytics/zero': {
@@ -1671,6 +1729,8 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedAnalyticsTrialsRoute: typeof AuthenticatedAnalyticsTrialsRoute
   AuthenticatedAnalyticsUploadRoute: typeof AuthenticatedAnalyticsUploadRoute
   AuthenticatedAnalyticsZeroRoute: typeof AuthenticatedAnalyticsZeroRoute
+  AuthenticatedCrmSettingsRoute: typeof AuthenticatedCrmSettingsRoute
+  AuthenticatedCrmTasksRoute: typeof AuthenticatedCrmTasksRoute
   AuthenticatedDashboardClassesRoute: typeof AuthenticatedDashboardClassesRoute
   AuthenticatedDashboardClientsRoute: typeof AuthenticatedDashboardClientsRoute
   AuthenticatedDashboardControlRoute: typeof AuthenticatedDashboardControlRoute
@@ -1681,6 +1741,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedAcademyIndexRoute: typeof AuthenticatedAcademyIndexRoute
   AuthenticatedAccessIndexRoute: typeof AuthenticatedAccessIndexRoute
   AuthenticatedAnalyticsIndexRoute: typeof AuthenticatedAnalyticsIndexRoute
+  AuthenticatedCrmIndexRoute: typeof AuthenticatedCrmIndexRoute
   AuthenticatedDashboardIndexRoute: typeof AuthenticatedDashboardIndexRoute
   AuthenticatedKbIndexRoute: typeof AuthenticatedKbIndexRoute
   AuthenticatedScriptsIndexRoute: typeof AuthenticatedScriptsIndexRoute
@@ -1750,6 +1811,8 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAnalyticsTrialsRoute: AuthenticatedAnalyticsTrialsRoute,
   AuthenticatedAnalyticsUploadRoute: AuthenticatedAnalyticsUploadRoute,
   AuthenticatedAnalyticsZeroRoute: AuthenticatedAnalyticsZeroRoute,
+  AuthenticatedCrmSettingsRoute: AuthenticatedCrmSettingsRoute,
+  AuthenticatedCrmTasksRoute: AuthenticatedCrmTasksRoute,
   AuthenticatedDashboardClassesRoute: AuthenticatedDashboardClassesRoute,
   AuthenticatedDashboardClientsRoute: AuthenticatedDashboardClientsRoute,
   AuthenticatedDashboardControlRoute: AuthenticatedDashboardControlRoute,
@@ -1760,6 +1823,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAcademyIndexRoute: AuthenticatedAcademyIndexRoute,
   AuthenticatedAccessIndexRoute: AuthenticatedAccessIndexRoute,
   AuthenticatedAnalyticsIndexRoute: AuthenticatedAnalyticsIndexRoute,
+  AuthenticatedCrmIndexRoute: AuthenticatedCrmIndexRoute,
   AuthenticatedDashboardIndexRoute: AuthenticatedDashboardIndexRoute,
   AuthenticatedKbIndexRoute: AuthenticatedKbIndexRoute,
   AuthenticatedScriptsIndexRoute: AuthenticatedScriptsIndexRoute,

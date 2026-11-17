@@ -10,6 +10,7 @@ import {
   Book2,
   BellBing,
   BillList,
+  Case,
   Bolt,
   Buildings2,
   CalendarMinimalistic,
@@ -67,6 +68,7 @@ import { DASHBOARD_TITLES } from "@/lib/dashboard-stats";
 export type RailSectionKey =
   | "dashboard"
   | "analytics"
+  | "crm"
   | "club"
   | "app"
   | "scripts"
@@ -227,6 +229,20 @@ export const ANALYTICS_DATA_ITEMS: NavItem[] = [
 ];
 const ANALYTICS_PATHS = [...ANALYTICS_ITEMS, ...ANALYTICS_DATA_ITEMS].map((i) => i.url);
 
+/**
+ * CRM (решение владельца 2026-11-17, CRM.md) — своя вместо amoCRM: воронки
+ * общие на сеть, сделки — клубов сотрудника и без клуба. Раздел — по праву
+ * «CRM: сделки» (crm.view) или «CRM: настройка» (crm.manage — «Настройки»).
+ */
+export const CRM_URL = "/crm";
+export const CRM_SETTINGS_URL = "/crm/settings";
+export const CRM_TASKS_URL = "/crm/tasks";
+export const CRM_ITEMS: NavItem[] = [
+  { title: "Сделки", url: CRM_URL, icon: Case, exact: true },
+  { title: "Задачи", url: CRM_TASKS_URL, icon: ClipboardCheck },
+  { title: "Настройки", url: CRM_SETTINGS_URL, icon: Settings },
+];
+
 /** Разделы студии в форме «Доступов»: дашборд и меню клуба. */
 export const STUDIO_SECTION_GROUPS: NavGroup<ClubNavItem>[] = [
   { key: "dashboard", label: "Дашборд", items: [DASHBOARD_ITEM] },
@@ -359,6 +375,15 @@ export const SECTIONS: RailSection[] = [
   // Вход в клуб — первая страница его меню; закрытую в активной студии
   // AccessGate сменит на первую доступную. «Сотрудники» — тоже в меню клуба.
   { key: "club", title: "Клуб", url: CLUB_GROUPS[0].items[0].url, icon: HomeSmile },
+  // Своя CRM: воронки и сделки (CRM.md).
+  {
+    key: "crm",
+    title: "CRM",
+    fullTitle: "CRM — воронки и сделки",
+    url: CRM_URL,
+    icon: Case,
+    paths: CRM_ITEMS.slice(1).map((i) => i.url),
+  },
   {
     key: "app",
     title: "Прило\u00ADжение",
@@ -504,6 +529,10 @@ export function canOpenPath(
     return ANALYTICS_DATA_ITEMS.some((i) => matches(pathname, i.url))
       ? !!access.analytics?.manage
       : anVisible(access.analytics);
+  if (section === "crm")
+    return matches(pathname, CRM_SETTINGS_URL)
+      ? access.rights.includes("crm.manage")
+      : access.rights.includes("crm.view") || access.rights.includes("crm.manage");
   if (section === "app" || section === "scripts") return canOpenRail(access, section);
   if (section === "club") {
     // «Сотрудники» общие для клубов: право — раздел рейки, не раздел клуба.

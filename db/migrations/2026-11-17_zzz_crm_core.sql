@@ -204,6 +204,7 @@ create index if not exists crm_tasks_deal_idx on public.crm_tasks (deal_id);
 create index if not exists crm_tasks_open_idx on public.crm_tasks (assignee_id, due_at) where done_at is null;
 
 -- 3) Триггеры ---------------------------------------------------------------------
+-- Имя сотрудника для подписей ленты: своё — любому, чужое — разделу CRM.
 create or replace function public.crm_profile_name(_user_id uuid)
 returns text
 language sql
@@ -211,9 +212,13 @@ stable
 security definer
 set search_path = public
 as $$
-  select nullif(btrim(full_name), '') from public.profiles where id = _user_id
+  select nullif(btrim(full_name), '') from public.profiles
+   where id = _user_id
+     and (current_user not in ('authenticated', 'anon')
+          or _user_id = auth.uid() or public.auth_crm_can_view())
 $$;
-revoke all on function public.crm_profile_name(uuid) from public, anon, authenticated;
+revoke all on function public.crm_profile_name(uuid) from public, anon;
+grant execute on function public.crm_profile_name(uuid) to authenticated, service_role;
 
 -- Воронка: имя, автор; новой — закрывающие этапы.
 create or replace function public.crm_pipelines_biu()
@@ -268,7 +273,7 @@ as $$
 begin
   if tg_op = 'DELETE' then
     if old.kind <> 'open' and exists (select 1 from public.crm_pipelines where id = old.pipeline_id) then
-      raise exception 'crm_stage_closing' using errcode = '23514',
+      raise exception using errcode = '23514',
         message = 'Этапы «Успешно» и «Не реализовано» удалить нельзя';
     end if;
     return old;
@@ -276,7 +281,7 @@ begin
   new.name := btrim(new.name);
   if tg_op = 'UPDATE' then
     if new.kind <> old.kind or new.pipeline_id <> old.pipeline_id then
-      raise exception 'crm_stage_fixed' using errcode = '23514',
+      raise exception using errcode = '23514',
         message = 'Вид этапа и его воронку изменить нельзя';
     end if;
     new.created_at := old.created_at;
@@ -435,11 +440,12 @@ drop trigger if exists crm_deals_log_aiu on public.crm_deals;
 create trigger crm_deals_log_aiu after insert or update on public.crm_deals
   for each row execute function public.crm_deals_log_aiu();
 
--- Комментарий: автор и время — база; правится только текст.
+-- Комментарий: автор и время — база; правится только текст. Без security
+-- definer: current_user — роль вызывающего (сотрудник пишет только note,
+-- события пишут триггеры владельца базы).
 create or replace function public.crm_deal_events_biu()
 returns trigger
 language plpgsql
-security definer
 set search_path = public
 as $$
 begin
@@ -455,7 +461,7 @@ begin
     new.edited_at := null;
     new.body := nullif(btrim(coalesce(new.body, '')), '');
     if new.kind = 'note' and new.body is null then
-      raise exception 'crm_note_empty' using errcode = '23514', message = 'Комментарий пуст';
+      raise exception using errcode = '23514', message = 'Комментарий пуст';
     end if;
     return new;
   end if;
@@ -467,7 +473,7 @@ begin
   new.created_at := old.created_at;
   new.body := nullif(btrim(coalesce(new.body, '')), '');
   if new.body is null then
-    raise exception 'crm_note_empty' using errcode = '23514', message = 'Комментарий пуст';
+    raise exception using errcode = '23514', message = 'Комментарий пуст';
   end if;
   if new.body is distinct from old.body then
     new.edited_at := now();
@@ -479,11 +485,11 @@ drop trigger if exists crm_deal_events_biu on public.crm_deal_events;
 create trigger crm_deal_events_biu before insert or update on public.crm_deal_events
   for each row execute function public.crm_deal_events_biu();
 
--- Задача: автор, кто и когда выполнил; выполнение — в ленту.
+-- Задача: автор, кто и когда выполнил. Без security definer: auto ставит
+-- только сервер (автоматизации этапа), сотрудник — нет.
 create or replace function public.crm_tasks_biu()
 returns trigger
 language plpgsql
-security definer
 set search_path = public
 as $$
 begin
@@ -511,8 +517,6 @@ begin
   if new.done_at is not null and old.done_at is null then
     new.done_at := now();
     new.done_by := auth.uid();
-    insert into public.crm_deal_events (deal_id, kind, body, author_id, author_name)
-    values (new.deal_id, 'task_done', new.title, auth.uid(), public.crm_profile_name(auth.uid()));
   elsif new.done_at is null then
     new.done_by := null;
   else
@@ -525,6 +529,25 @@ $$;
 drop trigger if exists crm_tasks_biu on public.crm_tasks;
 create trigger crm_tasks_biu before insert or update on public.crm_tasks
   for each row execute function public.crm_tasks_biu();
+
+-- Выполненная задача — событием в ленту (пишет владелец базы).
+create or replace function public.crm_tasks_done_au()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if new.done_at is not null and old.done_at is null then
+    insert into public.crm_deal_events (deal_id, kind, body, author_id, author_name)
+    values (new.deal_id, 'task_done', new.title, auth.uid(), public.crm_profile_name(auth.uid()));
+  end if;
+  return null;
+end;
+$$;
+drop trigger if exists crm_tasks_done_au on public.crm_tasks;
+create trigger crm_tasks_done_au after update on public.crm_tasks
+  for each row execute function public.crm_tasks_done_au();
 
 -- 4) RLS --------------------------------------------------------------------------
 alter table public.crm_pipelines enable row level security;
@@ -703,7 +726,7 @@ begin
   if exists (select 1 from public.crm_deals where stage_id = p_stage) then
     if p_move_to is null or p_move_to = p_stage or not exists (
          select 1 from public.crm_stages where id = p_move_to and pipeline_id = v_stage.pipeline_id) then
-      raise exception 'crm_stage_has_deals' using errcode = '23503',
+      raise exception using errcode = '23503',
         message = 'В этапе есть сделки — выберите этап, куда их перенести';
     end if;
     update public.crm_deals set stage_id = p_move_to where stage_id = p_stage;

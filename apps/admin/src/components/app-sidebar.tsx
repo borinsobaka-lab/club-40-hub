@@ -8,6 +8,8 @@ import {
   ACADEMY_ITEMS,
   ANALYTICS_DATA_ITEMS,
   ANALYTICS_ITEMS,
+  CRM_ITEMS,
+  CRM_TASKS_URL,
   CLUB_GROUPS,
   DASHBOARD_ITEMS,
   MANAGE_GROUPS,
@@ -31,6 +33,8 @@ import { KbSidebarResize } from "@/components/kb/kb-sidebar-resize";
 import { useKbSidebarWidth } from "@/components/kb/use-kb-sidebar-width";
 import { sectionIcon } from "@/lib/scripts/icons";
 import { useAdminAccess } from "@/hooks/use-admin-access";
+import { useStaffProfile } from "@/hooks/use-staff-profile";
+import { useMyDueTasksCount } from "@/lib/crm/data";
 import { useActiveStudioId } from "@/hooks/use-active-studio";
 import { useClubRequestsBadge } from "@/hooks/use-client-requests";
 import { usePendingTrainerComments } from "@/hooks/use-trainer-comments";
@@ -238,6 +242,9 @@ export function AppSidebar() {
   const kbBase = kbBases?.find((b) => b.id === kbBaseId);
   const kbBaseTitle = kbBase?.title ?? "База знаний";
   const kbWidth = useKbSidebarWidth();
+  // CRM: на «Задачах» — свои задачи на сегодня и просроченные.
+  const { data: me } = useStaffProfile();
+  const crmDueTasks = useMyDueTasksCount(me?.id ?? null, railKey === "crm");
   const sectionMenu =
     railKey === "scripts"
       ? { title: "Скрипты LS", groups: scriptsMenu.groups }
@@ -285,18 +292,34 @@ export function AppSidebar() {
                     ].filter((g) => g.items.length > 0)
                   : [],
               }
-            : railKey === "manage"
+            : railKey === "crm"
               ? {
-                  // Блоки «Знания», «Доступы», «Клубы»; закрытые сотруднику пункты не показываем.
-                  title: "Управление",
+                  // «Настройки» — по праву «CRM: настройка».
+                  title: "CRM",
                   groups: access
-                    ? MANAGE_GROUPS.map((g) => ({
-                        ...g,
-                        items: g.items.filter((i) => canOpenPath(access, studioId, i.url)),
-                      })).filter((g) => g.items.length > 0)
+                    ? [
+                        {
+                          key: "crm",
+                          label: "Разделы",
+                          items: CRM_ITEMS.filter((i) => canOpenPath(access, studioId, i.url)).map(
+                            (i) => (i.url === CRM_TASKS_URL ? { ...i, badge: crmDueTasks } : i),
+                          ),
+                        },
+                      ]
                     : [],
                 }
-              : SECTION_MENUS[railKey];
+              : railKey === "manage"
+                ? {
+                    // Блоки «Знания», «Доступы», «Клубы»; закрытые сотруднику пункты не показываем.
+                    title: "Управление",
+                    groups: access
+                      ? MANAGE_GROUPS.map((g) => ({
+                          ...g,
+                          items: g.items.filter((i) => canOpenPath(access, studioId, i.url)),
+                        })).filter((g) => g.items.length > 0)
+                      : [],
+                  }
+                : SECTION_MENUS[railKey];
   const feedbackStudios = useSectionStudios("feedback");
   const npsStudios = useSectionStudios("nps");
   const feedbackEnabled =
@@ -334,7 +357,10 @@ export function AppSidebar() {
   const menuLoading =
     railKey === "scripts"
       ? scriptsMenu.loading
-      : railKey === "manage" || railKey === "academy" || railKey === "analytics"
+      : railKey === "manage" ||
+          railKey === "academy" ||
+          railKey === "analytics" ||
+          railKey === "crm"
         ? !access
         : !sectionMenu && !access;
   const [closedGroups, setClosedGroups] = useState(readCollapsedGroups);
@@ -509,7 +535,11 @@ export function AppSidebar() {
           <SidebarFooter
             className={cn(
               "gap-2 border-t border-white/10 p-3 lg:hidden",
-              (railKey === "kb" || railKey === "academy" || railKey === "analytics") && "hidden",
+              (railKey === "kb" ||
+                railKey === "academy" ||
+                railKey === "analytics" ||
+                railKey === "crm") &&
+                "hidden",
             )}
           >
             <StudioSwitcher triggerClassName="w-full border-white/15 bg-white/5 text-white focus-visible:bg-white/10 [&>svg]:text-white" />
