@@ -945,4 +945,383 @@ describe.skipIf(!url)("CRM (база)", () => {
       const off = await write(20);
       expect((await tx`select studio_id, responsible_id from crm_deals where id = ${off.deal_id!}`)[0]).toEqual({ studio_id: s1, responsible_id: null });
     }));
+  // Скорость ответа и уведомления (2026-11-19_crm_reply_sla_notifications.sql) ---
+
+  test("ожидание ответа: начинается с входящего, кончается ответом сотрудника; автоответ не в счёт", () =>
+    scenario(async (tx) => {
+      const { s1, pipeline } = await setup(tx);
+      const bot = await account(tx, "telegram_bot", s1, pipeline);
+      const m = await ingest(tx, bot, "w1", { external_id: "w1", name: "Анна" }, { external_id: "1", body: "Привет", sent_at: "2026-11-20T07:00:00Z" });
+      await ingest(tx, bot, "w1", { external_id: "w1", name: "Анна" }, { external_id: "2", body: "Вы тут?", sent_at: "2026-11-20T07:05:00Z" });
+      const waiting = async () =>
+        (await tx`select waiting_since from crm_conversations where id = ${m.conversation_id}`)[0].waiting_since as Date | null;
+      expect((await waiting())!.toISOString()).toBe("2026-11-20T07:00:00.000Z");
+      await tx`insert into crm_messages (conversation_id, direction, body, status, auto, created_at)
+               values (${m.conversation_id}, 'out', 'Скоро ответим', 'sent', true, '2026-11-20T07:06:00Z')`;
+      expect(await waiting()).not.toBeNull();
+      await tx`insert into crm_messages (conversation_id, direction, body, status, created_at)
+               values (${m.conversation_id}, 'out', 'Не ушло', 'failed', '2026-11-20T07:07:00Z')`;
+      expect(await waiting()).not.toBeNull();
+      await tx`insert into crm_messages (conversation_id, direction, body, status, created_at)
+               values (${m.conversation_id}, 'out', 'Здравствуйте', 'sent', '2026-11-20T07:08:00Z')`;
+      expect(await waiting()).toBeNull();
+      // Рабочие часы: ночное сообщение «ждёт» с открытия (9:00 по Тбилиси).
+      const [w] = await tx`select crm_work_start('2026-11-20T20:30:00Z') as night, crm_work_start('2026-11-20T08:00:00Z') as day`;
+      expect((w.night as Date).toISOString()).toBe("2026-11-21T05:00:00.000Z");
+      expect((w.day as Date).toISOString()).toBe("2026-11-20T08:00:00.000Z");
+    }));
+
+  test("уведомления: срок задачи, клиент ждёт, эскалация руководителю, назначение сделки — только подписанным", () =>
+    scenario(async (tx) => {
+      const { s1, manager, admin1, noCrm, pipeline, st1 } = await setup(tx);
+      const endpoint = (n: string) => `https://fcm.googleapis.com/fcm/send/${n}`;
+      // Подписка — только с правом CRM; норматив правит настройка.
+      await as(tx, noCrm);
+      expect(await failure(tx, () => tx`select crm_push_subscribe(${endpoint("x")}, 'k', 'a')`)).toContain("crm_forbidden");
+      await as(tx, admin1);
+      expect(await failure(tx, () => tx`select crm_push_subscribe('https://evil.example/x', 'k', 'a')`)).toContain("bad_endpoint");
+      await tx`select crm_push_subscribe(${endpoint("admin1")}, 'k', 'a', 'Chrome')`;
+      await tx`update crm_settings set reply_sla_minutes = 1`;
+      expect((await tx`select reply_sla_minutes from crm_settings`)[0].reply_sla_minutes).toBe(15);
+      expect(await failure(tx, () => tx`select crm_notifications_collect()`)).toContain("permission denied");
+      await as(tx, manager);
+      await tx`select crm_push_subscribe(${endpoint("manager")}, 'k', 'a')`;
+      await tx`update crm_settings set reply_sla_minutes = 10, escalate_minutes = 30`;
+      // Сделку назначили другому — ему уведомление; себе — нет.
+      const [{ id: deal }] = await tx`
+        insert into crm_deals (title, pipeline_id, stage_id, studio_id, responsible_id)
+        values ('Анна', ${pipeline}, ${st1}, ${s1}, ${admin1}) returning id`;
+      await tx`insert into crm_deals (title, pipeline_id, stage_id, studio_id, responsible_id)
+               values ('Своя', ${pipeline}, ${st1}, ${s1}, ${manager})`;
+      await asServer(tx);
+      let rows = await tx`select user_id, kind, title from crm_notifications order by created_at`;
+      expect(rows.map((r) => [r.user_id, r.kind, r.title])).toEqual([[admin1, "deal_assigned", "Новая сделка: Анна"]]);
+
+      // Клиент пишет в 11:00 по Тбилиси; в 11:05 — рано, в 11:15 — ответственному, в 11:40 — руководителю.
+      const bot = await account(tx, "telegram_bot", s1, pipeline);
+      const [{ id: contact }] = await tx`insert into crm_contacts (name) values ('Анна') returning id`;
+      await tx`update crm_deals set contact_id = ${contact} where id = ${deal}`;
+      const [{ id: conv }] = await tx`
+        insert into crm_conversations (contact_id, account_id, external_chat_id) values (${contact}, ${bot}, 'n1') returning id`;
+      await tx`insert into crm_messages (conversation_id, direction, body, status, created_at)
+               values (${conv}, 'in', 'Сколько стоит?', 'received', '2026-11-20T07:00:00Z')`;
+      await tx`update crm_tasks set due_at = '2026-11-20T07:10:00Z' where deal_id = ${deal}`;
+      const collect = async (at: string) => (await tx`select crm_notifications_collect(${at}::timestamptz) as n`)[0].n as number;
+      expect(await collect("2026-11-20T07:05:00Z")).toBe(0);
+      expect(await collect("2026-11-20T07:15:00Z")).toBe(2);
+      expect(await collect("2026-11-20T07:16:00Z")).toBe(0);
+      expect(await collect("2026-11-20T07:40:00Z")).toBe(1);
+      rows = await tx`select user_id, kind, title, url from crm_notifications where kind <> 'deal_assigned' order by kind`;
+      expect(rows.map((r) => [r.user_id, r.kind])).toEqual([
+        [manager, "reply_escalation"],
+        [admin1, "reply_wait"],
+        [admin1, "task_due"],
+      ]);
+      expect(rows[1].title).toBe("Клиент ждёт ответа: Анна");
+      expect(rows[1].url).toBe(`/crm/inbox?c=${conv}`);
+      // Ночью (23:00 по Тбилиси) про ожидание не напоминаем; перенесённая задача напомнит заново.
+      await tx`delete from crm_notifications where kind in ('reply_wait', 'reply_escalation')`;
+      await tx`update crm_tasks set due_at = '2026-11-20T18:50:00Z' where deal_id = ${deal}`;
+      expect(await collect("2026-11-20T19:00:00Z")).toBe(1);
+
+      // Отправка: пачка с браузерами получателя, второй раз не отдаётся.
+      const [{ r: claimed }] = await tx`select crm_notifications_claim(50) as r`;
+      const list = claimed as { kind: string; targets: { endpoint: string }[] }[];
+      expect(list.length).toBe(3);
+      expect(list.find((n) => n.kind === "reply_wait")).toBeUndefined();
+      expect(list.find((n) => n.kind === "task_due")!.targets.map((t) => t.endpoint)).toEqual([endpoint("admin1")]);
+      expect(((await tx`select crm_notifications_claim(50) as r`)[0].r as unknown[]).length).toBe(0);
+      await tx`select crm_push_gone(${tx.array([endpoint("admin1")], "text")})`;
+      expect((await tx`select 1 from crm_staff_push_subscriptions`).length).toBe(1);
+      // Без подписки уведомления не копятся.
+      await tx`update crm_tasks set due_at = '2026-11-20T18:55:00Z' where deal_id = ${deal}`;
+      expect(await collect("2026-11-20T19:01:00Z")).toBe(0);
+    }));
+
+  test("отчёт по сотрудникам: сделки, ответы в норматив, задачи", () =>
+    scenario(async (tx) => {
+      const { s1, manager, admin1, pipeline, st1, won } = await setup(tx);
+      const bot = await account(tx, "telegram_bot", s1, pipeline);
+      const m = await ingest(tx, bot, "r1", { external_id: "r1", name: "Анна" }, { external_id: "1", body: "Привет", sent_at: "2026-11-20T07:00:00Z" });
+      await tx`update crm_deals set responsible_id = ${admin1}, budget = 300 where id = ${m.deal_id!}`;
+      const say = (dir: string, at: string, by: string | null = null) =>
+        tx`insert into crm_messages (conversation_id, direction, body, status, sent_by, created_at)
+           values (${m.conversation_id}, ${dir}, 'x', ${dir === "in" ? "received" : "sent"}, ${by}, ${at}::timestamptz)`;
+      await say("out", "2026-11-20T07:05:00Z", admin1); // 5 минут — в норматив
+      await say("in", "2026-11-20T08:00:00Z");
+      await say("in", "2026-11-20T08:10:00Z");
+      await say("out", "2026-11-20T09:00:00Z", manager); // 60 минут — мимо
+      await tx`update crm_deals set stage_id = ${won} where id = ${m.deal_id!}`;
+      await tx`insert into crm_deals (title, pipeline_id, stage_id, studio_id, responsible_id)
+               values ('В работе', ${pipeline}, ${st1}, ${s1}, ${admin1})`;
+      await tx`update crm_tasks set due_at = now() - interval '1 day' where done_at is null`;
+      await as(tx, manager);
+      const [{ r }] = await tx`select crm_people_report('2026-01-01', '2030-01-01', ${pipeline}) as r`;
+      const rep = r as { sla_minutes: number; asked: number; answered: number; reply_in_sla: number; people: Record<string, unknown>[] };
+      expect(rep).toMatchObject({ sla_minutes: 15, asked: 2, answered: 2, reply_in_sla: 1 });
+      const a = rep.people.find((p) => p.user_id === admin1)!;
+      expect(a).toMatchObject({ open: 1, won: 1, won_budget: 300, replies: 1, reply_median: 5, reply_in_sla: 1, messages: 1, tasks_overdue: 1 });
+      // Задача закрытой сделки закрылась сама — в «выполнено» не идёт.
+      expect(a.tasks_done).toBe(0);
+      expect(rep.people.find((p) => p.user_id === manager)).toMatchObject({ replies: 1, reply_median: 60, reply_in_sla: 0 });
+    }));
+
+  // Сценарии по клиентам клуба (2026-11-19_zz_crm_scenarios.sql) -------------------
+
+  async function portalClient(tx: Tx, studioId: string, name: string, phone: string) {
+    const [{ id }] = await tx`
+      insert into clients (studio_id, first_name, last_name, phone) values (${studioId}, ${name}, 'Тестова', ${phone}) returning id`;
+    return id as string;
+  }
+  async function product(tx: Tx, studioId: string, kind: string, name: string) {
+    const [{ id }] = await tx`
+      insert into memberships (studio_id, name, kind, visits_count, duration_days, price)
+      values (${studioId}, ${name}, ${kind}, ${kind === "trial" ? 1 : 8}, 30, 100) returning id`;
+    return id as string;
+  }
+  const scenarioDeals = (tx: Tx, client: string) =>
+    tx`select d.id, d.scenario, d.source, d.studio_id, d.responsible_id, d.closed_at, d.budget, s.kind, s.name as stage
+         from crm_deals d join crm_contacts c on c.id = d.contact_id join crm_stages s on s.id = d.stage_id
+        where c.client_id = ${client} order by d.created_at`;
+
+  test("сценарии: продление — сделка по заканчивающемуся абонементу, без повторов; покупка закрывает", () =>
+    scenario(async (tx) => {
+      const { s1, manager, admin1 } = await setup(tx);
+      const client = await portalClient(tx, s1, "Анна", "+995555000001");
+      const pack = await product(tx, s1, "package", "Пакет 8");
+      await tx`insert into sales (studio_id, client_id, membership_id, total_amount, sold_at, sale_kind)
+               values (${s1}, ${client}, ${pack}, 320, current_date, 'new')`;
+      // Включает только настройка; включить без этапа нельзя.
+      await as(tx, admin1);
+      await tx`update crm_scenarios set enabled = true where key = 'expiring'`;
+      expect((await tx`select enabled from crm_scenarios where key = 'expiring'`)[0].enabled).toBe(false);
+      expect(await failure(tx, () => tx`select crm_scenario_preview('expiring')`)).toContain("crm_forbidden");
+      await as(tx, manager);
+      expect(await failure(tx, () => tx`update crm_scenarios set enabled = true, stage_id = null where key = 'lapsed'`)).toContain("выберите воронку и этап");
+      await tx`update crm_scenarios set enabled = true, params = '{"days": 5, "left": 1}'::jsonb where key = 'expiring'`;
+      await tx`insert into crm_distribution_studios (studio_id, user_ids) values (${s1}, ${`{${admin1}}`}::uuid[])`;
+      expect((await tx`select crm_scenario_preview('expiring') as n`)[0].n).toBe(0);
+      await asServer(tx);
+      expect((await tx`select crm_scenarios_run() as n`)[0].n).toBe(0);
+      // Срок кончается через 3 дня.
+      await tx`update client_memberships set started_at = current_date - 27, ends_at = current_date + 3,
+                      starts_on_first_visit = false where client_id = ${client}`;
+      await as(tx, manager);
+      expect((await tx`select crm_scenario_preview('expiring') as n`)[0].n).toBe(1);
+      expect((await tx`select crm_scenario_preview('expiring', '{"days": 1, "left": 0}'::jsonb) as n`)[0].n).toBe(0);
+      await asServer(tx);
+      expect((await tx`select crm_scenarios_run() as n`)[0].n).toBe(1);
+      expect((await tx`select crm_scenarios_run() as n`)[0].n).toBe(0);
+      let deals = await scenarioDeals(tx, client);
+      expect(deals.length).toBe(1);
+      expect(deals[0]).toMatchObject({ scenario: "expiring", source: "Продление", studio_id: s1, responsible_id: admin1, stage: "Заканчивается абонемент" });
+      const [task] = await tx`select title, note, assignee_id from crm_tasks where deal_id = ${deals[0].id}`;
+      expect(task.title).toBe("Предложить продление");
+      expect(task.note).toContain("Абонемент «Пакет 8» до ");
+      expect(task.assignee_id).toBe(admin1);
+      // Сотрудник сценарий сделке не ставит.
+      await as(tx, manager);
+      await tx`update crm_deals set scenario = 'lapsed' where id = ${deals[0].id}`;
+      await asServer(tx);
+      expect((await scenarioDeals(tx, client))[0].scenario).toBe("expiring");
+      // Продление куплено — сделка «Успешно» с суммой; новой по ждущему продлению нет.
+      await tx`insert into sales (studio_id, client_id, membership_id, total_amount, sold_at, sale_kind)
+               values (${s1}, ${client}, ${pack}, 300, current_date, 'renewal')`;
+      deals = await scenarioDeals(tx, client);
+      expect(deals[0].kind).toBe("won");
+      expect(Number(deals[0].budget)).toBe(300);
+      await tx`delete from crm_scenario_log`;
+      expect((await tx`select crm_scenarios_run() as n`)[0].n).toBe(0);
+      const [{ r }] = await tx`select crm_scenarios_report(current_date - 1, current_date + 1) as r`;
+      expect(r).toEqual([{ key: "expiring", created: 1, open: 0, won: 1, lost: 0, won_budget: 300 }]);
+    }));
+
+  test("сценарии: долг закрывается платежом, «давно не был» — посещением, пробное без покупки", () =>
+    scenario(async (tx) => {
+      const { s1, manager } = await setup(tx);
+      await as(tx, manager);
+      await tx`update crm_scenarios set enabled = true where key in ('overdue_payment', 'inactive', 'trial_no_purchase')`;
+      await asServer(tx);
+      const pack = await product(tx, s1, "package", "Пакет 8");
+      const trial = await product(tx, s1, "trial", "Пробное");
+      const [{ id: workout }] = await tx`insert into workouts (studio_id, name) values (${s1}, 'Растяжка') returning id`;
+      const visit = async (client: string, daysAgo: number) => {
+        const [{ id: entry }] = await tx`
+          insert into schedule_entries (studio_id, workout_id, kind, capacity, starts_at, ends_at)
+          values (${s1}, ${workout}, 'group', 10, now() - make_interval(days => ${daysAgo}), now() - make_interval(days => ${daysAgo}) + interval '1 hour') returning id`;
+        const [{ id }] = await tx`
+          insert into schedule_bookings (studio_id, entry_id, client_id, status) values (${s1}, ${entry}, ${client}, 'booked') returning id`;
+        await tx`update schedule_bookings set status = 'attended' where id = ${id}`;
+      };
+
+      // Должник: платёж просрочен на 3 дня.
+      const debtor = await portalClient(tx, s1, "Нино", "+995555000002");
+      const [{ id: sale }] = await tx`
+        insert into sales (studio_id, client_id, membership_id, total_amount, sold_at, sale_kind)
+        values (${s1}, ${debtor}, ${pack}, 320, current_date - 20, 'new') returning id`;
+      const [{ id: inst }] = await tx`
+        insert into sale_installments (sale_id, due_date, amount) values (${sale}, current_date - 3, 160) returning id`;
+      await visit(debtor, 1);
+      // Купил и не ходит 20 дней.
+      const sleeper = await portalClient(tx, s1, "Мари", "+995555000003");
+      await tx`insert into sales (studio_id, client_id, membership_id, total_amount, sold_at, sale_kind)
+               values (${s1}, ${sleeper}, ${pack}, 320, current_date - 30, 'new')`;
+      await tx`update client_memberships set created_at = now() - interval '30 days' where client_id = ${sleeper}`;
+      await visit(sleeper, 20);
+      // Был на пробном 2 дня назад и не купил.
+      const guest = await portalClient(tx, s1, "Тамар", "+995555000004");
+      await tx`insert into sales (studio_id, client_id, membership_id, total_amount, sold_at, sale_kind)
+               values (${s1}, ${guest}, ${trial}, 20, current_date - 3, 'trial')`;
+      await visit(guest, 2);
+
+      expect((await tx`select crm_scenarios_run() as n`)[0].n).toBe(3);
+      expect((await scenarioDeals(tx, debtor)).map((d) => d.scenario)).toEqual(["overdue_payment"]);
+      expect((await scenarioDeals(tx, sleeper)).map((d) => d.scenario)).toEqual(["inactive"]);
+      expect((await scenarioDeals(tx, guest)).map((d) => d.scenario)).toEqual(["trial_no_purchase"]);
+
+      // Платёж внесён — сделка о долге закрыта; покупка её не закрывает.
+      await tx`insert into sales (studio_id, client_id, membership_id, total_amount, sold_at, sale_kind)
+               values (${s1}, ${debtor}, ${pack}, 300, current_date, 'renewal')`;
+      expect((await scenarioDeals(tx, debtor))[0].closed_at).toBeNull();
+      await tx`update sale_installments set paid = true where id = ${inst}`;
+      const [paid] = await scenarioDeals(tx, debtor);
+      expect(paid.kind).toBe("won");
+      expect(Number(paid.budget)).toBe(160);
+      // Пришёл на занятие — «давно не был» закрыта.
+      await visit(sleeper, 0);
+      expect((await scenarioDeals(tx, sleeper))[0].kind).toBe("won");
+      // Гость купил абонемент — сделка после пробного «Успешно».
+      await tx`insert into sales (studio_id, client_id, membership_id, total_amount, sold_at, sale_kind)
+               values (${s1}, ${guest}, ${pack}, 320, current_date, 'new')`;
+      expect((await scenarioDeals(tx, guest))[0].kind).toBe("won");
+    }));
+
+  // Источники и сквозная воронка (2026-11-19_zzz_crm_sources_funnel.sql) -----------
+
+  test("форма сайта: заявка — контакт и сделка с метками; повтор ложится в ту же сделку", () =>
+    scenario(async (tx) => {
+      const { s1, manager, admin1, pipeline } = await setup(tx);
+      await as(tx, admin1);
+      expect(await failure(tx, () => tx`insert into crm_lead_forms (name) values ('Чужая')`)).toContain("row-level security");
+      await as(tx, manager);
+      const [form] = await tx`
+        insert into crm_lead_forms (name, source, pipeline_id, studio_id) values (' Лендинг ', 'Сайт', ${pipeline}, ${s1})
+        returning id, name, token`;
+      expect(form.name).toBe("Лендинг");
+      expect(await failure(tx, () => tx`select crm_lead_submit(${form.token}, '{}'::jsonb)`)).toContain("permission denied");
+      await as(tx, admin1);
+      expect((await tx`select 1 from crm_lead_forms`).length).toBe(0);
+      await asServer(tx);
+      const submit = async (data: Record<string, string>) =>
+        (await tx`select crm_lead_submit(${form.token}, ${JSON.stringify(data)}::text::jsonb) as r`)[0].r as { deal_id: string; contact_id: string; created: boolean };
+      expect(await failure(tx, () => submit({ name: "Без контактов" }))).toContain("crm_lead_empty");
+      expect(await failure(tx, () => tx`select crm_lead_submit('nope', '{"phone": "+995555000010"}'::jsonb)`)).toContain("crm_form_not_found");
+      const first = await submit({ name: "Анна", phone: "+995 555 000 010", message: "Хочу на пробное", utm_source: "instagram", utm_campaign: "Ноябрь", page: "https://site.example/promo" });
+      expect(first.created).toBe(true);
+      const [d] = await tx`select title, source, studio_id, utm_source, utm_campaign, page_url, lead_form_id from crm_deals where id = ${first.deal_id}`;
+      expect(d).toEqual({ title: "Анна", source: "Сайт", studio_id: s1, utm_source: "instagram", utm_campaign: "Ноябрь", page_url: "https://site.example/promo", lead_form_id: form.id });
+      expect((await tx`select count(*)::int as n from crm_tasks where deal_id = ${first.deal_id} and done_at is null`)[0].n).toBe(1);
+      // Та же женщина оставила заявку ещё раз (номер записан иначе).
+      const again = await submit({ name: "Анна", phone: "555000010", message: "Перезвоните" });
+      expect(again).toMatchObject({ deal_id: first.deal_id, contact_id: first.contact_id, created: false });
+      const notes = await tx`select body from crm_deal_events where deal_id = ${first.deal_id} and kind = 'auto' order by created_at`;
+      expect(notes.map((n) => n.body)).toEqual([
+        "Заявка с формы «Лендинг»\nХочу на пробное\nСтраница: https://site.example/promo",
+        "Заявка с формы «Лендинг»\nПерезвоните",
+      ]);
+      expect((await tx`select leads_count from crm_lead_forms where id = ${form.id}`)[0].leads_count).toBe(2);
+    }));
+
+  test("ссылка с меткой: переходы считаются, код в первом сообщении — источник сделки", () =>
+    scenario(async (tx) => {
+      const { s1, manager, pipeline } = await setup(tx);
+      await as(tx, manager);
+      const [link] = await tx`
+        insert into crm_links (name, source, campaign, target_kind, target, text)
+        values ('Листовка', 'Листовки', 'Ваке, ноябрь', 'whatsapp', '+995555111222', 'Хочу записаться') returning id, code`;
+      expect(link.code).toMatch(/^[a-z0-9]{6}$/);
+      expect(await failure(tx, () => tx`insert into crm_links (name, source, target_kind, target) values ('x', 'y', 'url', 'http://a.b')`)).toContain("crm_links_url_check");
+      await tx`update crm_links set clicks = 100 where id = ${link.id}`;
+      expect(await failure(tx, () => tx`select crm_link_click(${link.code})`)).toContain("permission denied");
+      await asServer(tx);
+      const [{ r }] = await tx`select crm_link_click(${link.code.toUpperCase()}) as r`;
+      expect(r).toMatchObject({ target_kind: "whatsapp", target: "+995555111222", text: "Хочу записаться" });
+      expect((await tx`select clicks from crm_links where id = ${link.id}`)[0].clicks).toBe(1);
+      expect((await tx`select crm_link_click('zzzzzz') as r`)[0].r).toBeNull();
+      const wa = await account(tx, "whatsapp", s1, pipeline);
+      const tg = await account(tx, "telegram_bot", s1, pipeline);
+      const a = await ingest(tx, wa, "l1", { external_id: "995555000020", name: "Анна" }, { external_id: "1", body: `Хочу записаться #${link.code}` });
+      const b = await ingest(tx, tg, "l2", { external_id: "77", name: "Нино" }, { external_id: "1", body: `/start ${link.code}` });
+      const c = await ingest(tx, tg, "l3", { external_id: "78", name: "Мари" }, { external_id: "1", body: "Привет" });
+      const deals = await tx`select id, source, utm_campaign, link_id from crm_deals where id in ${tx([a.deal_id!, b.deal_id!, c.deal_id!])}`;
+      const byId = new Map(deals.map((d) => [d.id, d]));
+      expect(byId.get(a.deal_id!)).toMatchObject({ source: "Листовки", utm_campaign: "Ваке, ноябрь", link_id: link.id });
+      expect(byId.get(b.deal_id!)).toMatchObject({ source: "Листовки", link_id: link.id });
+      expect(byId.get(c.deal_id!)).toMatchObject({ source: "Telegram", link_id: null });
+    }));
+
+  test("сквозная воронка: ответили → записаны → пришли → пробное → купили, выручка и расход по источнику", () =>
+    scenario(async (tx) => {
+      const { s1, s2, manager, admin2, pipeline, st1, lost } = await setup(tx);
+      const pack = await product(tx, s1, "package", "Пакет 8");
+      const trial = await product(tx, s1, "trial", "Пробное");
+      const client = await portalClient(tx, s1, "Анна", "+995555000030");
+      const bot = await account(tx, "telegram_bot", s1, pipeline);
+      const [{ id: contact }] = await tx`insert into crm_contacts (name, phone) values ('Анна', '+995555000030') returning id`;
+      const [{ id: conv }] = await tx`
+        insert into crm_conversations (contact_id, account_id, external_chat_id) values (${contact}, ${bot}, 'f1') returning id`;
+      const deal = async (title: string, source: string | null, studioId: string, contactId: string | null = null) =>
+        (await tx`insert into crm_deals (title, pipeline_id, stage_id, studio_id, source, contact_id)
+                  values (${title}, ${pipeline}, ${st1}, ${studioId}, ${source}, ${contactId}) returning id`)[0].id as string;
+      const main = await deal("Анна", "Instagram", s1, contact);
+      const cold = await deal("Холодная", "instagram", s1);
+      await deal("Сайт", "Сайт", s2);
+      await tx`update crm_deals set stage_id = ${lost} where id = ${cold}`;
+      // Путь: ответ, пробное, запись, посещение, покупка, потом продление.
+      await tx`insert into crm_messages (conversation_id, direction, body, status, auto) values (${conv}, 'out', 'авто', 'sent', true)`;
+      expect((await tx`select first_reply_at from crm_deals where id = ${main}`)[0].first_reply_at).toBeNull();
+      await tx`insert into crm_messages (conversation_id, direction, body, status) values (${conv}, 'out', 'Здравствуйте', 'sent')`;
+      await tx`insert into sales (studio_id, client_id, membership_id, total_amount, sold_at, sale_kind)
+               values (${s1}, ${client}, ${trial}, 20, current_date, 'trial')`;
+      const [{ id: workout }] = await tx`insert into workouts (studio_id, name) values (${s1}, 'Растяжка') returning id`;
+      const [{ id: entry }] = await tx`
+        insert into schedule_entries (studio_id, workout_id, kind, capacity, starts_at, ends_at)
+        values (${s1}, ${workout}, 'group', 10, now() + interval '1 hour', now() + interval '2 hours') returning id`;
+      const [{ id: booking }] = await tx`
+        insert into schedule_bookings (studio_id, entry_id, client_id, status) values (${s1}, ${entry}, ${client}, 'booked') returning id`;
+      await tx`update schedule_bookings set status = 'attended' where id = ${booking}`;
+      const [path] = await tx`select first_reply_at, booked_at, attended_at, trial_at from crm_deals where id = ${main}`;
+      for (const step of ["first_reply_at", "booked_at", "attended_at", "trial_at"]) expect(path[step]).not.toBeNull();
+      await tx`insert into sales (studio_id, client_id, membership_id, total_amount, sold_at, sale_kind)
+               values (${s1}, ${client}, ${pack}, 320, current_date, 'new')`;
+      await tx`insert into sales (studio_id, client_id, membership_id, total_amount, sold_at, sale_kind)
+               values (${s1}, ${client}, ${pack}, 300, current_date, 'renewal')`;
+      // Сотрудник путь не подделает.
+      await as(tx, manager);
+      await tx`update crm_deals set attended_at = now() where id = ${cold}`;
+      expect((await tx`select attended_at from crm_deals where id = ${cold}`)[0].attended_at).toBeNull();
+      // Расход: весь месяц — 310 при 31 дне; период в 10 дней этого месяца — 100.
+      await tx`insert into crm_ad_spend (month, source, amount) values ('2026-01-01', 'instagram', 310)`;
+      await tx`insert into crm_ad_spend (month, source, amount)
+               values (date_trunc('month', current_date)::date, ' Instagram ', 600), (date_trunc('month', current_date)::date, 'Блогеры', 50)`;
+      const [{ r: jan }] = await tx`select crm_funnel_report('2026-01-11', '2026-01-20', 'source') as r`;
+      expect((jan as { total: { spend: number; leads: number } }).total).toMatchObject({ spend: 100, leads: 0 });
+      const [{ r }] = await tx`
+        select crm_funnel_report(date_trunc('month', current_date)::date,
+                                 (date_trunc('month', current_date) + interval '1 month - 1 day')::date, 'source') as r`;
+      const rep = r as { rows: Record<string, unknown>[]; total: Record<string, number> };
+      expect(rep.rows.map((x) => x.label)).toEqual(["Instagram", "Сайт", "Блогеры"]);
+      expect(rep.rows[0]).toMatchObject({ leads: 2, replied: 1, booked: 1, attended: 1, trial: 1, won: 1, lost: 1, revenue: 320, ltv: 640, spend: 600 });
+      expect(rep.rows[2]).toMatchObject({ leads: 0, spend: 50 });
+      expect(rep.total).toMatchObject({ leads: 3, won: 1, revenue: 320, spend: 650 });
+      // По клубам; сотрудник другого клуба видит только свой.
+      await as(tx, admin2);
+      const [{ r: own }] = await tx`select crm_funnel_report(current_date - 1, current_date + 1, 'studio') as r`;
+      expect((own as { rows: { label: string; leads: number }[] }).rows.map((x) => [x.label, x.leads])).toEqual([
+        ["Сабуртало", 1],
+        // Расход без клуба — общий, виден всем.
+        ["Без клуба", 0],
+      ]);
+      expect(await failure(tx, () => tx`select crm_funnel_report(current_date, current_date, 'nope')`)).toContain("crm_bad_group");
+    }));
 });
