@@ -30,25 +30,21 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 
-// Возврат по продаже абонемента (таблица refunds): из «Продаж» подписочного
-// клуба и из «Абонементов» пакетного. Можно вернуть часть; сумма всех
-// возвратов по продаже не больше суммы продажи, в пакетном — не больше
-// внесённого (невнесённые платежи возврат снимает сам, а возврат — это
-// отданные деньги: иначе «Фактическая выручка» и LTV дашборда уходят в
-// минус). В подписочном клубе абонемент возврат не отменяет; в пакетном
-// (2026-10-13) база переводит абонемент в «Возврат», снимает невнесённые
-// платежи и удаляет неотмеченные записи клиента на занятия (триггер
+// Возврат по продаже абонемента (таблица refunds) из «Абонементов». Можно
+// вернуть часть; сумма всех возвратов по продаже не больше внесённого
+// (невнесённые платежи возврат снимает сам, а возврат — это отданные деньги:
+// иначе «Фактическая выручка» и LTV дашборда уходят в минус). База
+// (2026-10-13) переводит абонемент в «Возврат», снимает невнесённые платежи и
+// удаляет неотмеченные записи клиента на занятия (триггер
 // refunds_packages_apply).
 
 /** Что нужно окну о продаже. */
 export type RefundSale = {
   id: string;
-  /** Пакетный клуб: возврат закрывает абонемент (см. выше). */
-  packages?: boolean;
   studio_id: string;
   total_amount: number;
-  /** Сколько внесено по продаже (пакетный клуб): больше вернуть нельзя. */
-  paidAmount?: number;
+  /** Сколько внесено по продаже: больше вернуть нельзя. */
+  paidAmount: number;
   /** Название абонемента — в описании окна. */
   membershipName: string | null;
 };
@@ -95,7 +91,7 @@ function RefundForm({
     },
     meta: { errorMessage: "Не удалось загрузить прошлые возвраты" },
   });
-  const limit = sale.paidAmount ?? Number(sale.total_amount ?? 0);
+  const limit = sale.paidAmount;
   const available = Math.max(0, limit - (refunded ?? 0));
   // По умолчанию — остаток к возврату; пока админ не ввёл своё значение.
   const [amountInput, setAmount] = useState<string | null>(null);
@@ -120,9 +116,7 @@ function RefundForm({
       toast.error(
         refunded > 0
           ? `Сумма возврата больше остатка: по продаже уже возвращено ${formatMoney(refunded)}`
-          : sale.paidAmount !== undefined
-            ? `Сумма возврата больше внесённой по продаже: ${formatMoney(limit)}`
-            : "Сумма возврата больше суммы продажи",
+          : `Сумма возврата больше внесённой по продаже: ${formatMoney(limit)}`,
       );
       return;
     }
@@ -145,12 +139,10 @@ function RefundForm({
       toast.success("Возврат зафиксирован");
       // Остаток к возврату по продаже и суммы возвратов в таблицах.
       queryClient.invalidateQueries({ queryKey: ["refunds"] });
-      if (sale.packages) {
-        // Абонемент закрыт, записи клиента на занятия удалены.
-        queryClient.invalidateQueries({ queryKey: ["client_packages_list"] });
-        queryClient.invalidateQueries({ queryKey: ["schedule_entries"] });
-        queryClient.invalidateQueries({ queryKey: ["schedule_bookings"] });
-      }
+      // Абонемент закрыт, записи клиента на занятия удалены.
+      queryClient.invalidateQueries({ queryKey: ["client_packages_list"] });
+      queryClient.invalidateQueries({ queryKey: ["schedule_entries"] });
+      queryClient.invalidateQueries({ queryKey: ["schedule_bookings"] });
       onOpenChange(false);
       onSaved();
     } finally {
@@ -169,24 +161,18 @@ function RefundForm({
       <DialogForm onSubmit={handleSave}>
         <DialogBody>
           <div className="space-y-4">
-            {sale.packages && (
-              <InfoNote variant="warning">
-                Абонемент перейдёт в статус «Возврат», невнесённые платежи по графику снимутся, а
-                записи клиента на тренировки без отметки посещения удалятся. Отменить это нельзя.
-              </InfoNote>
-            )}
+            <InfoNote variant="warning">
+              Абонемент перейдёт в статус «Возврат», невнесённые платежи по графику снимутся, а
+              записи клиента на тренировки без отметки посещения удалятся. Отменить это нельзя.
+            </InfoNote>
             <FormField
               label="Сумма возврата, ₾"
               required
-              tip={
-                sale.packages
-                  ? "Не больше внесённого по продаже, можно часть. Абонемент перейдёт в статус «Возврат», невнесённые платежи снимутся, записи клиента на занятия без отметки посещения удалятся."
-                  : "Можно вернуть часть. Абонемент клиента возврат не отменяет — при необходимости измените его в карточке клиента."
-              }
+              tip="Не больше внесённого по продаже, можно часть. Абонемент перейдёт в статус «Возврат», невнесённые платежи снимутся, записи клиента на занятия без отметки посещения удалятся."
               hint={
                 refunded
                   ? `Уже возвращено ${formatMoney(refunded)}, доступно ${formatMoney(available)}`
-                  : sale.paidAmount !== undefined && sale.paidAmount < Number(sale.total_amount)
+                  : sale.paidAmount < Number(sale.total_amount)
                     ? `Внесено по продаже ${formatMoney(limit)}`
                     : undefined
               }

@@ -129,7 +129,12 @@ export const CLUB_GROUPS: NavGroup<ClubNavItem>[] = [
       { title: "Расписание", url: "/schedule", icon: CalendarMinimalistic, section: "schedule" },
       { title: "Клиенты", url: "/clients", icon: UsersGroupRounded, section: "clients" },
       // Продажи абонементов, возвраты и сбор денег по рассрочкам.
-      { title: "Абонементы", url: "/client-memberships", icon: Card, section: "client-memberships" },
+      {
+        title: "Абонементы",
+        url: "/client-memberships",
+        icon: Card,
+        section: "client-memberships",
+      },
     ],
   },
   {

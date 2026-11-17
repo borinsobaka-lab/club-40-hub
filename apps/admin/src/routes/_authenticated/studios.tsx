@@ -502,7 +502,6 @@ function StudioForm({
     }
   };
 
-
   return (
     <>
       <DialogHeader>

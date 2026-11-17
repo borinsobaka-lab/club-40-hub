@@ -3,17 +3,15 @@ import { balanceKindOf, balanceLineText, membershipBalance } from "./membership-
 
 describe("membershipBalance", () => {
   test("пакет тренировок с подарочными персональными и диагностикой", () => {
-    const lines = membershipBalance(
-      {
-        kind: "package",
-        visits_count: 8,
-        personal_count: 1,
-        diagnostics_count: 1,
-        visits_left: 2,
-        personal_left: 1,
-        diagnostics_left: 0,
-      },
-    );
+    const lines = membershipBalance({
+      kind: "package",
+      visits_count: 8,
+      personal_count: 1,
+      diagnostics_count: 1,
+      visits_left: 2,
+      personal_left: 1,
+      diagnostics_left: 0,
+    });
     expect(lines.map(balanceLineText)).toEqual([
       "Групповые: использовано 6 из 8, осталось 2",
       "Персональные: использовано 0 из 1, осталось 1",
@@ -22,9 +20,13 @@ describe("membershipBalance", () => {
   });
 
   test("пакет персональных — без групповых", () => {
-    const lines = membershipBalance(
-      { kind: "personal", visits_count: 0, personal_count: 10, visits_left: 0, personal_left: 3 },
-    );
+    const lines = membershipBalance({
+      kind: "personal",
+      visits_count: 0,
+      personal_count: 10,
+      visits_left: 0,
+      personal_left: 3,
+    });
     expect(lines.map(balanceLineText)).toEqual(["Персональные: использовано 7 из 10, осталось 3"]);
   });
 

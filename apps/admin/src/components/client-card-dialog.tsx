@@ -534,7 +534,7 @@ function ClientCard({ client: initial, onClose }: { client: ClientLike; onClose:
                       Редактировать
                     </Button>
                   )}
-                  {/* Новая продажа сразу с этим клиентом — без перехода в «Продажи». */}
+                  {/* Новая продажа сразу с этим клиентом — без перехода в «Абонементы». */}
                   <Button
                     variant="outline"
                     size="sm"
@@ -595,11 +595,7 @@ function ClientCard({ client: initial, onClose }: { client: ClientLike; onClose:
           </TabsContent>
 
           <TabsContent value="profile" className="mt-4 space-y-4">
-            <ProfileTab
-              profile={profile}
-              loading={loadingProfile}
-              hasUser={!!userId}
-            />
+            <ProfileTab profile={profile} loading={loadingProfile} hasUser={!!userId} />
             {/* Что написали тренеры в мобильном приложении (2026-11-05). */}
             <TrainerCommentsBlock clientId={client.id} />
           </TabsContent>

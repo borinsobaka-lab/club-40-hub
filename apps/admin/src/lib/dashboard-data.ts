@@ -450,9 +450,8 @@ async function writtenOffInstallments(studioIds: string[]) {
 /**
  * «Заканчивается абонементов» — даты окончания абонементов в from–to, кроме
  * тех, что клиент уже продлил до окончания: купил следующий абонемент того же
- * вида (balance_kind) не позже дня окончания. В подписочном клубе такая
- * покупка заменяет прежний (replaced — его и так нет в выборке), в пакетном
- * продление ждёт своей очереди (pending), а прежний остаётся действующим.
+ * вида (balance_kind) не позже дня окончания: продление ждёт своей очереди
+ * (pending), а прежний остаётся действующим.
  */
 async function expiringMemberships(studioIds: string[], from: string, to: string) {
   const ending = await loadAllRows({

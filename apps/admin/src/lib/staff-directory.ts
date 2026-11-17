@@ -98,17 +98,15 @@ export function bankOf(e: Pick<Employee, "bank_details"> | null): BankDetails | 
 }
 
 /**
- * Пакетные студии текущего сотрудника — зарплаты считаются только по ним
- * («Доступы»: студия есть, если в ней есть роль), и сотрудники справочника,
- * привязанные хоть к одной из них.
+ * Клубы текущего сотрудника — зарплаты считаются по ним (студия есть, если в
+ * ней есть роль), и сотрудники справочника, привязанные хоть к одному из них.
  */
 export function usePayrollScope() {
   const { data: studios = [], isLoading: studiosLoading } = useStudios();
   const { data: employees = [], isLoading: employeesLoading } = useEmployees();
-  const packageStudios = studios.filter((s) => s.format === "packages");
-  const ids = new Set(packageStudios.map((s) => s.id));
+  const ids = new Set(studios.map((s) => s.id));
   return {
-    studios: packageStudios,
+    studios,
     employees: employees.filter((e) => e.trainer_studios.some((s) => ids.has(s.studio_id))),
     loading: studiosLoading || employeesLoading,
   };

@@ -119,7 +119,6 @@ export const Route = createFileRoute("/_authenticated/schedule")({
 type Workout = {
   id: string;
   name: string;
-  type?: string | null;
   /** По умолчанию — для клуба без своей строки в capacities. */
   capacity?: number | null;
   color?: string | null;
@@ -238,11 +237,11 @@ type EntryDraft = {
 };
 
 const ENTRY_SELECT =
-  "*, workout:workouts(name, type, capacity, color, translations), schedule_entry_trainers(trainer_id, trainer:trainers(id, full_name, translations), substitution:schedule_entry_substitutions(replaced_trainer_id, replaced:trainers(full_name))), participants:schedule_bookings(status, client_id, client:clients(id, first_name, last_name, full_name, client_memberships(created_at, membership:memberships(kind))))";
+  "*, workout:workouts(name, capacity, color, translations), schedule_entry_trainers(trainer_id, trainer:trainers(id, full_name, translations), substitution:schedule_entry_substitutions(replaced_trainer_id, replaced:trainers(full_name))), participants:schedule_bookings(status, client_id, client:clients(id, first_name, last_name, full_name, client_memberships(created_at, membership:memberships(kind))))";
 // Колонки справочников входят в ключ запроса: разделы «Тренировки» и «Сотрудники»
 // грузят те же таблицы целиком, и общий ключ подсовывал бы им наш урезанный кэш.
 const WORKOUT_COLS =
-  "id, name, type, capacity, color, capacities:workout_capacities(studio_id, capacity)";
+  "id, name, capacity, color, capacities:workout_capacities(studio_id, capacity)";
 // Сотрудники общие для студий: в расписание ставим тех, кто привязан к этой
 // студии (trainer_studios). Занятия ведут тренеры; на прочую активность
 // (например, фотосъёмку) можно отметить и администраторов.

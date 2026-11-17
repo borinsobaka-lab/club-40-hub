@@ -127,7 +127,7 @@ const SORT_GETTERS = {
 
 function RequestsPage() {
   const studioId = useActiveStudioId();
-  const studios = useSectionStudios("requests", "packages");
+  const studios = useSectionStudios("requests");
   const idsKey = studioIdsKey(studios);
   const multi = (studios?.length ?? 0) > 1;
   const studioOf = (id: string) => studios?.find((s) => s.id === id) ?? null;

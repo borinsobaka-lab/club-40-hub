@@ -51,9 +51,8 @@ export const MEMBERSHIP_STATUS_DOT: Record<string, string> = {
 export type MembershipStatusInput = {
   status: CMStatus | null | undefined;
   ends_at?: string | null;
-  auto_renew?: boolean | null;
   cancelled_at?: string | null;
-  /** Пакетный клуб: срок от первого посещения и его начало (null — ещё не ходил). */
+  /** Срок от первого посещения и его начало (null — ещё не ходил). */
   starts_on_first_visit?: boolean | null;
   started_at?: string | null;
 };

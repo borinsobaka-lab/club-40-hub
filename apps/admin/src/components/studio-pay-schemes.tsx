@@ -42,7 +42,7 @@ import {
 import { formatPay } from "@/lib/payroll";
 
 /**
- * «Ставки» → «Групповые по числу людей» (пакетные клубы, решение владельца
+ * «Ставки» → «Групповые по числу людей» (решение владельца
  * 2026-11-11; схема — db/migrations/2026-11-11_studio_per_person_pay.sql):
  * в выбранном клубе групповые оплачиваются по числу «Посетил» по схемам
  * клуба (обычная группа, TRX, гамаки — тренировки выбираются в схеме), плюс
@@ -79,7 +79,7 @@ export function StudioPaySchemes() {
   const { confirm, confirmDialog } = useConfirm();
   const activeId = useActiveStudioId();
   const { data: studios = [] } = useStudios();
-  const clubs = studios.filter((s) => s.format === "packages");
+  const clubs = studios;
   const [picked, setPicked] = useState<string | null>(null);
   const studioId =
     picked ?? (clubs.some((s) => s.id === activeId) ? activeId : (clubs[0]?.id ?? null));

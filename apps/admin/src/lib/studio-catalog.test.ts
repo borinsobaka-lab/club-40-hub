@@ -1,6 +1,11 @@
 import { describe, expect, test } from "bun:test";
 
-import { catalogStudioIds, networkStudioIds, sameNetwork, type CatalogStudio } from "./studio-catalog";
+import {
+  catalogStudioIds,
+  networkStudioIds,
+  sameNetwork,
+  type CatalogStudio,
+} from "./studio-catalog";
 
 const studios: CatalogStudio[] = [
   { id: "vake", format: "packages" },

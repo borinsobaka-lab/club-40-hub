@@ -585,7 +585,6 @@ function ClientMembershipsPage() {
       total_amount: Number(r.total_amount),
       paidAmount: Number(r.paid_amount ?? 0),
       membershipName: r.memberships?.name ?? null,
-      packages: true,
     });
     setRefundOpen(true);
   };

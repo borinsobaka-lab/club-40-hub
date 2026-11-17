@@ -20,10 +20,7 @@ import { todayISO } from "@/lib/format";
 import { defaultPeriod, periodLabel, type PeriodKey } from "@/lib/payroll";
 import { STAFF_ITEMS } from "@/lib/nav-sections";
 import { CONTROL_RULES, CONTROL_RULE_ORDER } from "@/lib/dashboard-control";
-import {
-  SCHEDULE_SKELETON_HOURS,
-  isScheduleSkeletonCell,
-} from "@/lib/page-skeleton-layout";
+import { SCHEDULE_SKELETON_HOURS, isScheduleSkeletonCell } from "@/lib/page-skeleton-layout";
 import {
   CLASSES_CHARTS,
   CLASSES_COLUMNS,
@@ -1757,11 +1754,7 @@ export function StudiosPageSkeleton() {
       wrap={false}
       pagination={false}
       rows={2}
-      headers={[
-        "Название",
-        { label: "Логотип", className: "w-[180px]" },
-        "Цвет",
-      ]}
+      headers={["Название", { label: "Логотип", className: "w-[180px]" }, "Цвет"]}
     />
   );
 }

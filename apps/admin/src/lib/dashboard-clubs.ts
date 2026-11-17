@@ -41,7 +41,11 @@ export function toggleClub(clubs: ClubLite[], selected: string[], id: string): s
  * «Все клубы»: отметить все; если уже отмечены все — оставить один (клуб по
  * умолчанию, иначе первый).
  */
-export function toggleAll(clubs: ClubLite[], selected: string[], activeId: string | null): string[] {
+export function toggleAll(
+  clubs: ClubLite[],
+  selected: string[],
+  activeId: string | null,
+): string[] {
   const ids = clubs.map((c) => c.id);
   const all = ids.length > 0 && ids.every((id) => selected.includes(id));
   if (!all) return ids;

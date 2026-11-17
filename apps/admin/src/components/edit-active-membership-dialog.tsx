@@ -200,8 +200,7 @@ function MembershipForm({ onOpenChange, membership, onSaved, expired }: FormProp
         toast.error("Укажите, до какого числа действует абонемент");
         return;
       }
-      const hasBalance =
-        visits === null || visits > 0 || personal > 0 || diagnostics > 0;
+      const hasBalance = visits === null || visits > 0 || personal > 0 || diagnostics > 0;
       // Срок с первого посещения ещё не начат — даты нет, решает остаток.
       live = (awaiting || endsAt >= todayISO()) && hasBalance;
       revive = live && membership.status !== "active";
