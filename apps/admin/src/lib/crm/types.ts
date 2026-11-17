@@ -149,7 +149,13 @@ export type CrmReplyTemplate = { id: string; title: string; body: string; sort_o
 
 // Автоматизации этапов (db/migrations/2026-11-17_zzzzz_crm_automations.sql) ----
 
-export type AutomationTrigger = "enter" | "inbound" | "no_reply";
+export type AutomationTrigger =
+  | "enter"
+  | "inbound"
+  | "no_reply"
+  | "trial_sale"
+  | "booked"
+  | "attended";
 export type AutomationAction = "task" | "responsible" | "move" | "message" | "tag";
 
 export type CrmAutomation = {

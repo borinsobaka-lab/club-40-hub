@@ -474,3 +474,44 @@ export const crmAutomationsQuery = queryOptions({
   staleTime: 60_000,
   meta: { errorMessage: "Не удалось загрузить автоматизации" },
 });
+
+// Контакт: каналы и объединение дублей ---------------------------------------------
+
+export type ContactIdentity = {
+  id: string;
+  channel: string;
+  username: string | null;
+  display_name: string | null;
+};
+
+export function useContactIdentities(contactId: string | null) {
+  return useQuery({
+    queryKey: [CRM_KEY, "identities", contactId],
+    queryFn: () =>
+      unwrap<ContactIdentity[]>(
+        supabase
+          .from("crm_contact_identities")
+          .select("id, channel, username, display_name")
+          .eq("contact_id", contactId!)
+          .order("created_at"),
+      ),
+    enabled: !!contactId,
+    staleTime: 60_000,
+  });
+}
+
+export type ContactMatch = {
+  id: string;
+  name: string;
+  phone: string | null;
+  email: string | null;
+  channels: string[];
+  deals: number;
+};
+
+export const searchContacts = (query: string, exclude: string) =>
+  crmRpc<ContactMatch[]>("crm_contact_search", { p_query: query, p_exclude: exclude });
+
+/** Всё от merge переходит к keep; merge удаляется. */
+export const mergeContacts = (keep: string, merge: string) =>
+  crmRpc<void>("crm_contacts_merge", { p_keep: keep, p_merge: merge });

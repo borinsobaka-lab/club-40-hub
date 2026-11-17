@@ -620,4 +620,91 @@ describe.skipIf(!url)("CRM (база)", () => {
       const [job] = await tx`select result from crm_automation_jobs where event_key like 'out:%' and status = 'skipped'`;
       expect(job.result).toBe("Клиент ответил");
     }));
+  // Связь с порталом (2026-11-17_zzzzzz_crm_portal_events.sql) -----------------
+
+  test("портал: покупка закрывает сделку, пробное и запись запускают правила этапа", () =>
+    scenario(async (tx) => {
+      const { s1, manager, pipeline, st1, st2, won } = await setup(tx);
+      await as(tx, manager);
+      await rule(tx, st1, "trial_sale", "move", { stage_id: st2 });
+      await rule(tx, st2, "booked", "tag", { tag: "записан" });
+      await asServer(tx);
+      const [{ id: client }] = await tx`
+        insert into clients (studio_id, first_name, last_name, phone)
+        values (${s1}, 'Анна', 'Иванова', '+995555123456') returning id`;
+      const [{ id: contact }] = await tx`
+        insert into crm_contacts (name, phone) values ('Анна', '+995555123456') returning id, client_id`.then((r) => {
+        expect(r[0].client_id).toBe(client);
+        return r;
+      });
+      const [{ id: deal }] = await tx`
+        insert into crm_deals (title, pipeline_id, stage_id, studio_id, contact_id, budget)
+        values ('Анна', ${pipeline}, ${st1}, ${s1}, ${contact}, 50) returning id`;
+      const membership = async (kind: string, name: string) =>
+        (
+          await tx`insert into memberships (studio_id, name, kind, visits_count, duration_days, price)
+                   values (${s1}, ${name}, ${kind}, ${kind === "trial" ? 1 : 8}, 30, 100) returning id`
+        )[0].id as string;
+      const sell = async (m: string, amount: number) =>
+        tx`insert into sales (studio_id, client_id, membership_id, total_amount, sold_at, sale_kind)
+           values (${s1}, ${client}, ${m}, ${amount}, current_date, 'new')`;
+
+      // Пробное — сделка не закрыта, сработало правило этапа.
+      await sell(await membership("trial", "Пробное"), 20);
+      await run(tx);
+      let [d] = await tx`select stage_id, closed_at, sale_id from crm_deals where id = ${deal}`;
+      expect(d).toMatchObject({ stage_id: st2, closed_at: null, sale_id: null });
+
+      // Запись на занятие — правило «записан».
+      const [{ id: workout }] = await tx`insert into workouts (studio_id, name) values (${s1}, 'Растяжка') returning id`;
+      const [{ id: entry }] = await tx`
+        insert into schedule_entries (studio_id, workout_id, kind, capacity, starts_at, ends_at)
+        values (${s1}, ${workout}, 'group', 10, now() + interval '1 day', now() + interval '25 hours') returning id`;
+      await tx`insert into schedule_bookings (studio_id, entry_id, client_id, status) values (${s1}, ${entry}, ${client}, 'booked')`;
+      await run(tx);
+      [d] = await tx`select tags from crm_deals where id = ${deal}`;
+      expect(d.tags).toEqual(["записан"]);
+
+      // Абонемент — сделка «Успешно», бюджет — сумма продажи.
+      await sell(await membership("package", "Пакет 8"), 320);
+      [d] = await tx`select stage_id, closed_at, sale_id, budget from crm_deals where id = ${deal}`;
+      expect(d.stage_id).toBe(won);
+      expect(d.closed_at).not.toBeNull();
+      expect(d.sale_id).not.toBeNull();
+      expect(Number(d.budget)).toBe(320);
+      const notes = await tx`select body from crm_deal_events where deal_id = ${deal} and kind = 'auto'`;
+      expect(notes.map((n) => n.body)).toContain("Куплен абонемент «Пакет 8» — сделка закрыта");
+    }));
+  test("объединение контактов: личности, диалоги и сделки переходят; чужой клуб — нельзя", () =>
+    scenario(async (tx) => {
+      const { s1, s2, admin1, admin2, pipeline } = await setup(tx);
+      const bot1 = await account(tx, "telegram_bot", s1, pipeline);
+      const ig = await account(tx, "instagram", s1, pipeline);
+      const bot2 = await account(tx, "telegram_bot", s2, pipeline);
+      const a = await ingest(tx, bot1, "1", { external_id: "1", name: "Анна", phone: "+995555000001" }, { external_id: "1", body: "tg" });
+      const b = await ingest(tx, ig, "ig", { external_id: "ig", username: "anna.i", name: "Anna" }, { external_id: "1", body: "ig" });
+      const c = await ingest(tx, bot2, "3", { external_id: "3", name: "Чужая" }, { external_id: "1", body: "x" });
+
+      await as(tx, admin1);
+      const found = await tx`select id, channels, deals from crm_contact_search('@anna', ${a.contact_id})`;
+      expect(found.map((f) => f.id)).toEqual([b.contact_id]);
+      expect(found[0]).toMatchObject({ channels: ["instagram"], deals: 1 });
+      expect(await failure(tx, () => tx`select crm_contacts_merge(${a.contact_id}, ${a.contact_id})`)).toContain("один и тот же");
+      expect(await failure(tx, () => tx`select crm_contacts_merge(${a.contact_id}, ${c.contact_id})`)).toContain("другого клуба");
+      await tx`select crm_contacts_merge(${b.contact_id}, ${a.contact_id})`;
+
+      await asServer(tx);
+      expect((await tx`select 1 from crm_contacts where id = ${a.contact_id}`).length).toBe(0);
+      const [kept] = await tx`select phone from crm_contacts where id = ${b.contact_id}`;
+      expect(kept.phone).toBe("+995555000001");
+      expect((await tx`select 1 from crm_contact_identities where contact_id = ${b.contact_id}`).length).toBe(2);
+      expect((await tx`select 1 from crm_conversations where contact_id = ${b.contact_id}`).length).toBe(2);
+      expect((await tx`select 1 from crm_deals where contact_id = ${b.contact_id}`).length).toBe(2);
+      // Следующее сообщение из Telegram приходит уже объединённому контакту.
+      const again = await ingest(tx, bot1, "1", { external_id: "1", name: "Анна" }, { external_id: "2", body: "ещё" });
+      expect(again.contact_id).toBe(b.contact_id);
+
+      await as(tx, admin2);
+      expect((await tx`select * from crm_contact_search('чуж')`).length).toBe(1);
+    }));
 });

@@ -215,6 +215,12 @@ describe("CRM — логика", () => {
     ).toBe("Клиент не ответил 2 часа → перевести в этап «В работе»");
     expect(
       automationLabel(
+        { trigger: "attended", delay_minutes: 1440, action: "tag", params: { tag: "был" } },
+        names,
+      ),
+    ).toBe("Клиент посетил занятие, через 1 день → тег #был");
+    expect(
+      automationLabel(
         { trigger: "inbound", delay_minutes: 0, action: "tag", params: { tag: "vip" } },
         names,
       ),

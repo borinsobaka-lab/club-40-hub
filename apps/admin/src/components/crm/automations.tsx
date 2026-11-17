@@ -35,6 +35,9 @@ const TRIGGERS: { value: AutomationTrigger; label: string }[] = [
   { value: "enter", label: "Сделка вошла в этап" },
   { value: "inbound", label: "Клиент написал" },
   { value: "no_reply", label: "Клиент не ответил" },
+  { value: "trial_sale", label: "Куплено пробное или разовое" },
+  { value: "booked", label: "Клиент записан на занятие" },
+  { value: "attended", label: "Клиент посетил занятие" },
 ];
 const ACTIONS: { value: AutomationAction; label: string }[] = [
   { value: "task", label: "Поставить задачу" },
@@ -279,7 +282,13 @@ function RuleForm({
                 </SelectContent>
               </Select>
             </FormField>
-            {trigger === "enter" && (
+            {(trigger === "trial_sale" || trigger === "booked" || trigger === "attended") && (
+              <InfoNote>
+                Событие портала: срабатывает у сделок, контакт которых привязан к карточке клиента.
+                Покупка абонемента (не пробного) закрывает сделку «Успешно» сама, без правила.
+              </InfoNote>
+            )}
+            {trigger !== "inbound" && trigger !== "no_reply" && (
               <FormField
                 label="Через сколько"
                 hint="0 — сразу. Если сделка уйдёт из этапа раньше, правило не сработает."

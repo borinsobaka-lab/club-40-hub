@@ -28,6 +28,9 @@ import { hasRight } from "@/lib/admin-access";
 import {
   addNote,
   addTask,
+  mergeContacts,
+  searchContacts,
+  useContactIdentities,
   crmAccountsQuery,
   useContactConversations,
   crmErrorText,
@@ -43,7 +46,14 @@ import {
   useDeal,
   type DealPatch,
 } from "@/lib/crm/data";
-import { accountLabel, defaultTaskDue, eventText, parseBudget, parseTags } from "@/lib/crm/logic";
+import {
+  accountLabel,
+  CHANNEL_LABEL,
+  defaultTaskDue,
+  eventText,
+  parseBudget,
+  parseTags,
+} from "@/lib/crm/logic";
 import type { CrmContact, CrmDeal, CrmEvent, CrmTask } from "@/lib/crm/types";
 import { formatDateTime, formatPhone, toDateTimeLocalValue } from "@/lib/format";
 import { cn } from "@/lib/utils";
@@ -448,6 +458,7 @@ function ContactBlock({ deal }: { deal: CrmDeal }) {
           onSave={(v) => save({ email: v || null })}
         />
       </Row>
+      <ContactChannels contactId={contact.id} />
       <div className="border-t pt-3">
         <div className="mb-1 text-xs text-muted-foreground">Клиент клуба</div>
         {contact.client_id ? (
@@ -467,6 +478,7 @@ function ContactBlock({ deal }: { deal: CrmDeal }) {
           <ClientCombobox
             studioId={studioId}
             value=""
+            creatable
             placeholder="Найти клиента"
             onChange={(id) => {
               setLinking(false);
@@ -489,6 +501,109 @@ function ContactBlock({ deal }: { deal: CrmDeal }) {
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+/** Каналы контакта и «Объединить» — дубль того же человека из другого канала. */
+function ContactChannels({ contactId }: { contactId: string }) {
+  const qc = useQueryClient();
+  const { data: identities = [] } = useContactIdentities(contactId);
+  const { confirm, confirmDialog } = useConfirm();
+  const [merging, setMerging] = useState(false);
+  const [query, setQuery] = useState("");
+  const term = query.trim();
+  const { data: matches = [], isFetching } = useQuery({
+    queryKey: ["crm", "contact-search", contactId, term],
+    queryFn: () => searchContacts(term, contactId),
+    enabled: merging && term.length >= 2,
+    staleTime: 10_000,
+  });
+
+  const merge = async (other: { id: string; name: string }) => {
+    if (
+      !(await confirm({
+        title: `Объединить с контактом «${other.name}»?`,
+        description:
+          "Его каналы, диалоги и сделки перейдут к этому контакту, а сам он удалится. Отменить объединение нельзя.",
+        confirmLabel: "Объединить",
+      }))
+    )
+      return;
+    try {
+      await mergeContacts(contactId, other.id);
+      setMerging(false);
+      setQuery("");
+      await invalidateCrm(qc);
+      toast.success("Контакты объединены");
+    } catch (e) {
+      toast.error(crmErrorText(e, "Не удалось объединить"));
+    }
+  };
+
+  return (
+    <div className="space-y-2">
+      {identities.length > 0 && (
+        <Row label="Каналы">
+          <div className="flex flex-wrap gap-1">
+            {identities.map((i) => (
+              <span
+                key={i.id}
+                className="rounded-full bg-background px-2 py-0.5 text-xs ring-1 ring-border"
+              >
+                {CHANNEL_LABEL[i.channel === "telegram" ? "telegram_user" : i.channel] ?? i.channel}
+                {i.username ? ` @${i.username}` : ""}
+              </span>
+            ))}
+          </div>
+        </Row>
+      )}
+      {merging ? (
+        <div className="space-y-1.5">
+          <Input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Имя, телефон или @ник дубля"
+            aria-label="Найти контакт для объединения"
+            autoFocus
+          />
+          {term.length >= 2 &&
+            (matches.length === 0 ? (
+              <p className="text-xs text-muted-foreground">
+                {isFetching ? "Поиск…" : "Никого не нашли."}
+              </p>
+            ) : (
+              matches.map((m) => (
+                <button
+                  key={m.id}
+                  type="button"
+                  onClick={() => void merge(m)}
+                  className="block w-full cursor-pointer rounded-md border bg-background px-2 py-1.5 text-left text-sm hover:bg-muted"
+                >
+                  <span className="font-medium">{m.name}</span>
+                  <span className="block truncate text-xs text-muted-foreground">
+                    {[
+                      m.phone ? formatPhone(m.phone) : null,
+                      m.email,
+                      ...m.channels,
+                      `сделок: ${m.deals}`,
+                    ]
+                      .filter(Boolean)
+                      .join(" · ")}
+                  </span>
+                </button>
+              ))
+            ))}
+          <Button variant="ghost" size="xs" onClick={() => setMerging(false)}>
+            Отмена
+          </Button>
+        </div>
+      ) : (
+        <Button variant="ghost" size="xs" className="-ml-2" onClick={() => setMerging(true)}>
+          Объединить с дублем…
+        </Button>
+      )}
+      {confirmDialog}
     </div>
   );
 }

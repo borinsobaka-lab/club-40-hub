@@ -297,14 +297,23 @@ export function automationLabel(
   },
   names: { stage: (id: string) => string; person: (id: string) => string },
 ): string {
+  const PORTAL: Record<string, string> = {
+    trial_sale: "Куплено пробное",
+    booked: "Клиент записан на занятие",
+    attended: "Клиент посетил занятие",
+  };
   const when =
-    a.trigger === "inbound"
-      ? "Клиент написал"
-      : a.trigger === "no_reply"
-        ? `Клиент не ответил ${durationLabel(a.delay_minutes)}`
-        : a.delay_minutes > 0
-          ? `Через ${durationLabel(a.delay_minutes)} в этапе`
-          : "Сразу при входе в этап";
+    a.trigger in PORTAL
+      ? a.delay_minutes > 0
+        ? `${PORTAL[a.trigger]}, через ${durationLabel(a.delay_minutes)}`
+        : PORTAL[a.trigger]
+      : a.trigger === "inbound"
+        ? "Клиент написал"
+        : a.trigger === "no_reply"
+          ? `Клиент не ответил ${durationLabel(a.delay_minutes)}`
+          : a.delay_minutes > 0
+            ? `Через ${durationLabel(a.delay_minutes)} в этапе`
+            : "Сразу при входе в этап";
   const p = a.params;
   const ids = p.user_ids ?? [];
   const what =

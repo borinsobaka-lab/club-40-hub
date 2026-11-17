@@ -1259,6 +1259,16 @@ AUTH_SETUP.md.
   `crm_automations_run` (service_role, сервер админки раз в 10 с):
   действия в базе — сама, сообщения возвращает серверу, итог —
   `crm_automation_job_finish`. Сделанное — событие `auto` в ленте сделки.
+  Связь с порталом: `db/migrations/2026-11-17_zzzzzz_crm_portal_events.sql`
+  — продажа абонемента клиенту (не пробное, не разовое, не перенос, не
+  заливка из 1С) переводит открытые сделки его контакта в «Успешно»
+  (`crm_deals.sale_id`, бюджет — сумма продажи; триггер `crm_sales_ai`);
+  новые «когда» правил: `trial_sale` (пробное или разовое), `booked`,
+  `attended` (триггер `crm_bookings_aiu` на `schedule_bookings`) —
+  `crm_portal_event`. Объединение дублей контактов —
+  `2026-11-17_zzzzzzz_crm_contact_merge.sql`: `crm_contacts_merge(keep,
+  merge)` (личности, диалоги, сделки переходят; только если вызывающему
+  видны все сделки и диалоги обоих) и `crm_contact_search`.
   Рейтинг тренеров и чаевые: `db/migrations/2026-10-11_zzzzzzzzzzzzz_trainer_ratings.sql`
   — `trainer_reviews` (оценка 1–5, одна от учётной записи на тренера; клиент
   читает и правит свою, ставит — тренеру, которого видит в приложении,
