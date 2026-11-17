@@ -1,4 +1,5 @@
 import { startAccessSync } from "./lib/access/sync.server";
+import { startCrmAutomations } from "./lib/crm/automation-worker.server";
 import { errorResponse } from "./lib/error-page";
 import { startKbTrashPurge } from "./lib/kb/trash-purge.server";
 import { startPushWorker } from "./lib/push/push-worker.server";
@@ -13,6 +14,8 @@ startPushWorker();
 startKbTrashPurge();
 // Сроки ролей и «Доступ до»: доступ включается и выключается сам.
 startAccessSync();
+// CRM: автоматизации этапов — задачи, очередь ответственных, сообщения.
+startCrmAutomations();
 
 type ServerEntry = {
   fetch: (request: Request, env: unknown, ctx: unknown) => Promise<Response> | Response;

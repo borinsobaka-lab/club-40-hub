@@ -52,7 +52,14 @@ export type CrmDeal = {
   contact: CrmContact | null;
 };
 
-export type CrmEventKind = "note" | "created" | "stage" | "pipeline" | "responsible" | "task_done";
+export type CrmEventKind =
+  | "note"
+  | "created"
+  | "stage"
+  | "pipeline"
+  | "responsible"
+  | "task_done"
+  | "auto";
 
 export type CrmEvent = {
   id: string;
@@ -139,3 +146,26 @@ export type CrmMessage = {
 };
 
 export type CrmReplyTemplate = { id: string; title: string; body: string; sort_order: number };
+
+// Автоматизации этапов (db/migrations/2026-11-17_zzzzz_crm_automations.sql) ----
+
+export type AutomationTrigger = "enter" | "inbound" | "no_reply";
+export type AutomationAction = "task" | "responsible" | "move" | "message" | "tag";
+
+export type CrmAutomation = {
+  id: string;
+  stage_id: string;
+  trigger: AutomationTrigger;
+  delay_minutes: number;
+  action: AutomationAction;
+  params: {
+    title?: string;
+    due_minutes?: number;
+    user_ids?: string[];
+    stage_id?: string;
+    body?: string;
+    tag?: string;
+  };
+  is_active: boolean;
+  sort_order: number;
+};

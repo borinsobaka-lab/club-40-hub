@@ -10,6 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { unwrap } from "@/lib/query";
 import { sortStages } from "./logic";
 import type {
+  CrmAutomation,
   CrmChannelAccount,
   CrmConversation,
   CrmMessage,
@@ -457,3 +458,19 @@ export async function crmFileUrl(path: string): Promise<string | null> {
   const { data } = await supabase.storage.from("crm-media").createSignedUrl(path, 3600);
   return data?.signedUrl ?? null;
 }
+
+// Автоматизации этапов -----------------------------------------------------------
+
+export const crmAutomationsQuery = queryOptions({
+  queryKey: [CRM_KEY, "automations"],
+  queryFn: () =>
+    unwrap<CrmAutomation[]>(
+      supabase
+        .from("crm_automations")
+        .select("id, stage_id, trigger, delay_minutes, action, params, is_active, sort_order")
+        .order("sort_order")
+        .order("created_at"),
+    ),
+  staleTime: 60_000,
+  meta: { errorMessage: "Не удалось загрузить автоматизации" },
+});

@@ -497,4 +497,127 @@ describe.skipIf(!url)("CRM (база)", () => {
       await as(tx, admin1);
       expect((await tx`select id from crm_conversations`).map((c) => c.id)).toEqual([m2.conversation_id]);
     }));
+  // Автоматизации (2026-11-17_zzzzz_crm_automations.sql) -----------------------
+
+  async function rule(
+    tx: Tx,
+    stage: string,
+    trigger: string,
+    action: string,
+    params: Record<string, unknown>,
+    delay = 0,
+  ) {
+    const [{ id }] = await tx`
+      insert into crm_automations (stage_id, trigger, delay_minutes, action, params)
+      values (${stage}, ${trigger}, ${delay}, ${action}, ${JSON.stringify(params)}::text::jsonb) returning id`;
+    return id as string;
+  }
+  const run = async (tx: Tx) =>
+    (await tx`select crm_automations_run() as r`)[0].r as { job_id: string; conversation_id: string; body: string }[];
+
+  test("автоматизации: вход в этап — очередь ответственных, задача, тег, перевод", () =>
+    scenario(async (tx) => {
+      const { s1, manager, admin1, admin2, noCrm, pipeline, st1, st2 } = await setup(tx);
+      await as(tx, manager);
+      await rule(tx, st1, "enter", "responsible", { user_ids: [admin1, noCrm, admin2] });
+      await rule(tx, st1, "enter", "task", { title: "Связаться с {имя}", due_minutes: 30 });
+      await rule(tx, st1, "enter", "tag", { tag: "#новый" });
+      await rule(tx, st2, "enter", "move", { stage_id: st1 }, 60);
+      for (const bad of [
+        () => rule(tx, st1, "enter", "task", { title: " " }),
+        () => rule(tx, st1, "enter", "responsible", { user_ids: [] }),
+        () => rule(tx, st1, "enter", "move", { stage_id: st1 }),
+        () => rule(tx, st1, "no_reply", "tag", { tag: "x" }, 0),
+      ])
+        expect(await failure(tx, bad)).not.toBeNull();
+      await as(tx, admin1);
+      expect(await failure(tx, () => rule(tx, st1, "enter", "tag", { tag: "x" }))).toContain("row-level security");
+
+      await asServer(tx);
+      const [{ id: contact }] = await tx`insert into crm_contacts (name) values ('Анна Иванова') returning id`;
+      const ids: string[] = [];
+      for (const title of ["1", "2", "3"]) {
+        const [{ id }] = await tx`
+          insert into crm_deals (title, pipeline_id, stage_id, studio_id, contact_id)
+          values (${title}, ${pipeline}, ${st1}, ${s1}, ${contact}) returning id`;
+        ids.push(id as string);
+      }
+      // Сделка с ответственным — очередь её пропускает.
+      const [{ id: manual }] = await tx`
+        insert into crm_deals (title, pipeline_id, stage_id, responsible_id) values ('ручная', ${pipeline}, ${st1}, ${manager}) returning id`;
+      expect(await run(tx)).toEqual([]);
+
+      const deals = await tx`select id, responsible_id, tags from crm_deals where id = any(${tx.array([...ids, manual], "uuid")}) order by title`;
+      // noCrm без права CRM в очереди не участвует: admin1, admin2, admin1.
+      expect(deals.slice(0, 3).map((d) => d.responsible_id)).toEqual([admin1, admin2, admin1]);
+      expect(deals[3].responsible_id).toBe(manager);
+      expect(deals[0].tags).toEqual(["новый"]);
+      const [task] = await tx`select title, auto, assignee_id from crm_tasks where deal_id = ${ids[0]}`;
+      expect(task).toMatchObject({ title: "Связаться с Анна", auto: true, assignee_id: admin1 });
+      const notes = await tx`select body from crm_deal_events where deal_id = ${ids[0]} and kind = 'auto'`;
+      expect(notes[0].body).toBe("Поставлена задача: Связаться с Анна");
+
+      // Перевод с задержкой: не раньше срока; ушла из этапа — пропуск.
+      await tx`update crm_deals set stage_id = ${st2} where id = any(${tx.array(ids.slice(0, 2), "uuid")})`;
+      await run(tx);
+      expect((await tx`select 1 from crm_deals where stage_id = ${st2}`).length).toBe(2);
+      const won = (await tx`select id from crm_stages where pipeline_id = ${pipeline} and kind = 'won'`)[0].id;
+      await tx`update crm_deals set stage_id = ${won} where id = ${ids[1]}`;
+      await tx`update crm_automation_jobs set run_at = now() - interval '1 minute' where status = 'pending'`;
+      await run(tx);
+      const [back] = await tx`select stage_id from crm_deals where id = ${ids[0]}`;
+      expect(back.stage_id).toBe(st1);
+      const [skipped] = await tx`select status, result from crm_automation_jobs where deal_id = ${ids[1]} and status = 'skipped'`;
+      expect(skipped.result).toBe("Сделка уже в другом этапе");
+      // Вернулась в первый этап — его правила сработают заново (новый вход).
+      await run(tx);
+      expect((await tx`select 1 from crm_tasks where deal_id = ${ids[0]}`).length).toBe(2);
+    }));
+
+  test("автоматизации: сообщение клиенту, входящее и «не ответил»", () =>
+    scenario(async (tx) => {
+      const { s1, manager, pipeline, st1, st2 } = await setup(tx);
+      const bot = await account(tx, "telegram_bot", s1, pipeline);
+      await as(tx, manager);
+      await rule(tx, st1, "enter", "message", { body: "Здравствуйте, {имя} ! Это {клуб}." });
+      await rule(tx, st1, "inbound", "move", { stage_id: st2 });
+      await rule(tx, st2, "no_reply", "task", { title: "Клиент молчит", due_minutes: 0 }, 120);
+      await asServer(tx);
+
+      const m = await ingest(tx, bot, "9", { external_id: "9", name: "Нино Б." }, { external_id: "1", body: "Привет" });
+      // Первое сообщение заводит сделку (правила входа); «клиент написал» —
+      // для следующих сообщений.
+      expect((await tx`select stage_id from crm_deals where id = ${m.deal_id!}`)[0].stage_id).toBe(st1);
+      const out = await run(tx);
+      expect(out.length).toBe(1);
+      await ingest(tx, bot, "9", { external_id: "9", name: "Нино Б." }, { external_id: "1b", body: "Вы тут?" });
+      await run(tx);
+      expect(out[0]).toMatchObject({ conversation_id: m.conversation_id, body: "Здравствуйте, Нино! Это Ваке." });
+      // Входящее перевело сделку во второй этап.
+      expect((await tx`select stage_id from crm_deals where id = ${m.deal_id!}`)[0].stage_id).toBe(st2);
+      await tx`select crm_automation_job_finish(${out[0].job_id}, true)`;
+      expect((await tx`select status from crm_automation_jobs where id = ${out[0].job_id}`)[0].status).toBe("done");
+      expect(
+        (await tx`select body from crm_deal_events where deal_id = ${m.deal_id!} and kind = 'auto'`).map((e) => e.body),
+      ).toContain("Отправлено сообщение клиенту");
+
+      // Автосообщение «не ответил» не заводит; ответ сотрудника — заводит.
+      await tx`insert into crm_messages (conversation_id, direction, body, status, auto) values (${m.conversation_id}, 'out', 'авто', 'sent', true)`;
+      expect((await tx`select 1 from crm_automation_jobs where event_key like 'out:%'`).length).toBe(0);
+      await tx`insert into crm_messages (conversation_id, direction, body, status)
+               values (${m.conversation_id}, 'out', 'Ждём вас', 'sent')`;
+      await tx`update crm_automation_jobs set run_at = now() - interval '1 minute' where status = 'pending'`;
+      await run(tx);
+      expect((await tx`select title from crm_tasks where deal_id = ${m.deal_id!}`).map((t) => t.title)).toEqual(["Клиент молчит"]);
+
+      // Клиент ответил до срока — задание пропускается.
+      await tx`insert into crm_messages (conversation_id, direction, body, status, created_at)
+               values (${m.conversation_id}, 'out', 'Ещё раз', 'sent', now() - interval '1 hour')`;
+      await ingest(tx, bot, "9", { external_id: "9", name: "Нино Б." }, { external_id: "2", body: "Приду" });
+      await tx`update crm_automation_jobs set run_at = now() - interval '1 minute' where status = 'pending'`;
+      await run(tx);
+      expect((await tx`select 1 from crm_tasks where deal_id = ${m.deal_id!}`).length).toBe(1);
+      const [job] = await tx`select result from crm_automation_jobs where event_key like 'out:%' and status = 'skipped'`;
+      expect(job.result).toBe("Клиент ответил");
+    }));
 });

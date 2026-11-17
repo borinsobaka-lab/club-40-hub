@@ -138,6 +138,8 @@ export function eventText(e: Pick<CrmEvent, "kind" | "body" | "meta">): string {
         : `Ответственный снят${m.from ? ` (был ${m.from})` : ""}`;
     case "task_done":
       return `Задача выполнена: ${e.body ?? ""}`.trim();
+    case "auto":
+      return `Автоматизация: ${e.body ?? ""}`;
     default:
       return e.body ?? "";
   }
@@ -218,6 +220,7 @@ export function fillTemplate(
     .replace(/\{имя\}/gi, first)
     .replace(/\{клуб\}/gi, vars.studio ?? "")
     .replace(/[ \t]+([,.!?])/g, "$1")
+    .replace(/,\s*([!.?])/g, "$1")
     .replace(/[ \t]{2,}/g, " ")
     .trim();
 }
@@ -250,4 +253,71 @@ export function fileSize(bytes: number | null): string {
   if (!bytes) return "";
   if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} КБ`;
   return `${(bytes / 1024 / 1024).toFixed(1).replace(".", ",")} МБ`;
+}
+
+// Автоматизации этапов -----------------------------------------------------------
+
+export type DurationUnit = "minutes" | "hours" | "days";
+const UNIT_MINUTES: Record<DurationUnit, number> = { minutes: 1, hours: 60, days: 1440 };
+
+/** Минуты → самое крупное целое: 120 → 2 часа, 90 → 90 минут. */
+export function splitDuration(minutes: number): { value: number; unit: DurationUnit } {
+  if (minutes > 0 && minutes % 1440 === 0) return { value: minutes / 1440, unit: "days" };
+  if (minutes > 0 && minutes % 60 === 0) return { value: minutes / 60, unit: "hours" };
+  return { value: minutes, unit: "minutes" };
+}
+
+export function joinDuration(value: number, unit: DurationUnit): number {
+  return Math.max(0, Math.round(value)) * UNIT_MINUTES[unit];
+}
+
+function plural(n: number, one: string, few: string, many: string) {
+  const d = n % 10;
+  const h = n % 100;
+  if (d === 1 && h !== 11) return one;
+  if (d >= 2 && d <= 4 && (h < 12 || h > 14)) return few;
+  return many;
+}
+
+/** «2 часа», «15 минут», «3 дня». */
+export function durationLabel(minutes: number): string {
+  const { value, unit } = splitDuration(minutes);
+  if (unit === "days") return `${value} ${plural(value, "день", "дня", "дней")}`;
+  if (unit === "hours") return `${value} ${plural(value, "час", "часа", "часов")}`;
+  return `${value} ${plural(value, "минуту", "минуты", "минут")}`;
+}
+
+/** Правило одной строкой: «Сразу при входе в этап → задача «Позвонить»». */
+export function automationLabel(
+  a: {
+    trigger: string;
+    delay_minutes: number;
+    action: string;
+    params: { title?: string; user_ids?: string[]; stage_id?: string; body?: string; tag?: string };
+  },
+  names: { stage: (id: string) => string; person: (id: string) => string },
+): string {
+  const when =
+    a.trigger === "inbound"
+      ? "Клиент написал"
+      : a.trigger === "no_reply"
+        ? `Клиент не ответил ${durationLabel(a.delay_minutes)}`
+        : a.delay_minutes > 0
+          ? `Через ${durationLabel(a.delay_minutes)} в этапе`
+          : "Сразу при входе в этап";
+  const p = a.params;
+  const ids = p.user_ids ?? [];
+  const what =
+    a.action === "task"
+      ? `задача «${p.title ?? ""}»`
+      : a.action === "responsible"
+        ? ids.length > 1
+          ? `ответственный по очереди: ${ids.map(names.person).join(", ")}`
+          : `ответственный: ${ids.map(names.person).join("")}`
+        : a.action === "move"
+          ? `перевести в этап «${names.stage(p.stage_id ?? "")}»`
+          : a.action === "message"
+            ? `сообщение клиенту «${(p.body ?? "").slice(0, 60)}${(p.body ?? "").length > 60 ? "…" : ""}»`
+            : `тег #${p.tag ?? ""}`;
+  return `${when} → ${what}`;
 }

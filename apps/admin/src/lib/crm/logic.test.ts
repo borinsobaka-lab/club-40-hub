@@ -9,7 +9,14 @@ import {
   nextTaskByDeal,
   parseBudget,
   parseTags,
+  accountLabel,
+  automationLabel,
+  durationLabel,
+  fillTemplate,
+  joinDuration,
+  reorderIds,
   sortStages,
+  splitDuration,
   sumBudget,
   taskState,
 } from "./logic";
@@ -153,5 +160,64 @@ describe("CRM — логика", () => {
     expect(ageLabel("2026-11-17T11:30:00Z", now)).toBe("30 мин");
     expect(ageLabel("2026-11-17T07:00:00Z", now)).toBe("5 ч");
     expect(ageLabel("2026-11-14T07:00:00Z", now)).toBe("3 дн");
+  });
+
+  test("порядок после перетаскивания", () => {
+    expect(reorderIds(["a", "b", "c"], "a", "c", true)).toEqual(["b", "c", "a"]);
+    expect(reorderIds(["a", "b", "c"], "c", "a", false)).toEqual(["c", "a", "b"]);
+    expect(reorderIds(["a", "b"], "a", "x", true)).toEqual(["a", "b"]);
+  });
+
+  test("подпись аккаунта и шаблон ответа", () => {
+    expect(accountLabel({ kind: "telegram_bot", name: "Ваке" })).toBe("Telegram-бот · Ваке");
+    expect(accountLabel({ kind: "telegram_bot", name: "Telegram-бот" })).toBe("Telegram-бот");
+    expect(accountLabel(null)).toBe("Канал");
+    expect(
+      fillTemplate("Здравствуйте, {имя}! Ждём в {клуб}.", { name: "Анна Иванова", studio: "Ваке" }),
+    ).toBe("Здравствуйте, Анна! Ждём в Ваке.");
+    expect(fillTemplate("Здравствуйте, {имя} !", { name: null })).toBe("Здравствуйте!");
+  });
+
+  test("длительность и подпись правила", () => {
+    expect(splitDuration(120)).toEqual({ value: 2, unit: "hours" });
+    expect(splitDuration(90)).toEqual({ value: 90, unit: "minutes" });
+    expect(splitDuration(2880)).toEqual({ value: 2, unit: "days" });
+    expect(joinDuration(3, "days")).toBe(4320);
+    expect(durationLabel(60)).toBe("1 час");
+    expect(durationLabel(15)).toBe("15 минут");
+    expect(durationLabel(7200)).toBe("5 дней");
+    const names = {
+      stage: () => "В работе",
+      person: (id: string) => (id === "a" ? "Анна" : "Нино"),
+    };
+    expect(
+      automationLabel(
+        { trigger: "enter", delay_minutes: 0, action: "task", params: { title: "Позвонить" } },
+        names,
+      ),
+    ).toBe("Сразу при входе в этап → задача «Позвонить»");
+    expect(
+      automationLabel(
+        {
+          trigger: "enter",
+          delay_minutes: 0,
+          action: "responsible",
+          params: { user_ids: ["a", "b"] },
+        },
+        names,
+      ),
+    ).toBe("Сразу при входе в этап → ответственный по очереди: Анна, Нино");
+    expect(
+      automationLabel(
+        { trigger: "no_reply", delay_minutes: 120, action: "move", params: { stage_id: "s" } },
+        names,
+      ),
+    ).toBe("Клиент не ответил 2 часа → перевести в этап «В работе»");
+    expect(
+      automationLabel(
+        { trigger: "inbound", delay_minutes: 0, action: "tag", params: { tag: "vip" } },
+        names,
+      ),
+    ).toBe("Клиент написал → тег #vip");
   });
 });

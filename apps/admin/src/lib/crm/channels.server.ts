@@ -347,3 +347,39 @@ export async function sendToConversation(input: {
   }
   return { id: msg.id as string };
 }
+
+/**
+ * Сообщение автоматизации этапа (без сотрудника): отправить в диалог и
+ * записать как автоматическое. Ошибка — исключение с текстом для ленты сделки.
+ */
+export async function sendAutoMessage(conversationId: string, body: string): Promise<void> {
+  const admin = getSupabaseAdmin();
+  const { data: conv, error } = await admin
+    .from("crm_conversations")
+    .select("id, external_chat_id, account:crm_channel_accounts(id, kind, status)")
+    .eq("id", conversationId)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  const account = (conv as { account?: { id: string; kind: string; status: string } | null } | null)
+    ?.account;
+  if (!conv || !account || account.status !== "active")
+    throw new Error("Аккаунт канала недоступен");
+  if (account.kind !== "telegram_bot") throw new Error("Канал пока не поддерживает автосообщения");
+  const secret = await loadSecret(account.id);
+  if (!secret) throw new Error("У аккаунта нет токена");
+  let externalId: string;
+  try {
+    externalId = await tgSendText(secret.token, conv.external_chat_id as string, body);
+  } catch (e) {
+    throw new Error(channelError(e));
+  }
+  const { error: insErr } = await admin.from("crm_messages").insert({
+    conversation_id: conversationId,
+    direction: "out",
+    body,
+    external_id: externalId,
+    status: "sent",
+    auto: true,
+  });
+  if (insErr) console.error("[crm] auto message:", insErr.message);
+}

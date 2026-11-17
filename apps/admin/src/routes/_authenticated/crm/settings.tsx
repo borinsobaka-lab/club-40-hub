@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { AdminShell } from "@/components/admin-shell";
 import { useConfirm } from "@/components/confirm-dialog";
 import { StageDot, StageSelect } from "@/components/crm/parts";
+import { StageAutomations } from "@/components/crm/automations";
 import { ChannelsPanel, TemplatesPanel } from "@/components/crm/channels-settings";
 import { NONE } from "@/lib/crm/logic";
 import { DropIndicator } from "@/components/kb/drop-indicator";
@@ -28,7 +29,13 @@ import { FormField, InfoNote } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
 import { useDragRow, type RowDropOperation } from "@/hooks/use-drag-row";
 import { supabase } from "@/integrations/supabase/client";
-import { crmErrorText, crmRpc, crmSetupQuery, invalidateCrm } from "@/lib/crm/data";
+import {
+  crmAutomationsQuery,
+  crmErrorText,
+  crmRpc,
+  crmSetupQuery,
+  invalidateCrm,
+} from "@/lib/crm/data";
 import { reorderIds } from "@/lib/crm/logic";
 import type { CrmLossReason, CrmPipeline, CrmStage } from "@/lib/crm/types";
 import { cn } from "@/lib/utils";
@@ -54,7 +61,8 @@ type Editing =
   | { kind: "pipeline"; item: CrmPipeline | null }
   | { kind: "stage"; item: CrmStage | null; pipelineId: string }
   | { kind: "reason"; item: CrmLossReason | null }
-  | { kind: "stage-delete"; item: CrmStage };
+  | { kind: "stage-delete"; item: CrmStage }
+  | { kind: "automations"; item: CrmStage };
 
 async function run(q: PromiseLike<{ error: { message: string } | null }>) {
   const { error } = await q;
@@ -70,6 +78,7 @@ async function run(q: PromiseLike<{ error: { message: string } | null }>) {
 function CrmSettingsPage() {
   const qc = useQueryClient();
   const { data: setup, isLoading } = useQuery(crmSetupQuery);
+  const { data: automations = [] } = useQuery(crmAutomationsQuery);
   const { confirm, confirmDialog } = useConfirm();
   const [selected, setSelected] = useState<string | null>(null);
   const [editing, setEditing] = useState<Editing | null>(null);
@@ -248,6 +257,17 @@ function CrmSettingsPage() {
                   muted={s.kind === "won" ? "успех" : s.kind === "lost" ? "отказ" : undefined}
                   actions={
                     <>
+                      <Button
+                        variant="outline"
+                        size="xs"
+                        title="Что происходит со сделкой в этом этапе само"
+                        onClick={() => setEditing({ kind: "automations", item: s })}
+                      >
+                        Автоматизации
+                        {automations.some((a) => a.stage_id === s.id)
+                          ? ` · ${automations.filter((a) => a.stage_id === s.id).length}`
+                          : ""}
+                      </Button>
                       <IconButton
                         label="Изменить этап"
                         onClick={() =>
@@ -306,8 +326,10 @@ function CrmSettingsPage() {
       </div>
 
       <Dialog open={!!editing} onOpenChange={(open) => !open && setEditing(null)}>
-        <DialogContent className="sm:max-w-md">
-          {editing?.kind === "stage-delete" ? (
+        <DialogContent className={editing?.kind === "automations" ? undefined : "sm:max-w-md"}>
+          {editing?.kind === "automations" ? (
+            <StageAutomations key={editing.item.id} stage={editing.item} stages={stages} />
+          ) : editing?.kind === "stage-delete" ? (
             <StageDeleteForm
               key={editing.item.id}
               stage={editing.item}
@@ -489,7 +511,7 @@ function NameForm({
   editing,
   onSave,
 }: {
-  editing: Exclude<Editing, { kind: "stage-delete" }>;
+  editing: Exclude<Editing, { kind: "stage-delete" | "automations" }>;
   onSave: (name: string, color: string) => Promise<void>;
 }) {
   const [name, setName] = useState(editing.item?.name ?? "");
