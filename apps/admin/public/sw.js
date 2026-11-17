@@ -65,8 +65,12 @@ self.addEventListener("notificationclick", (event) => {
   event.waitUntil(
     self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((windows) => {
       const open = windows.find((w) => "focus" in w);
-      if (open) return open.navigate(url).then((w) => (w || open).focus());
-      return self.clients.openWindow(url);
+      if (!open) return self.clients.openWindow(url);
+      // navigate доступен только для вкладок под управлением этого воркера.
+      return open
+        .navigate(url)
+        .then((w) => (w || open).focus())
+        .catch(() => self.clients.openWindow(url));
     }),
   );
 });

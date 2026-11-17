@@ -37,7 +37,7 @@ Tailwind 4 + shadcn/radix. Пакетный менеджер — bun.
   «Аналитика» — города, недели, прогноз, точка 0, продажи, пробные, рейтинг
   `lib/analytics/logic.test.ts`, разбор выгрузок `lib/analytics/import.test.ts`; «Академия» — подписи,
   проверка вопроса, сроки и напоминания `lib/academy/logic.test.ts`; CRM —
-  этапы, фильтр, задачи, события `lib/crm/logic.test.ts`, разбор обновления Telegram `lib/crm/telegram.test.ts`, вебхука Meta `lib/crm/meta.test.ts`;
+  этапы, фильтр, задачи, события `lib/crm/logic.test.ts`, скорость ответа, сценарии, воронка `lib/crm/growth.test.ts`, заявки с форм и ссылки `lib/crm/leads.test.ts`, разбор обновления Telegram `lib/crm/telegram.test.ts`, вебхука Meta `lib/crm/meta.test.ts`;
   Kate — инструменты,
   права, история и промпт `lib/assistant/*.test.ts`).
 - `bun run version:bump` — повысить версию админки (`ADMIN_VERSION` в
@@ -916,6 +916,38 @@ kb`. Доступ — ролями «Пользователей и ролей» 
   /api/crm/tg-start` (`startTelegramChat`: право CRM и клуб аккаунта — от
   имени сотрудника; человека находит сервис, предел новых чатов в сутки —
   у него). Удаление аккаунта — выход из Telegram на сервисе.
+  **Скорость ответа и уведомления (2026-11-19)**: норматив, эскалация и
+  рабочие часы — «Настройки» → «Каналы и заявки», `ReplySlaPanel`
+  (`components/crm/growth-settings.tsx`, `crmSettingsQuery`). «ждёт N мин» —
+  `WaitBadge` (`parts.tsx`; расчёт — `waitingMinutes` / `waitTone` /
+  `workStart` в `logic.ts`, как `crm_work_start` в базе): в списке
+  «Диалогов» (там же фильтр «Ждут ответа · N») и на карточке канбана.
+  Уведомления в браузер — `CrmNotifyButton` (`notify-button.tsx`, «Диалоги» и
+  «Задачи»; `lib/crm/notify.ts`: подписка через `public/sw.js`, ключ —
+  `push_public_key`, запись — `crm_push_subscribe`; service worker есть
+  только в прод-сборке — в дев-сервере кнопки нет). Шлёт фоновый цикл
+  `runCrmNotifications` (`automation-worker.server.ts`, каждые 10 с, сбор —
+  раз в минуту), пуш — `{t, b, u, n}`, нажатие открывает сделку или диалог.
+  **Сценарии (2026-11-19)** — «Настройки» → «Сценарии», `ScenariosPanel`:
+  включатель (перед включением — сколько клиентов подходит), окно — дни,
+  остаток, воронка и этап, текст задачи; подписи — `SCENARIOS`,
+  `scenarioRule` в `logic.ts`. Сделки заводит `runCrmScenarios` (раз в 10
+  минут).
+  **Источники (2026-11-19)** — «Настройки» → «Источники»: `LeadFormsPanel`
+  (форма сайта: источник, воронка, клуб; «Код для сайта» — адрес и готовый
+  HTML, `leadFormSnippet`), `LinksPanel` (ссылка с меткой: WhatsApp /
+  Telegram-бот / сайт, копирование, QR-код PNG — `qrcode` отдельным чанком),
+  `AdSpendPanel` (расход за месяц). Открытые роуты без входа: `POST
+  /api/crm/lead/$token` (JSON, форма или multipart; CORS `*`, ловушка для
+  роботов, 6 заявок в минуту с адреса) и `GET /l/$code` (переход по ссылке);
+  логика без сети — `lib/crm/leads.ts` (+ тест): `parseLead` (имена полей
+  своего сайта и конструкторов, лишние поля — в сообщение), `linkRedirectUrl`.
+  В карточке сделки — «Метки рекламы» (utm, страница).
+  **Отчёт (2026-11-19)** — вкладки `?tab=`: «Воронка» (как было),
+  «Сотрудники» (`crm_people_report`), «Источники и деньги»
+  (`crm_funnel_report`: разрез источник / кампания / клуб / сотрудник, путь
+  заявки, цена заявки и клиента, окупаемость — `funnelMoney`), «Клиенты
+  клуба» (`crm_scenarios_report`). Тесты логики — `lib/crm/growth.test.ts`.
 - **Контролы (2026-10-11) — только из набора, по инструкции**
   `.interface-design/system.md`, раздел «Контролы»: кнопки — пилюли
   (`Button`, круглые иконки), поля и фильтры — прямоугольники (вид —

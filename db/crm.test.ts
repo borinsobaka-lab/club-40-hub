@@ -1304,6 +1304,7 @@ describe.skipIf(!url)("CRM (база)", () => {
       await tx`insert into crm_ad_spend (month, source, amount) values ('2026-01-01', 'instagram', 310)`;
       await tx`insert into crm_ad_spend (month, source, amount)
                values (date_trunc('month', current_date)::date, ' Instagram ', 600), (date_trunc('month', current_date)::date, 'Блогеры', 50)`;
+      await as(tx, manager);
       const [{ r: jan }] = await tx`select crm_funnel_report('2026-01-11', '2026-01-20', 'source') as r`;
       expect((jan as { total: { spend: number; leads: number } }).total).toMatchObject({ spend: 100, leads: 0 });
       const [{ r }] = await tx`
@@ -1317,11 +1318,11 @@ describe.skipIf(!url)("CRM (база)", () => {
       // По клубам; сотрудник другого клуба видит только свой.
       await as(tx, admin2);
       const [{ r: own }] = await tx`select crm_funnel_report(current_date - 1, current_date + 1, 'studio') as r`;
-      expect((own as { rows: { label: string; leads: number }[] }).rows.map((x) => [x.label, x.leads])).toEqual([
-        ["Сабуртало", 1],
-        // Расход без клуба — общий, виден всем.
-        ["Без клуба", 0],
-      ]);
+      expect((own as { rows: { label: string; leads: number }[] }).rows.map((x) => [x.label, x.leads])).toEqual([["Сабуртало", 1]]);
+      // Расходы на рекламу видит только настройка.
+      const [{ r: noSpend }] = await tx`
+        select crm_funnel_report(date_trunc('month', current_date)::date, (current_date + 40)::date, 'source') as r`;
+      expect((noSpend as { total: { spend: number } }).total.spend).toBe(0);
       expect(await failure(tx, () => tx`select crm_funnel_report(current_date, current_date, 'nope')`)).toContain("crm_bad_group");
     }));
 });

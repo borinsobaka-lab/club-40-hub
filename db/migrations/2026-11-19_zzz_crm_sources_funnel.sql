@@ -25,7 +25,8 @@
 --   сценарии), заведённые за период, по источнику / кампании / клубу /
 --   ответственному: заявки → ответили → записаны → пришли → пробное →
 --   купили, выручка первой покупки, выручка клиента за всё время после
---   заявки, расход (месячный — по дням периода).
+--   заявки, расход (месячный — по дням периода; только для crm.manage —
+--   остальным расход не отдаётся).
 
 -- 1) Формы, ссылки, расходы -----------------------------------------------------------
 create table if not exists public.crm_lead_forms (
@@ -591,6 +592,7 @@ set search_path = public
 as $$
 declare
   v_studios uuid[];
+  v_manage boolean := public.auth_crm_can_manage();
   v_out jsonb;
 begin
   if not public.auth_crm_can_view() then
@@ -661,6 +663,8 @@ begin
                / extract(day from a.month + interval '1 month - 1 day')) as amount
       from public.crm_ad_spend a
      where p_group <> 'responsible'
+       -- Расходы видит только настройка (как таблицу crm_ad_spend).
+       and v_manage
        and a.month <= p_to and (a.month + interval '1 month')::date > p_from
        and (a.studio_id is null or a.studio_id = any (v_studios))
      group by 1
