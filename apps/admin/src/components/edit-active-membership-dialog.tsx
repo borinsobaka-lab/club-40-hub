@@ -42,12 +42,11 @@ export type ActiveMembership = {
 type FormProps = {
   onOpenChange: (v: boolean) => void;
   membership: ActiveMembership;
-  onSaved: () => void;
   /**
-   * Пакетный клуб: два баланса — групповые (visits_left) и персональные
-   * (personal_left), правятся отдельно (решение владельца 2026-10-14).
+   * Балансы — групповые (visits_left), персональные (personal_left) и
+   * диагностики — правятся отдельно (решение владельца 2026-10-14).
    */
-  isPackages?: boolean;
+  onSaved: () => void;
   /**
    * Истёкший абонемент (решение владельца 2026-11-15: перенесённым клиентам
    * срок поставили неверно, абонемент истёк, а нового нет). Правка открыта,
@@ -62,7 +61,6 @@ export function EditActiveMembershipDialog({
   onOpenChange,
   membership,
   onSaved,
-  isPackages = false,
   expired = false,
 }: Omit<FormProps, "membership"> & {
   open: boolean;
@@ -77,14 +75,8 @@ export function EditActiveMembershipDialog({
           </DialogTitle>
           <DialogDescription>
             {expired
-              ? `${membership?.name ? `«${membership.name}»${membership.ends_at ? ` · истёк ${formatDate(membership.ends_at)}` : ""}. ` : ""}${
-                  isPackages
-                    ? "Срок действия, остаток групповых и персональных тренировок, диагностик."
-                    : "Срок действия и остаток посещений."
-                }`
-              : isPackages
-                ? "Срок действия, остаток групповых и персональных тренировок, диагностик, заморозка."
-                : "Срок действия, остаток посещений и заморозка."}
+              ? `${membership?.name ? `«${membership.name}»${membership.ends_at ? ` · истёк ${formatDate(membership.ends_at)}` : ""}. ` : ""}Срок действия, остаток групповых и персональных тренировок, диагностик.`
+              : "Срок действия, остаток групповых и персональных тренировок, диагностик, заморозка."}
           </DialogDescription>
         </DialogHeader>
         {/*
@@ -97,7 +89,6 @@ export function EditActiveMembershipDialog({
             membership={membership}
             onOpenChange={onOpenChange}
             onSaved={onSaved}
-            isPackages={isPackages}
             expired={expired}
           />
         )}
@@ -106,7 +97,7 @@ export function EditActiveMembershipDialog({
   );
 }
 
-function MembershipForm({ onOpenChange, membership, onSaved, isPackages, expired }: FormProps) {
+function MembershipForm({ onOpenChange, membership, onSaved, expired }: FormProps) {
   const [endsAt, setEndsAt] = useState(membership.ends_at ?? "");
   const [unlimitedVisits, setUnlimitedVisits] = useState(membership.visits_left == null);
   const [visitsLeft, setVisitsLeft] = useState(
@@ -190,23 +181,15 @@ function MembershipForm({ onOpenChange, membership, onSaved, isPackages, expired
       }
       visits = n;
     }
-    let personal: number | undefined;
-    if (isPackages) {
-      const n = Number(personalLeft.trim());
-      if (personalLeft.trim() === "" || !Number.isInteger(n) || n < 0) {
-        toast.error("Укажите количество персональных тренировок (целое число от 0)");
-        return;
-      }
-      personal = n;
+    const personal = Number(personalLeft.trim());
+    if (personalLeft.trim() === "" || !Number.isInteger(personal) || personal < 0) {
+      toast.error("Укажите количество персональных тренировок (целое число от 0)");
+      return;
     }
-    let diagnostics: number | undefined;
-    if (isPackages) {
-      const n = Number(diagnosticsLeft.trim());
-      if (diagnosticsLeft.trim() === "" || !Number.isInteger(n) || n < 0) {
-        toast.error("Укажите количество диагностик (целое число от 0)");
-        return;
-      }
-      diagnostics = n;
+    const diagnostics = Number(diagnosticsLeft.trim());
+    if (diagnosticsLeft.trim() === "" || !Number.isInteger(diagnostics) || diagnostics < 0) {
+      toast.error("Укажите количество диагностик (целое число от 0)");
+      return;
     }
     // Истёкший: срок обязателен; в будущем и с остатком — снова действует
     // (статус «expired» ставят база и пересчёт очереди, сам он не вернётся).
@@ -218,7 +201,7 @@ function MembershipForm({ onOpenChange, membership, onSaved, isPackages, expired
         return;
       }
       const hasBalance =
-        visits === null || visits > 0 || (personal ?? 0) > 0 || (diagnostics ?? 0) > 0;
+        visits === null || visits > 0 || personal > 0 || diagnostics > 0;
       // Срок с первого посещения ещё не начат — даты нет, решает остаток.
       live = (awaiting || endsAt >= todayISO()) && hasBalance;
       revive = live && membership.status !== "active";
@@ -235,8 +218,8 @@ function MembershipForm({ onOpenChange, membership, onSaved, isPackages, expired
             : {}),
           visits_left: visits,
           ...(revive ? { status: "active" } : {}),
-          ...(personal !== undefined ? { personal_left: personal } : {}),
-          ...(diagnostics !== undefined ? { diagnostics_left: diagnostics } : {}),
+          personal_left: personal,
+          diagnostics_left: diagnostics,
         })
         .eq("id", membership.id)
         .select("id");
@@ -286,13 +269,9 @@ function MembershipForm({ onOpenChange, membership, onSaved, isPackages, expired
             </FormField>
           )}
           <FormField
-            label={isPackages ? "Групповые тренировки" : "Осталось посещений"}
+            label="Групповые тренировки"
             required={!unlimitedVisits}
-            tip={
-              isPackages
-                ? "Сколько групповых тренировок осталось. Списываются, когда отмечено посещение группового занятия."
-                : "Ручная правка остатка — например, вернуть занятие, отменённое по вине клуба."
-            }
+            tip="Сколько групповых тренировок осталось. Списываются, когда отмечено посещение группового занятия."
           >
             <Input
               type="number"
@@ -306,36 +285,32 @@ function MembershipForm({ onOpenChange, membership, onSaved, isPackages, expired
               Безлимит
             </CheckboxOption>
           </FormField>
-          {isPackages && (
-            <FormField
-              label="Персональные тренировки"
-              required
-              tip="Сколько персональных тренировок осталось (у пакета тренировок — подарочные). Списываются, когда отмечено посещение персонального занятия."
-            >
-              <Input
-                type="number"
-                min={0}
-                value={personalLeft}
-                onChange={(e) => setPersonalLeft(e.target.value)}
-                placeholder="Например, 1"
-              />
-            </FormField>
-          )}
-          {isPackages && (
-            <FormField
-              label="Диагностики"
-              required
-              tip="Сколько диагностик тела осталось. Списываются, когда отмечено посещение диагностики в расписании."
-            >
-              <Input
-                type="number"
-                min={0}
-                value={diagnosticsLeft}
-                onChange={(e) => setDiagnosticsLeft(e.target.value)}
-                placeholder="Например, 1"
-              />
-            </FormField>
-          )}
+          <FormField
+            label="Персональные тренировки"
+            required
+            tip="Сколько персональных тренировок осталось (у пакета тренировок — подарочные). Списываются, когда отмечено посещение персонального занятия."
+          >
+            <Input
+              type="number"
+              min={0}
+              value={personalLeft}
+              onChange={(e) => setPersonalLeft(e.target.value)}
+              placeholder="Например, 1"
+            />
+          </FormField>
+          <FormField
+            label="Диагностики"
+            required
+            tip="Сколько диагностик тела осталось. Списываются, когда отмечено посещение диагностики в расписании."
+          >
+            <Input
+              type="number"
+              min={0}
+              value={diagnosticsLeft}
+              onChange={(e) => setDiagnosticsLeft(e.target.value)}
+              placeholder="Например, 1"
+            />
+          </FormField>
 
           {/* Блок показываем и при нулевой квоте, если абонемент уже заморожен:
             иначе после обнуления «дней заморозки» в тарифе разморозить его

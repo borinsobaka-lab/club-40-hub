@@ -15,7 +15,7 @@ export type PushPermission = "granted" | "denied" | "default" | "unsupported";
 
 export type AppDevice = {
   device_id: string;
-  app_format: "subscription" | "packages";
+  app_format: "packages";
   platform: "ios" | "android" | "other" | null;
   os_name: string | null;
   os_version: string | null;
@@ -39,7 +39,7 @@ export type AppDevice = {
 
 export type ClientAppOverview = {
   has_account: boolean;
-  app_format: "subscription" | "packages";
+  app_format: "packages";
   /** Учётная запись общая с админкой — «последний вход» может быть и в неё. */
   is_staff?: boolean;
   account?: {
@@ -92,14 +92,14 @@ export const LOCALE_LABEL: Record<string, string> = {
 };
 
 /** Раздел приложения (ключ — screenKey в apps/client, lib/device-info.ts). */
-export function screenLabel(key: string, format: "subscription" | "packages"): string {
+export function screenLabel(key: string): string {
   switch (key) {
     case "home":
       return "Главная";
     case "schedule":
       return "Расписание";
     case "club":
-      return format === "packages" ? "Студия" : "Клуб";
+      return "Студия";
     case "memberships":
       return "Абонементы";
     case "news":
@@ -118,11 +118,10 @@ export function screenLabel(key: string, format: "subscription" | "packages"): s
 /** Разделы за 30 дней — по убыванию просмотров. */
 export function screensRanking(
   screens: Record<string, number>,
-  format: "subscription" | "packages",
 ): { key: string; label: string; count: number }[] {
   return Object.entries(screens)
     .filter(([, n]) => n > 0)
-    .map(([key, count]) => ({ key, label: screenLabel(key, format), count }))
+    .map(([key, count]) => ({ key, label: screenLabel(key), count }))
     .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label, "ru"));
 }
 

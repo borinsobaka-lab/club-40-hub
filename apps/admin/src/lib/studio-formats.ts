@@ -6,17 +6,15 @@
  * Для каждого формата — своё клиентское приложение (одна кодовая база
  * apps/client, сборка с VITE_APP_FORMAT), у каждого свой адрес.
  */
-export const STUDIO_FORMATS = ["subscription", "packages"] as const;
+export const STUDIO_FORMATS = ["packages"] as const;
 export type StudioFormat = (typeof STUDIO_FORMATS)[number];
 
 export const STUDIO_FORMAT_LABEL: Record<StudioFormat, string> = {
-  subscription: "Зал с подписочной моделью",
   packages: "Зал с пакетами тренировок",
 };
 
 /** Адрес клиентского приложения формата. */
 export const STUDIO_FORMAT_APP_URL: Record<StudioFormat, string> = {
-  subscription: "https://app.base40.fit",
   packages: "https://app.lady-stretch.one",
 };
 

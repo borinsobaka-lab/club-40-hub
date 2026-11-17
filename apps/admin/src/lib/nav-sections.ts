@@ -63,7 +63,6 @@ import {
 import type { AccessRight } from "@/lib/access/logic";
 import { anVisible } from "@/lib/analytics/types";
 import { DASHBOARD_TITLES } from "@/lib/dashboard-stats";
-import type { StudioFormat } from "@/lib/studio-formats";
 
 export type RailSectionKey =
   | "dashboard"
@@ -100,11 +99,6 @@ export type NavItem = {
   title: string;
   url: string;
   icon: NavIcon;
-  /**
-   * Только для студий этих форматов (STUDIO_FORMATS.md). Без поля — пункт
-   * общий. Пока студия не загружена, показываются только общие пункты.
-   */
-  formats?: StudioFormat[];
   /** Подсвечивать только на самом url, не на вложенных страницах. */
   exact?: boolean;
   /** Другие страницы пункта: на них он тоже подсвечен («Сотрудники» → вкладки). */
@@ -134,40 +128,16 @@ export const CLUB_GROUPS: NavGroup<ClubNavItem>[] = [
     items: [
       { title: "Расписание", url: "/schedule", icon: CalendarMinimalistic, section: "schedule" },
       { title: "Клиенты", url: "/clients", icon: UsersGroupRounded, section: "clients" },
-      // Пакетные студии: продажи абонементов, возвраты и сбор денег по
-      // рассрочкам — «Продаж» у них нет (решение владельца 2026-10-13).
-      {
-        title: "Абонементы",
-        url: "/client-memberships",
-        icon: Card,
-        section: "client-memberships",
-        formats: ["packages"],
-      },
+      // Продажи абонементов, возвраты и сбор денег по рассрочкам.
+      { title: "Абонементы", url: "/client-memberships", icon: Card, section: "client-memberships" },
     ],
   },
   {
     key: "stats",
     label: "Статистика",
     items: [
-      {
-        title: "Продажи",
-        url: "/sales",
-        icon: BillList,
-        section: "sales",
-        // В пакетных клубах продажи — в «Абонементах».
-        formats: ["subscription"],
-      },
       { title: "Прочие продажи", url: "/other-sales", icon: Bag3, section: "other-sales" },
       { title: "История записей", url: "/bookings-log", icon: History, section: "bookings-log" },
-      {
-        title: "Отмены автопр.",
-        fullTitle: "Отмены автопродления",
-        url: "/autorenew-cancellations",
-        icon: ClipboardRemove,
-        section: "autorenew-cancellations",
-        // У пакетов тренировок автопродления нет.
-        formats: ["subscription"],
-      },
     ],
   },
   {
@@ -180,15 +150,9 @@ export const CLUB_GROUPS: NavGroup<ClubNavItem>[] = [
     label: "Обратная связь",
     items: [
       { title: "Обратная связь", url: "/feedback", icon: ChatRoundDots, section: "feedback" },
-      // Заявки из приложения пакетных клубов: персональные и диагностика
-      // (2026-10-15). Счётчик неотработанных — useOpenRequestsCount.
-      {
-        title: "Заявки",
-        url: REQUESTS_URL,
-        icon: ClipboardList,
-        section: "requests",
-        formats: ["packages"],
-      },
+      // Заявки из приложения: персональные и диагностика (2026-10-15).
+      // Счётчик неотработанных — useOpenRequestsCount.
+      { title: "Заявки", url: REQUESTS_URL, icon: ClipboardList, section: "requests" },
       { title: "NPS-опросы", url: "/nps", icon: ChartSquare, section: "nps" },
     ],
   },
@@ -197,22 +161,7 @@ export const CLUB_GROUPS: NavGroup<ClubNavItem>[] = [
     label: "Клуб",
     items: [
       { title: "Тренировки", url: "/workouts", icon: Dumbbell, section: "workouts" },
-      // Один раздел прав «Номенклатуры», у каждого формата своя страница:
-      // подписки с автопродлением / пакеты тренировок.
-      {
-        title: "Номенклатуры",
-        url: "/memberships",
-        icon: TagPrice,
-        section: "memberships",
-        formats: ["subscription"],
-      },
-      {
-        title: "Номенклатуры",
-        url: "/packages",
-        icon: TagPrice,
-        section: "memberships",
-        formats: ["packages"],
-      },
+      { title: "Номенклатуры", url: "/packages", icon: TagPrice, section: "memberships" },
       { title: "Промокоды", url: "/promocodes", icon: TicketSale, section: "promocodes" },
     ],
   },

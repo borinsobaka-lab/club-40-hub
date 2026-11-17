@@ -212,7 +212,6 @@ function MarketingBody(view: DashboardView) {
   const color = view.color;
   const from = period?.from;
   const to = period?.to;
-  const withTrials = view.clubs.every((c) => c.format === "packages");
 
   const history = useSalesHistory(view);
   // Тот же запрос, что у «Клиентов»: переход между подразделами — без загрузки.
@@ -300,7 +299,7 @@ function MarketingBody(view: DashboardView) {
 
   const charts = useMemo(() => {
     if (!h || !cohort || !cohortData || !from || !to) return null;
-    const funnel = newClientsFunnel(cohort, h.sales, cohortData.visited, withTrials);
+    const funnel = newClientsFunnel(cohort, h.sales, cohortData.visited);
 
     const sources = cohortByAnswer(cohort, cohortData.profiles, h.sales, (p) => p.referralSource);
     const sourceSlices: Slice[] = sources
@@ -356,7 +355,7 @@ function MarketingBody(view: DashboardView) {
     }));
 
     return { funnel, sourceSlices, goalSlices, channelSlices, promos, sourceRows };
-  }, [h, cohort, cohortData, from, to, withTrials, color]);
+  }, [h, cohort, cohortData, from, to, color]);
 
   const loading = history.isLoading || clientsQuery.isLoading || npsQuery.isLoading;
   const chartsLoading = history.isLoading || clientsQuery.isLoading || cohortLoading;
@@ -386,7 +385,7 @@ function MarketingBody(view: DashboardView) {
           className="lg:col-span-2"
         >
           {chartsLoading ? (
-            <DashboardFunnelSkeleton rows={withTrials ? 6 : 4} />
+            <DashboardFunnelSkeleton rows={6} />
           ) : chartsError || !charts || cohort?.length === 0 ? (
             <Empty error={chartsError} text="Новых клиентов за период нет" />
           ) : (

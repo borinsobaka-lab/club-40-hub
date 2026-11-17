@@ -1,18 +1,14 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 
-import { Loader2 } from "lucide-react";
 
 import { AdminShell } from "@/components/admin-shell";
-import { useConfirm } from "@/components/confirm-dialog";
 import { RequireStudio } from "@/components/require-studio";
 import { useActiveStudioId } from "@/hooks/use-active-studio";
-import { useActiveStudio } from "@/hooks/use-studios";
 import { useServerTable } from "@/hooks/use-server-table";
 import { useTableSort } from "@/hooks/use-table-sort";
 import { orderBy } from "@/lib/table-sort";
 import { supabase } from "@/integrations/supabase/client";
-import { Button } from "@/components/ui/button";
 import {
   Select,
   SelectContent,
@@ -31,7 +27,6 @@ import {
 import { DataPagination } from "@/components/data-pagination";
 import { TableToolbar, ToolbarReset, ToolbarSearch } from "@/components/table-toolbar";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
-import { toast } from "sonner";
 import { dayTypeLabel, dayTypeColor, type DayType } from "@/lib/workout-types";
 import { ClientNameLink } from "@/components/client-name-link";
 import { useCrmLinks } from "@/hooks/use-crm-links";
@@ -108,14 +103,11 @@ function formatLead(minutes: number) {
 
 function BookingsLogPage() {
   const studioId = useActiveStudioId();
-  const { confirm, confirmDialog } = useConfirm();
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<string>(STATUS_ALL);
-  const [markingNoShows, setMarkingNoShows] = useState(false);
   const sort = useTableSort();
-  // В пакетных клубах приход фиксируют только в «Расписании» (решение
-  // владельца 2026-10-11) — массовой отметки пропусков здесь нет.
-  const isPackages = useActiveStudio()?.format === "packages";
+  // Приход фиксируют только в «Расписании» (решение владельца 2026-10-11) —
+  // массовой отметки пропусков здесь нет.
 
   const term = useDebouncedValue(search).trim();
 
@@ -146,50 +138,8 @@ function BookingsLogPage() {
     table.rows.map((r) => r.user_id),
   );
 
-  // Раньше эта простановка вызывалась внутри загрузки страницы, то есть на
-  // каждый ввод в поиске и на каждую смену страницы — а это два UPDATE'а по
-  // всему журналу. Теперь только по явному нажатию.
-  // Правка журнала разом по всей студии — поэтому сначала подтверждение.
-  const markNoShows = async () => {
-    if (
-      !(await confirm({
-        title: "Отметить пропущенные?",
-        description:
-          "Записи в статусе «Забронировано» на уже закончившиеся занятия этого клуба станут «Пропущено».",
-        confirmLabel: "Отметить",
-        destructive: false,
-      }))
-    )
-      return;
-    setMarkingNoShows(true);
-    try {
-      const { data, error } = await supabase.rpc("mark_no_show_bookings", {
-        p_studio_id: studioId,
-      });
-      if (error) {
-        toast.error("Не удалось отметить пропущенные: " + error.message);
-        return;
-      }
-      const n = typeof data === "number" ? data : 0;
-      toast.success(n > 0 ? `Отмечено пропущенных: ${n}` : "Новых пропусков нет");
-      table.refetch();
-    } finally {
-      setMarkingNoShows(false);
-    }
-  };
-
   return (
-    <AdminShell
-      title="История записей"
-      actions={
-        isPackages ? undefined : (
-          <Button variant="outline" onClick={markNoShows} disabled={!studioId || markingNoShows}>
-            {markingNoShows && <Loader2 className="animate-spin" />}
-            Отметить пропущенные
-          </Button>
-        )
-      }
-    >
+    <AdminShell title="История записей">
       <div className="space-y-3">
         <RequireStudio studioId={studioId}>
           <TableToolbar>
@@ -343,7 +293,6 @@ function BookingsLogPage() {
           </div>
         </RequireStudio>
       </div>
-      {confirmDialog}
     </AdminShell>
   );
 }

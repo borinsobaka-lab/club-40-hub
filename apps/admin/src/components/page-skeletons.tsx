@@ -20,11 +20,9 @@ import { todayISO } from "@/lib/format";
 import { defaultPeriod, periodLabel, type PeriodKey } from "@/lib/payroll";
 import { STAFF_ITEMS } from "@/lib/nav-sections";
 import { CONTROL_RULES, CONTROL_RULE_ORDER } from "@/lib/dashboard-control";
-import type { StudioFormat } from "@/lib/studio-formats";
 import {
   SCHEDULE_SKELETON_HOURS,
   isScheduleSkeletonCell,
-  readSkeletonFormat,
 } from "@/lib/page-skeleton-layout";
 import {
   CLASSES_CHARTS,
@@ -99,16 +97,6 @@ import {
 // Общие кусочки
 
 const noSubscribe = () => () => {};
-
-/**
- * Формат активного клуба для страниц, у которых от него зависит раскладка
- * (колонки «Продаж», «Тренировок», фильтр «Расписания»). Без запроса: из
- * localStorage (его пишет StudioBranding). На сервере и при гидратации —
- * подписочный, чтобы разметка совпала с серверной.
- */
-function useSkeletonFormat(): StudioFormat {
-  return useSyncExternalStore(noSubscribe, readSkeletonFormat, () => "subscription");
-}
 
 /**
  * Вкладки со статичными подписями, активная — как у настоящих Tabs.
@@ -641,7 +629,7 @@ export function EntryCardSkeleton() {
   );
 }
 
-function ScheduleGridSkeleton({ days, packages }: { days: number; packages: boolean }) {
+function ScheduleGridSkeleton({ days }: { days: number }) {
   const single = days === 1;
   return (
     <div className="overflow-auto rounded-lg border bg-background md:max-h-[calc(100dvh-220px)]">
@@ -676,10 +664,7 @@ function ScheduleGridSkeleton({ days, packages }: { days: number; packages: bool
               {Array.from({ length: days }, (_, di) => (
                 <div
                   key={di}
-                  className={cn(
-                    "relative border-b border-r max-md:border-r-0",
-                    packages && "bg-canvas/50",
-                  )}
+                  className="relative border-b border-r bg-canvas/50 max-md:border-r-0"
                   style={{ height }}
                 >
                   {isScheduleSkeletonCell(hour, di, single) && <EntryCardSkeleton />}
@@ -694,7 +679,6 @@ function ScheduleGridSkeleton({ days, packages }: { days: number; packages: bool
 }
 
 export function SchedulePageSkeleton() {
-  const packages = useSkeletonFormat() === "packages";
   return (
     <ShellSkeleton
       title="Расписание"
@@ -704,7 +688,6 @@ export function SchedulePageSkeleton() {
         <div className="table-toolbar flex flex-wrap items-center gap-2 rounded-lg border bg-background p-2 sm:px-3">
           <PeriodStepperSkeleton />
           <div className="toolbar-full flex flex-wrap items-center gap-2 sm:ml-auto">
-            {!packages && <Skeleton className="h-10 w-40 max-sm:flex-1" />}
             <Skeleton className="h-10 w-[25rem] max-sm:h-[4.5rem] max-sm:w-full" />
             <Skeleton className="h-10 w-48 max-sm:flex-1" />
             <Skeleton className="h-10 w-48 max-sm:flex-1" />
@@ -720,10 +703,10 @@ export function SchedulePageSkeleton() {
           ))}
         </div>
         <div className="md:hidden">
-          <ScheduleGridSkeleton days={1} packages={packages} />
+          <ScheduleGridSkeleton days={1} />
         </div>
         <div className="max-md:hidden">
-          <ScheduleGridSkeleton days={7} packages={packages} />
+          <ScheduleGridSkeleton days={7} />
         </div>
       </div>
     </ShellSkeleton>
@@ -751,31 +734,6 @@ export function ClientsPageSkeleton() {
         "Дата рождения",
         "Регистрация",
         "Добавлен",
-      ]}
-    />
-  );
-}
-
-export function SalesPageSkeleton() {
-  return (
-    <TablePage
-      title="Продажи"
-      actions={[{ label: "Новая продажа" }]}
-      toolbar={{}}
-      headers={[
-        { label: "Клиент", className: "min-w-[220px]" },
-        "Контакты",
-        "Дата",
-        "Источник",
-        "Абонемент",
-        "Статус",
-        "Тип оплаты",
-        "Промо-код",
-        "Сумма",
-        "Первый взнос",
-        "Рассрочка",
-        "Администратор",
-        "Комментарий",
       ]}
     />
   );
@@ -831,12 +789,10 @@ export function OtherSalesPageSkeleton() {
 }
 
 export function BookingsLogPageSkeleton() {
-  // «Отметить пропущенные» — только у подписочных клубов.
-  const packages = useSkeletonFormat() === "packages";
   return (
     <TablePage
       title="История записей"
-      actions={packages ? [] : [{ label: "Отметить пропущенные", icon: false }]}
+      actions={[]}
       toolbar={{ controls: ["w-56"] }}
       headers={[
         { label: "Клиент", className: "min-w-[220px]" },
@@ -855,47 +811,8 @@ export function BookingsLogPageSkeleton() {
   );
 }
 
-export function AutorenewPageSkeleton() {
-  return (
-    <TablePage
-      title="Отмены автопродления"
-      toolbar={{ controls: ["w-48"] }}
-      headers={[
-        { label: "Клиент", className: "min-w-[220px]" },
-        "Контакты",
-        "Абонемент",
-        { label: "Действует до", className: "w-[140px]" },
-        { label: "Причина отмены", className: "w-[180px]" },
-        { label: "Отменено", className: "w-[160px]" },
-      ]}
-    />
-  );
-}
-
 // ---------------------------------------------------------------------------
 // Клуб: номенклатура и справочники
-
-export function MembershipsPageSkeleton() {
-  return (
-    <TablePage
-      title="Номенклатуры"
-      actions={[{ label: "Добавить абонемент" }]}
-      toolbar={{}}
-      headers={[
-        { label: "Обложка", className: "w-[80px]" },
-        "Название",
-        "Описание",
-        "Преимущества",
-        "Посещения",
-        "Срок",
-        "Автопродление",
-        "Рассрочка",
-        "Цена",
-        "Статус",
-      ]}
-    />
-  );
-}
 
 export function PackagesPageSkeleton() {
   return (
@@ -939,18 +856,14 @@ export function PromocodesPageSkeleton() {
 }
 
 export function WorkoutsPageSkeleton() {
-  const packages = useSkeletonFormat() === "packages";
   return (
     <TablePage
       title="Тренировки"
       actions={[{ label: "Добавить тренировку" }]}
       toolbar={{}}
       headers={[
-        packages
-          ? { label: "Цвет", className: "w-[80px]" }
-          : { label: "Иконка", className: "w-[100px]" },
+        { label: "Цвет", className: "w-[80px]" },
         "Название",
-        ...(packages ? [] : [{ label: "Тип", className: "w-[160px]" }]),
         "Описание",
         { label: "Вместимость", className: "w-[120px]" },
         { label: "MET", className: "w-[90px]" },
@@ -1847,9 +1760,7 @@ export function StudiosPageSkeleton() {
       headers={[
         "Название",
         { label: "Логотип", className: "w-[180px]" },
-        "Тип",
         "Цвет",
-        "Приложение клиентов",
       ]}
     />
   );

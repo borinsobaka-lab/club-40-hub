@@ -43,7 +43,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CountBadge } from "@/components/ui/status-chip";
 import { useStorageUrl } from "@/lib/storage";
-import type { StudioFormat } from "@/lib/studio-formats";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { cn } from "@/lib/utils";
 import {
@@ -80,24 +79,16 @@ const SECTION_MENUS: Partial<Record<RailSectionKey, { title: string; groups: Nav
 };
 
 /**
- * Пункты клуба для формата активной студии и прав сотрудника («Доступы»);
+ * Пункты клуба по правам сотрудника («Доступы»);
  * опустевшие группы не показываем. Пока права грузятся — меню пустое, чтобы
  * закрытые пункты не мелькали.
  */
-function visibleGroups(
-  format: StudioFormat | undefined,
-  access: AdminAccess | null,
-  studioId: string | null,
-): NavGroup[] {
+function visibleGroups(access: AdminAccess | null, studioId: string | null): NavGroup[] {
   if (!access) return [];
   return CLUB_GROUPS.map((g) => ({
     ...g,
     items: [
-      ...g.items.filter(
-        (i) =>
-          (!i.formats || (!!format && i.formats.includes(format))) &&
-          canOpenClubSection(access, studioId, i.section),
-      ),
+      ...g.items.filter((i) => canOpenClubSection(access, studioId, i.section)),
       // «Сотрудники» — в блоке «Клуб», но право у них — раздел рейки:
       // справочник общий для всех клубов.
       ...(g.key === STAFF_CLUB_GROUP && canOpenRail(access, "staff") ? [STAFF_NAV_ITEM] : []),
@@ -236,7 +227,6 @@ function StudioLogo() {
 }
 
 export function AppSidebar() {
-  const studioFormat = useActiveStudio()?.format;
   const studioId = useActiveStudioId();
   const access = useAdminAccess();
   const currentPath = useRouterState({ select: (router) => router.location.pathname });
@@ -336,7 +326,7 @@ export function AppSidebar() {
   };
   const groups =
     sectionMenu?.groups ??
-    visibleGroups(studioFormat, access, studioId).map((g) => ({
+    visibleGroups(access, studioId).map((g) => ({
       ...g,
       items: g.items.map((i) => (i.url in badges ? { ...i, badge: badges[i.url] } : i)),
     }));

@@ -11,7 +11,7 @@ import { useCommentStats } from "@/lib/client-comments";
 import { AdminShell } from "@/components/admin-shell";
 import { RequireStudio } from "@/components/require-studio";
 import { useActiveStudioId } from "@/hooks/use-active-studio";
-import { useNetworkStudioIds, useStudioFormat } from "@/hooks/use-catalog-studios";
+import { useNetworkStudioIds } from "@/hooks/use-catalog-studios";
 import { useServerTable } from "@/hooks/use-server-table";
 import { useTableSort } from "@/hooks/use-table-sort";
 import { orderBy } from "@/lib/table-sort";
@@ -176,10 +176,10 @@ function ClientsPage() {
     appFrom ||
     appTo,
   );
-  // Цели — из анкеты приложения формата клуба (у пакетного — свои).
-  const goals = goalOptions(useStudioFormat(studioId));
+  // Цели — из анкеты приложения.
+  const goals = goalOptions("packages");
 
-  // Пакетный клуб — общая база клиентов всех пакетных клубов (2026-10-17).
+  // Общая база клиентов всех клубов сети (2026-10-17).
   const networkIds = useNetworkStudioIds(studioId);
   const table = useServerTable<Client>({
     queryKey: [

@@ -65,11 +65,10 @@ import {
 } from "@/lib/membership-status";
 import type { ClubStatus } from "@/lib/client-status";
 import { parseTranslations, translationText } from "@/lib/content-i18n";
-import { DAY_TYPES, dayTypeColor } from "@/lib/workout-types";
 import {
   ACTIVITY_KIND_VALUES,
   activityKind,
-  activityKindsFor,
+  ACTIVITY_KINDS,
   isOneOnOne,
   type ActivityKind,
 } from "@/lib/schedule-activities";
@@ -447,10 +446,8 @@ async function insertEntries(studioId: string, drafts: EntryDraft[]): Promise<In
 function SchedulePage() {
   const { confirm, confirmDialog } = useConfirm();
   const studioId = useActiveStudioId();
-  // Пакетные студии: у тренировок нет типа — фильтра по типу нет, карточка
-  // занятия светлая с полоской цвета тренировки (2026-10-11).
+  // Название клуба — в шапке полноэкранного расписания.
   const studio = useActiveStudio();
-  const packages = studio?.format === "packages";
   const queryClient = useQueryClient();
   const [weekStart, setWeekStart] = useState<Date>(() => startOfWeek(new Date()));
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -463,7 +460,6 @@ function SchedulePage() {
   const [kindFilter, setKindFilter] = useState<ActivityKind[]>(ACTIVITY_KIND_VALUES);
   // Отменённые занятия по умолчанию скрыты и тоже не запоминаются.
   const [showCancelled, setShowCancelled] = useState(false);
-  const [filterType, setFilterType] = useState<string>(ALL_FILTER_VALUE);
   const [filterTrainerId, setFilterTrainerId] = useState<string>(ALL_FILTER_VALUE);
   const [filterWorkoutId, setFilterWorkoutId] = useState<string>(ALL_FILTER_VALUE);
   const [copySource, setCopySource] = useState<Entry | null>(null);
@@ -543,10 +539,8 @@ function SchedulePage() {
 
   const weekLabel = `${fmtDate(weekStart)} — ${fmtDate(addDays(weekStart, 6))}`;
   const isCurrentWeek = startOfWeek(new Date()).toDateString() === weekStart.toDateString();
-  // Фильтр типа, выбранный в подписочной студии, в пакетной не действует.
-  const typeFilter = packages ? ALL_FILTER_VALUE : filterType;
   // Тренировки этой недели — для фильтра: в списке только то, что стоит в
-  // расписании на экране, с цветом тренировки (у подписочных — цветом типа).
+  // расписании на экране, с цветом тренировки.
   const weekWorkouts = useMemo(() => {
     const byId = new Map<string, { id: string; name: string; color: string | null }>();
     for (const e of entries) {
@@ -554,7 +548,7 @@ function SchedulePage() {
       byId.set(e.workout_id, {
         id: e.workout_id,
         name: e.workout?.name ?? "Тренировка",
-        color: e.workout?.color ?? dayTypeColor(e.workout?.type)?.hex ?? null,
+        color: e.workout?.color ?? null,
       });
     }
     return [...byId.values()].sort((a, b) => a.name.localeCompare(b.name, "ru"));
@@ -564,7 +558,6 @@ function SchedulePage() {
     ? filterWorkoutId
     : ALL_FILTER_VALUE;
   const filtersActive =
-    typeFilter !== ALL_FILTER_VALUE ||
     workoutFilter !== ALL_FILTER_VALUE ||
     filterTrainerId !== ALL_FILTER_VALUE ||
     kindFilter.length !== ACTIVITY_KIND_VALUES.length ||
@@ -588,9 +581,6 @@ function SchedulePage() {
     for (const e of entries) {
       if (e.cancelled_at && !showCancelled) continue;
       if (!kindFilter.includes(e.kind)) continue;
-      // Тип тренировки есть только у групповых: при выбранном типе прочие скрыты.
-      if (typeFilter !== ALL_FILTER_VALUE && (e.kind !== "group" || e.workout?.type !== typeFilter))
-        continue;
       // Тренировка есть только у групповых: при выбранной прочие скрыты.
       if (workoutFilter !== ALL_FILTER_VALUE && e.workout_id !== workoutFilter) continue;
       if (
@@ -613,7 +603,7 @@ function SchedulePage() {
       ? hours.filter((h) => h >= Math.min(...hourList) && h <= Math.max(...hourList))
       : hours;
     return { cells, busyHours, perDay, hours, compactHours };
-  }, [entries, kindFilter, typeFilter, workoutFilter, filterTrainerId, showCancelled]);
+  }, [entries, kindFilter, workoutFilter, filterTrainerId, showCancelled]);
 
   // Браузерный полноэкранный режим прячет вкладки и адресную строку; выход
   // из него (Esc, жест) закрывает и наш. Без поддержки (iPhone) — просто
@@ -887,48 +877,24 @@ function SchedulePage() {
                 <Maximize />
                 Развернуть
               </Button>
-              {!packages && (
-                <Select value={filterType} onValueChange={setFilterType}>
-                  <SelectTrigger
-                    aria-label="Тип тренировки"
-                    className="w-40 max-sm:w-auto max-sm:min-w-0 max-sm:flex-1"
-                  >
-                    <SelectValue placeholder="Все типы" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value={ALL_FILTER_VALUE}>Все типы</SelectItem>
-                    {DAY_TYPES.map((t) => (
-                      <SelectItem key={t.value} value={t.value}>
-                        {t.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
-              {packages ? (
-                <ActivityTypesFilter
-                  value={kindFilter}
-                  onChange={setKindFilter}
-                  cancelled={showCancelled}
-                  onCancelledChange={setShowCancelled}
-                />
-              ) : (
-                <KindFilter value={kindFilter} onChange={setKindFilter} />
-              )}
+              <ActivityTypesFilter
+                value={kindFilter}
+                onChange={setKindFilter}
+                cancelled={showCancelled}
+                onCancelledChange={setShowCancelled}
+              />
               <Select value={workoutFilter} onValueChange={setFilterWorkoutId}>
                 <SelectTrigger
                   aria-label="Тренировка"
                   className="w-48 max-sm:w-auto max-sm:min-w-0 max-sm:flex-1"
                 >
-                  {/* Пакетные клубы: тренировка — «Направление» (2026-10-13). */}
+                  {/* Тренировка — «Направление» (2026-10-13). */}
                   <SelectValue>
-                    {packages && workoutFilter === ALL_FILTER_VALUE ? "Направление" : undefined}
+                    {workoutFilter === ALL_FILTER_VALUE ? "Направление" : undefined}
                   </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value={ALL_FILTER_VALUE}>
-                    {packages ? "Все направления" : "Все тренировки"}
-                  </SelectItem>
+                  <SelectItem value={ALL_FILTER_VALUE}>Все направления</SelectItem>
                   {weekWorkouts.map((w) => (
                     <SelectItem key={w.id} value={w.id}>
                       <WorkoutOption name={w.name} color={w.color} />
@@ -956,7 +922,6 @@ function SchedulePage() {
               <ToolbarReset
                 active={filtersActive}
                 onReset={() => {
-                  setFilterType(ALL_FILTER_VALUE);
                   setFilterWorkoutId(ALL_FILTER_VALUE);
                   setFilterTrainerId(ALL_FILTER_VALUE);
                   setKindFilter(ACTIVITY_KIND_VALUES);
@@ -1172,13 +1137,10 @@ function SchedulePage() {
                         return (
                           <div
                             key={`${hour}-${di}`}
-                            className={cn(
-                              "relative border-b border-r max-md:border-r-0",
-                              // Пакетные студии: слоты — светлее подложки раздела (её цвет
-                              // наполовину с белым фоном сетки), линии — обычные светло-серые
-                              // (--border); шапка дней и столбец времени — белые.
-                              packages && "bg-canvas/50",
-                            )}
+                            // Слоты — светлее подложки раздела (её цвет наполовину с
+                            // белым фоном сетки), линии — обычные светло-серые
+                            // (--border); шапка дней и столбец времени — белые.
+                            className="relative border-b border-r bg-canvas/50 max-md:border-r-0"
                             style={{ height: rowHeight }}
                           >
                             {/*
@@ -1190,10 +1152,7 @@ function SchedulePage() {
                                 type="button"
                                 aria-label={`${copySource ? "Вставить" : "Добавить"} занятие: ${DAY_NAMES[di]}, ${pad(hour)}:00`}
                                 onClick={() => openSlot(day, hour)}
-                                className={cn(
-                                  "absolute inset-0 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring",
-                                  packages ? "hover:bg-black/5" : "hover:bg-accent/40",
-                                )}
+                                className="absolute inset-0 transition hover:bg-black/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
                               />
                             )}
                             {entriesPending && isScheduleSkeletonCell(hour, di, isMobile) && (
@@ -1214,7 +1173,6 @@ function SchedulePage() {
                                   <EntryCard
                                     key={e.id}
                                     entry={e}
-                                    packages={packages}
                                     clean={fullscreen}
                                     onOpen={() => openEdit(e)}
                                     onCopy={() => startCopy(e)}
@@ -1259,7 +1217,6 @@ function SchedulePage() {
       <KindPickerDialog
         open={pickerOpen}
         onOpenChange={setPickerOpen}
-        packages={packages}
         hasWorkouts={workouts.length > 0}
         onPick={pickKind}
       />
@@ -1272,7 +1229,6 @@ function SchedulePage() {
         workouts={workouts}
         trainers={trainers}
         staff={staff}
-        packages={packages}
         // Свежая строка из списка: после записи клиентов в окне booked_count
         // у снимка `editing` устаревает (предупреждение в «Отменить тренировку»).
         entry={editing ? (entries.find((x) => x.id === editing.id) ?? editing) : null}
@@ -1292,49 +1248,7 @@ function toggleKind(value: ActivityKind[], kind: ActivityKind, checked: boolean)
 }
 
 /**
- * Фильтр по типам занятий подписочного клуба — галочки прямо в панели
- * фильтров (решение владельца 2026-10-11: на клик меньше, чем выпадающий
- * список). По умолчанию отмечены все; последний отмеченный тип снять нельзя
- * — пустая сетка только путает.
- */
-function KindFilter({
-  value,
-  onChange,
-}: {
-  value: ActivityKind[];
-  onChange: (v: ActivityKind[]) => void;
-}) {
-  const kinds = activityKindsFor("subscription");
-  const shown = kinds.filter((k) => value.includes(k.value)).length;
-  return (
-    <div
-      role="group"
-      aria-label="Какие занятия показывать"
-      className={cn(
-        fieldClass,
-        "flex h-auto min-h-10 w-auto flex-wrap items-center gap-x-4 gap-y-1 py-1.5 max-sm:w-full",
-      )}
-    >
-      {kinds.map((k) => {
-        const checked = value.includes(k.value);
-        return (
-          <CheckboxOption
-            key={k.value}
-            checked={checked}
-            disabled={checked && shown === 1}
-            onCheckedChange={(v) => onChange(toggleKind(value, k.value, v))}
-            className="whitespace-nowrap"
-          >
-            {k.plural}
-          </CheckboxOption>
-        );
-      })}
-    </div>
-  );
-}
-
-/**
- * «Типы активностей» пакетного клуба — выпадающий список с галочками
+ * «Типы активностей» — выпадающий список с галочками
  * (решение владельца 2026-10-13): групповые, персональные, прочие и
  * «Отменённые». По умолчанию отмечено всё, кроме отменённых; последний
  * отмеченный тип снять нельзя.
@@ -1350,7 +1264,7 @@ function ActivityTypesFilter({
   cancelled: boolean;
   onCancelledChange: (v: boolean) => void;
 }) {
-  const kinds = activityKindsFor("packages");
+  const kinds = ACTIVITY_KINDS;
   const picked = kinds.filter((k) => value.includes(k.value));
   const all = picked.length === kinds.length;
   const label =
@@ -1404,9 +1318,9 @@ function ActivityTypesFilter({
   );
 }
 
-/** Цвет тренировки: свой (пакетные клубы) или цвет её типа. */
-function workoutColor(w: Pick<Workout, "color" | "type">) {
-  return w.color ?? dayTypeColor(w.type)?.hex ?? null;
+/** Цвет тренировки; без цвета (заведена до 2026-10-11) — null. */
+function workoutColor(w: Pick<Workout, "color">) {
+  return w.color ?? null;
 }
 
 /**
@@ -1429,14 +1343,11 @@ function WorkoutOption({ name, color }: { name: string; color: string | null }) 
 function KindPickerDialog({
   open,
   onOpenChange,
-  packages,
   hasWorkouts,
   onPick,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
-  /** Пакетный клуб: есть диагностика. */
-  packages: boolean;
   /** Групповое занятие ставится по тренировке — без тренировок плитка выключена. */
   hasWorkouts: boolean;
   onPick: (kind: ActivityKind) => void;
@@ -1449,10 +1360,8 @@ function KindPickerDialog({
           <DialogDescription>Выберите тип занятия.</DialogDescription>
         </DialogHeader>
         <DialogBody>
-          <div
-            className={cn("grid grid-cols-1 gap-3", packages ? "sm:grid-cols-2" : "sm:grid-cols-3")}
-          >
-            {activityKindsFor(packages ? "packages" : "subscription").map((k) => {
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            {ACTIVITY_KINDS.map((k) => {
               const disabled = k.value === "group" && !hasWorkouts;
               return (
                 <ChoiceCard
@@ -1555,14 +1464,11 @@ function NewcomersBadge({ entry }: { entry: Entry }) {
 
 function EntryCard({
   entry,
-  packages,
   clean,
   onOpen,
   onCopy,
 }: {
   entry: Entry;
-  /** Пакетная студия: светлая карточка с полоской цвета тренировки. */
-  packages: boolean;
   /** Полноэкранный просмотр для клиента: без «Копировать» и остатка мест. */
   clean?: boolean;
   onOpen: () => void;
@@ -1579,129 +1485,54 @@ function EntryCard({
   // имён клиентов нет: скриншот уходит другим клиентам.
   const clients = isOneOnOne(entry.kind) && !clean ? participantNames(entry) : "";
   const people = [names, clients].filter(Boolean).join(" + ");
-  // Персональные и прочие в обоих форматах — светлая карточка с тёмной
-  // полоской: так они не путаются с групповыми.
+  // Светлая карточка с полоской: у групповых — цвета тренировки, у
+  // персональных и прочих — тёмная, так они не путаются с групповыми.
   const group = entry.kind === "group";
   // Отменённое — белое в наклонную серую полоску, перед временем красный знак.
   const cancelled = !!entry.cancelled_at;
-  if (packages || !group || cancelled) {
-    return (
-      <div
-        className={cn(
-          "pointer-events-auto relative h-full min-w-0 flex-1 overflow-hidden rounded-md border border-l-4 bg-background text-foreground",
-          // Полный экран: строки времени, названия и тренера плотнее —
-          // карточка ниже, в экран помещается больше занятий.
-          clean ? "text-base leading-[1.1]" : "text-xs leading-tight",
-          cancelled && "schedule-cancelled",
-        )}
-        title={
-          cancelled && !clean
-            ? `Отменено: ${entry.cancel_reason ?? "причина не указана"}`
-            : undefined
-        }
-        // Без цвета (тренировка заведена до 2026-10-11) — серая полоска.
-        style={{
-          borderLeftColor: group
-            ? (entry.workout?.color ?? "var(--muted-foreground)")
-            : NON_GROUP_STRIPE,
-        }}
-      >
-        <button
-          type="button"
-          onClick={onOpen}
-          className={cn(
-            "flex h-full w-full cursor-pointer flex-col px-1.5 text-left hover:bg-accent/40",
-            clean ? "py-0.5" : "pt-0.5 pb-px",
-          )}
-        >
-          <span className="flex w-full items-start justify-between gap-1">
-            <span
-              className={cn(
-                "flex items-center gap-1 whitespace-nowrap",
-                clean ? "font-semibold tabular-nums text-foreground/80" : "text-muted-foreground",
-              )}
-            >
-              {cancelled && (
-                <Ban
-                  className={cn("shrink-0 text-rose-600", clean ? "size-4" : "size-3")}
-                  aria-label={clean ? "Cancelled" : "Отменено"}
-                />
-              )}
-              {fmtTime(entry.starts_at)}–{fmtTime(entry.ends_at)}
-            </span>
-            {!cancelled && !clean && (
-              <span className="flex items-center gap-1">
-                <UnmarkedBadge entry={entry} />
-                <NewcomersBadge entry={entry} />
-                <CapacityBadge entry={entry} />
-              </span>
-            )}
-          </span>
-          <span
-            className={cn(
-              "font-semibold",
-              clean ? "text-lg leading-[1.05]" : "text-sm leading-[1.15]",
-              // Персональному название в одну строку — место под клиента.
-              clients ? "truncate" : "line-clamp-2",
-            )}
-          >
-            {entryTitle(entry, clean)}
-          </span>
-          {/* Фото тренеров на карточке нет (решение владельца 2026-10-11) —
-              только имена: карточка ниже. У персонального «тренер + клиент» —
-              до двух строк, имя клиента не режем. pr-5 — место под «Копировать». */}
-          {people && (
-            <span
-              className={cn(
-                "min-w-0 text-muted-foreground",
-                // Полный экран: «Копировать» нет — места под неё не держим.
-                clean ? "font-medium" : "pr-5",
-                clients ? "line-clamp-2 break-words" : "truncate",
-              )}
-            >
-              {people}
-            </span>
-          )}
-        </button>
-        {!clean && (
-          <button
-            type="button"
-            aria-label="Копировать занятие"
-            title="Копировать занятие"
-            onClick={onCopy}
-            className="absolute bottom-1 right-1.5 rounded-full bg-muted p-0.5 text-muted-foreground hover:bg-accent hover:text-foreground after:absolute after:-inset-1.5 after:rounded-full"
-          >
-            <Copy className="h-3 w-3" />
-          </button>
-        )}
-      </div>
-    );
-  }
-  const color = dayTypeColor(entry.workout?.type);
-  const colorClasses = color ? `${color.bg} ${color.text}` : "bg-primary text-primary-foreground";
   return (
     <div
       className={cn(
-        "pointer-events-auto relative h-full min-w-0 flex-1 overflow-hidden rounded-md",
+        "pointer-events-auto relative h-full min-w-0 flex-1 overflow-hidden rounded-md border border-l-4 bg-background text-foreground",
+        // Полный экран: строки времени, названия и тренера плотнее —
+        // карточка ниже, в экран помещается больше занятий.
         clean ? "text-base leading-[1.1]" : "text-xs leading-tight",
-        colorClasses,
+        cancelled && "schedule-cancelled",
       )}
+      title={
+        cancelled && !clean ? `Отменено: ${entry.cancel_reason ?? "причина не указана"}` : undefined
+      }
+      // Без цвета (тренировка заведена до 2026-10-11) — серая полоска.
+      style={{
+        borderLeftColor: group
+          ? (entry.workout?.color ?? "var(--muted-foreground)")
+          : NON_GROUP_STRIPE,
+      }}
     >
       <button
         type="button"
         onClick={onOpen}
         className={cn(
-          "flex h-full w-full cursor-pointer flex-col px-2 text-left hover:opacity-90",
+          "flex h-full w-full cursor-pointer flex-col px-1.5 text-left hover:bg-accent/40",
           clean ? "py-0.5" : "pt-0.5 pb-px",
         )}
       >
         <span className="flex w-full items-start justify-between gap-1">
           <span
-            className={cn("whitespace-nowrap", clean ? "font-semibold tabular-nums" : "opacity-90")}
+            className={cn(
+              "flex items-center gap-1 whitespace-nowrap",
+              clean ? "font-semibold tabular-nums text-foreground/80" : "text-muted-foreground",
+            )}
           >
+            {cancelled && (
+              <Ban
+                className={cn("shrink-0 text-rose-600", clean ? "size-4" : "size-3")}
+                aria-label={clean ? "Cancelled" : "Отменено"}
+              />
+            )}
             {fmtTime(entry.starts_at)}–{fmtTime(entry.ends_at)}
           </span>
-          {!clean && (
+          {!cancelled && !clean && (
             <span className="flex items-center gap-1">
               <UnmarkedBadge entry={entry} />
               <NewcomersBadge entry={entry} />
@@ -1711,27 +1542,37 @@ function EntryCard({
         </span>
         <span
           className={cn(
-            "font-semibold line-clamp-2",
+            "font-semibold",
             clean ? "text-lg leading-[1.05]" : "text-sm leading-[1.15]",
+            // Персональному название в одну строку — место под клиента.
+            clients ? "truncate" : "line-clamp-2",
           )}
         >
           {entryTitle(entry, clean)}
         </span>
-        {/* pr-5 — место под «Копировать» в углу. */}
-        {names && (
-          <span className={cn("block truncate opacity-90", clean ? "font-medium" : "pr-5")}>
-            {names}
+        {/* Фото тренеров на карточке нет (решение владельца 2026-10-11) —
+              только имена: карточка ниже. У персонального «тренер + клиент» —
+              до двух строк, имя клиента не режем. pr-5 — место под «Копировать». */}
+        {people && (
+          <span
+            className={cn(
+              "min-w-0 text-muted-foreground",
+              // Полный экран: «Копировать» нет — места под неё не держим.
+              clean ? "font-medium" : "pr-5",
+              clients ? "line-clamp-2 break-words" : "truncate",
+            )}
+          >
+            {people}
           </span>
         )}
       </button>
-      {/* Соседняя кнопка поверх карточки, а не вложенная в неё — там же, где была. */}
       {!clean && (
         <button
           type="button"
           aria-label="Копировать занятие"
           title="Копировать занятие"
           onClick={onCopy}
-          className="absolute bottom-1 right-2 rounded-full bg-black/25 p-0.5 text-white hover:bg-black/40 after:absolute after:-inset-1.5 after:rounded-full"
+          className="absolute bottom-1 right-1.5 rounded-full bg-muted p-0.5 text-muted-foreground hover:bg-accent hover:text-foreground after:absolute after:-inset-1.5 after:rounded-full"
         >
           <Copy className="h-3 w-3" />
         </button>
@@ -1751,8 +1592,6 @@ type EntryDialogProps = {
   trainers: Trainer[];
   /** Все сотрудники студии (и администраторы) — для прочей активности. */
   staff: Trainer[];
-  /** Пакетная студия: отмена занятия и «Не посетил» у записанных. */
-  packages: boolean;
   entry: Entry | null;
   presetStart: Date | null;
   onSaved: () => void;
@@ -2056,7 +1895,6 @@ function EntryForm({
   workouts,
   trainers,
   staff,
-  packages,
   entry,
   presetStart,
   onSaved,
@@ -2094,14 +1932,14 @@ function EntryForm({
     return toDateTimeLocalValue(end);
   });
   const [trainerIds, setTrainerIds] = useState<string[]>(() => (entry ? trainerIdsOf(entry) : []));
-  // Замены: тренер занятия → кого он заменяет (пакетные клубы, групповое).
+  // Замены: тренер занятия → кого он заменяет (групповое).
   const [subs, setSubs] = useState<SubsMap>(() => substitutionsOf(entry?.schedule_entry_trainers));
   // У заведённой групповой тренировки с тренерами — не галочки, а список
   // тренеров с «Замена» / «Редактировать» (решение владельца 2026-10-13).
-  const assignMode = packages && !!entry && kind === "group" && trainerIdsOf(entry).length > 0;
-  // Пакетные клубы: тренер на групповой тренировке один (2026-10-13) — у
-  // новой и у заведённой без тренера выбор из списка, а не галочки.
-  const singleGroupTrainer = packages && kind === "group" && !assignMode;
+  const assignMode = !!entry && kind === "group" && trainerIdsOf(entry).length > 0;
+  // Тренер на групповой тренировке один (2026-10-13) — у новой и у
+  // заведённой без тренера выбор из списка, а не галочки.
+  const singleGroupTrainer = kind === "group" && !assignMode;
   // Клиенты нового занятия: записываются после его создания. У созданного —
   // панель записей, там запись сразу.
   const [pending, setPending] = useState<PickedClient[]>([]);
@@ -2569,7 +2407,6 @@ function EntryForm({
                     <ParticipantActions
                       studioId={studioId}
                       trial={kind === "group"}
-                      packages={packages}
                       onPick={(c) =>
                         setPending((prev) =>
                           prev.some((x) => x.id === c.id) ? prev : [...prev, c],
@@ -2581,12 +2418,7 @@ function EntryForm({
               )}
             </div>
             {hasBookingsPanel(entry) && (
-              <BookingsPanel
-                entry={entry}
-                trial={kind === "group"}
-                packages={packages}
-                onChanged={onSaved}
-              />
+              <BookingsPanel entry={entry} trial={kind === "group"} onChanged={onSaved} />
             )}
           </div>
         </DialogBody>
@@ -2594,7 +2426,7 @@ function EntryForm({
           {entry && (
             <EntryActionsMenu
               kind={kind}
-              cancelLabel={packages && !cancelled ? cancelLabel : null}
+              cancelLabel={!cancelled ? cancelLabel : null}
               onDelete={handleDelete}
               onCancel={() => setCancelOpen(true)}
               disabled={busy}
@@ -2611,7 +2443,7 @@ function EntryForm({
           </Button>
         </DialogFooter>
       </DialogForm>
-      {entry && packages && (
+      {entry && (
         <Dialog open={cancelOpen} onOpenChange={setCancelOpen}>
           <DialogContent className="max-w-md">
             <CancelEntryForm
@@ -2645,7 +2477,7 @@ function EntryActionsMenu({
   disabled,
 }: {
   kind: ActivityKind;
-  /** Подпись отмены; null — отменить нельзя (подписочный клуб, уже отменено). */
+  /** Подпись отмены; null — отменить нельзя (уже отменено). */
   cancelLabel: string | null;
   onDelete: () => void;
   onCancel: () => void;
@@ -2905,15 +2737,11 @@ function bookingClient(data: BookingsData | undefined, b: BookingRow) {
 
 /**
  * Записи на занятие + карточки клиентов + их активные абонементы.
- * networkIds — клубы базы клиентов клуба занятия: у пакетного — все пакетные
- * (база общая, 2026-10-17): карточку клиента, заведённую в другом клубе
+ * networkIds — клубы базы клиентов клуба занятия: все клубы сети (база
+ * общая, 2026-10-17): карточку клиента, заведённую в другом клубе
  * сети, сотрудник видит целиком, «гостей» больше нет.
  */
-async function fetchBookings(
-  entry: Entry,
-  packages: boolean,
-  networkIds: string[],
-): Promise<BookingsData> {
+async function fetchBookings(entry: Entry, networkIds: string[]): Promise<BookingsData> {
   const bookings = await unwrap<BookingRow[]>(
     supabase
       .from("schedule_bookings")
@@ -2961,7 +2789,7 @@ async function fetchBookings(
   if (clients.length === 0) return empty;
 
   const ids = clients.map((c) => c.id);
-  const balanceCheck = packages && entry.kind !== "other";
+  const balanceCheck = entry.kind !== "other";
   const [{ data: mData }, { data: aheadData }] = await Promise.all([
     supabase
       .from("client_memberships")
@@ -3084,14 +2912,11 @@ type PickedClient = { id: string; name: string };
 function ParticipantActions({
   studioId,
   trial,
-  packages,
   onPick,
   disabled,
 }: {
   studioId: string | null;
   trial: boolean;
-  /** Пакетная студия: в поиске — клиенты всех клубов сети (база общая). */
-  packages: boolean;
   onPick: (c: PickedClient) => void;
   disabled?: boolean;
 }) {
@@ -3127,7 +2952,6 @@ function ParticipantActions({
         <DialogContent className="max-w-md">
           <PickClientForm
             studioId={studioId}
-            packages={packages}
             onCancel={() => setPickOpen(false)}
             onPick={(c) => {
               setPickOpen(false);
@@ -3151,12 +2975,10 @@ function ParticipantActions({
 
 function PickClientForm({
   studioId,
-  packages,
   onPick,
   onCancel,
 }: {
   studioId: string | null;
-  packages: boolean;
   onPick: (c: PickedClient) => void;
   onCancel: () => void;
 }) {
@@ -3173,9 +2995,7 @@ function PickClientForm({
       <DialogHeader>
         <DialogTitle>Записать клиента</DialogTitle>
         <DialogDescription>
-          {packages
-            ? "Клиент любого клуба сети — база клиентов общая. Поиск по имени, телефону или почте."
-            : "Клиент клуба — поиск по имени, телефону или почте."}
+          Клиент любого клуба сети — база клиентов общая. Поиск по имени, телефону или почте.
         </DialogDescription>
       </DialogHeader>
       <DialogForm onSubmit={handleSubmit}>
@@ -3343,20 +3163,17 @@ function MembershipSummary({
 function BookingsPanel({
   entry,
   trial,
-  packages,
   onChanged,
 }: {
   entry: Entry;
   /** Групповое: можно записать на пробное посещение нового клиента. */
   trial: boolean;
-  /** Пакетная студия: «Не посетил» с причиной вместо «Отклонить». */
-  packages: boolean;
   onChanged: () => void;
 }) {
   const queryClient = useQueryClient();
-  // Пакетная студия: на персональном занятии посещение списывается с баланса
-  // персональных, на диагностике — диагностик; его и показываем у клиента.
-  const balance: BalanceKind = packages ? entryBalance(entry.kind) : "visits";
+  // На персональном занятии посещение списывается с баланса персональных, на
+  // диагностике — диагностик; его и показываем у клиента.
+  const balance: BalanceKind = entryBalance(entry.kind);
   const [booking, setBooking] = useState(false);
   const [attendingId, setAttendingId] = useState<string | null>(null);
   const [cancelOpen, setCancelOpen] = useState(false);
@@ -3368,7 +3185,7 @@ function BookingsPanel({
   const networkIds = useNetworkStudioIds(entry.studio_id);
   const { data, isLoading: loading } = useQuery({
     queryKey: [...queryKey, networkIds?.join(",")],
-    queryFn: () => fetchBookings(entry, packages, networkIds!),
+    queryFn: () => fetchBookings(entry, networkIds!),
     enabled: !!networkIds,
     meta: { errorMessage: "Ошибка загрузки записей" },
   });
@@ -3479,7 +3296,6 @@ function BookingsPanel({
           <ParticipantActions
             studioId={entry.studio_id}
             trial={trial}
-            packages={packages}
             onPick={addParticipant}
             disabled={booking}
           />
@@ -3576,10 +3392,10 @@ function BookingsPanel({
                   <div className="flex shrink-0 items-center gap-1">
                     {(b.status === "booked" || b.status === "no_show") && (
                       <Button
-                        // Пакетные: отметки — белые, тёмные — действия окна
+                        // Отметки — белые, тёмные — действия окна
                         // («+ клиент», «+ пробник»; 2026-10-13).
-                        variant={packages ? "outline" : "default"}
-                        size={packages ? "xs" : "sm"}
+                        variant="outline"
+                        size="xs"
                         onClick={() => handleAttend(b)}
                         // «Не посетил» по неуважительной уже списан — его
                         // можно перевести в «Посетил» и без остатка
@@ -3595,13 +3411,13 @@ function BookingsPanel({
                         Посетил
                       </Button>
                     )}
-                    {packages && b.status === "booked" && (
+                    {b.status === "booked" && (
                       <Button variant="outline" size="xs" onClick={() => askNoShow(b)}>
                         <X />
                         Не посетил
                       </Button>
                     )}
-                    {packages && b.status === "no_show" && (
+                    {b.status === "no_show" && (
                       <Button
                         variant="outline"
                         size="xs"
@@ -3612,15 +3428,10 @@ function BookingsPanel({
                         Причина
                       </Button>
                     )}
-                    {!packages && b.status === "booked" && (
-                      <Button variant="outline" size="sm" onClick={() => askCancel(b)}>
-                        Отклонить
-                      </Button>
-                    )}
                     {b.status === "attended" && (
                       <Button
                         variant="outline"
-                        size={packages ? "xs" : "sm"}
+                        size="xs"
                         title="Отметили по ошибке? Тренировка вернётся на баланс клиента"
                         onClick={() => handleUnattend(b)}
                         disabled={busy}
@@ -3629,10 +3440,10 @@ function BookingsPanel({
                         Отменить посещение
                       </Button>
                     )}
-                    {/* Пакетные: отписать (записали по ошибке, клиент отменил
-                        заранее) — тихой кнопкой, главная — «Не посетил»; не
-                        крестик — он у «Не посетил». */}
-                    {packages && b.status === "booked" && (
+                    {/* Отписать (записали по ошибке, клиент отменил заранее) —
+                        тихой кнопкой, главная — «Не посетил»; не крестик — он
+                        у «Не посетил». */}
+                    {b.status === "booked" && (
                       <Button
                         variant="ghost"
                         size="icon-sm"
@@ -3692,7 +3503,6 @@ function BookingsPanel({
             <CancelBookingForm
               key={cancelTarget.id}
               booking={cancelTarget}
-              packages={packages}
               onClose={() => setCancelOpen(false)}
               onDone={reload}
             />
@@ -3850,19 +3660,16 @@ function NoShowForm({
 
 function CancelBookingForm({
   booking,
-  packages,
   onClose,
   onDone,
 }: {
   booking: BookingRow;
-  /** Пакетная студия: «Отписать» (кнопка «Отклонить» заменена на «Не посетил»). */
-  packages: boolean;
   onClose: () => void;
   onDone: () => void;
 }) {
-  const verb = packages ? "Отписать клиента" : "Отклонить запись";
+  const verb = "Отписать клиента";
   // Причина живёт в форме, а форма монтируется при каждом открытии окна:
-  // «Отклонить» у другого клиента не наследует прошлую причину.
+  // «Отписать» другого клиента не наследует прошлую причину.
   const [reason, setReason] = useState("");
   const [cancelling, setCancelling] = useState(false);
 
@@ -3877,7 +3684,7 @@ function CancelBookingForm({
         { error: "Ошибка отмены", failed: "Не удалось отписать" },
       );
       if (!ok) return;
-      toast.success(packages ? "Клиент отписан" : "Запись отклонена");
+      toast.success("Клиент отписан");
       onClose();
       onDone();
     } finally {

@@ -3,12 +3,11 @@ import { useQuery } from "@tanstack/react-query";
 import { useActiveStudioId } from "@/hooks/use-active-studio";
 import { useAdminAccess } from "@/hooks/use-admin-access";
 import { studioIdsKey, useSectionStudios } from "@/hooks/use-section-studios";
-import { useActiveStudio } from "@/hooks/use-studios";
 import { supabase } from "@/integrations/supabase/client";
 import { canOpenClubSection } from "@/lib/admin-access";
 
 /**
- * Заявки клиентов из приложения пакетных клубов (client_requests,
+ * Заявки клиентов из приложения (client_requests,
  * db/migrations/2026-10-15_zz_diagnostics_client_requests.sql): на
  * персональные занятия и на диагностику. «Обратная связь» → «Заявки».
  */
@@ -47,17 +46,14 @@ export function useOpenRequestsCount(studioIds: string, enabled: boolean) {
 }
 
 /**
- * Счётчик для меню и рейки: только в пакетном клубе и только если раздел
- * «Заявки» открыт сотруднику в этом клубе; иначе 0. Считает заявки всех
- * пакетных клубов раздела — как страница «Заявок» (2026-10-19).
+ * Счётчик для меню и рейки: только если раздел «Заявки» открыт сотруднику
+ * в активном клубе; иначе 0. Считает заявки всех клубов раздела — как страница «Заявок» (2026-10-19).
  */
 export function useClubRequestsBadge() {
   const studioId = useActiveStudioId();
-  const studio = useActiveStudio();
   const access = useAdminAccess();
-  const ids = studioIdsKey(useSectionStudios("requests", "packages"));
-  const enabled =
-    studio?.format === "packages" && !!access && canOpenClubSection(access, studioId, "requests");
+  const ids = studioIdsKey(useSectionStudios("requests"));
+  const enabled = !!access && canOpenClubSection(access, studioId, "requests");
   const count = useOpenRequestsCount(ids, enabled);
   return enabled ? (count ?? 0) : 0;
 }

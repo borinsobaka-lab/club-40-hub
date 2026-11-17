@@ -786,7 +786,7 @@ function FeedbackLinks() {
       </DialogHeader>
     );
   }
-  const base = `${STUDIO_FORMAT_APP_URL[studio.format]}/feedback`;
+  const base = `${STUDIO_FORMAT_APP_URL.packages}/feedback`;
   return (
     <>
       <DialogHeader>

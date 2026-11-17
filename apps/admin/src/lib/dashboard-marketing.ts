@@ -273,14 +273,12 @@ export type FunnelStep = { key: string; label: string; value: number };
 /**
  * Что успели сделать новые клиенты периода — на сегодня. Каждый шаг — от
  * всех новых клиентов, а не от предыдущего: абонемент покупают и без
- * пробного. Пробные и разовые посещения — только у клубов с пакетами
- * тренировок (`withTrials`).
+ * пробного.
  */
 export function newClientsFunnel(
   cohort: MarketingClient[],
   sales: SaleRecord[],
   visitedIds: Set<string>,
-  withTrials: boolean,
 ): FunnelStep[] {
   const ids = new Set(cohort.map((c) => c.id));
   const buyers = (kind: (s: SaleRecord) => boolean) =>
@@ -294,11 +292,10 @@ export function newClientsFunnel(
     { key: "new", label: "Новые клиенты", value: cohort.length },
     { key: "app", label: "Вошли в приложение", value: cohort.filter((c) => c.userId).length },
   ];
-  if (withTrials)
-    steps.push(
-      { key: "trial", label: "Купили пробное", value: trialIds.size },
-      { key: "single", label: "Купили разовое посещение", value: singleIds.size },
-    );
+  steps.push(
+    { key: "trial", label: "Купили пробное", value: trialIds.size },
+    { key: "single", label: "Купили разовое посещение", value: singleIds.size },
+  );
   steps.push(
     {
       key: "visit",

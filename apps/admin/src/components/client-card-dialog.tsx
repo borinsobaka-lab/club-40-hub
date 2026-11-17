@@ -39,13 +39,13 @@ import { ClientTrainerField } from "@/components/client-trainer-field";
 import { TrainerCommentsBlock } from "@/components/trainer-comments-block";
 import { ClientCommentsCard } from "@/components/client-comments";
 import { useActiveStudioId } from "@/hooks/use-active-studio";
-import { useStudioFormat, useWorkStudioId } from "@/hooks/use-catalog-studios";
+import { useWorkStudioId } from "@/hooks/use-catalog-studios";
 import { useStudios } from "@/hooks/use-studios";
 import { useTableSort } from "@/hooks/use-table-sort";
 import { ClubStatusBadge } from "@/components/club-status-badge";
 import { BookingStatusBadge } from "@/components/booking-status-badge";
-import { MembershipStatusBadge, AutoRenewBadge } from "@/components/membership-status-badge";
-import { effectiveStatus, isLiveStatus } from "@/lib/membership-status";
+import { MembershipStatusBadge } from "@/components/membership-status-badge";
+import { effectiveStatus } from "@/lib/membership-status";
 import { computeClubStatus } from "@/lib/client-status";
 import { GOAL_LABELS, REFERRAL_LABELS } from "@/lib/client-profile";
 import { bookingStatusLabel, type BookingStatus, type CancelledByKind } from "@/lib/bookings";
@@ -92,11 +92,6 @@ const EXPERIENCE_LABELS: Record<string, string> = {
   regular: "Регулярно, 2–3 раза в неделю",
   advanced: "Опытный, интенсивно",
 };
-const TIMEFRAME_LABELS: Record<string, string> = {
-  no_rush: "Без спешки",
-  few_months: "1–3 месяца",
-  event_date: "К конкретной дате",
-};
 const ACTIVITY_LABELS: Record<number, string> = {
   0: "Почти не двигаюсь",
   1: "1 раз в неделю",
@@ -115,11 +110,6 @@ const TIME_LABELS: Record<string, string> = {
   morning: "Утро",
   day: "День",
   evening: "Вечер",
-};
-const PROFILE_GENDER: Record<string, string> = {
-  female: "Женский",
-  male: "Мужской",
-  other: "Другое",
 };
 
 /** Поля клиента, которые нужны карточке (строка clients или clients_with_status). */
@@ -164,7 +154,6 @@ type SaleRow = {
     | {
         id: string;
         status: string;
-        auto_renew: boolean | null;
         ends_at: string | null;
         cancelled_at: string | null;
         /** Пакетный клуб: без посещений — «Ожидает посещения», как в блоке абонемента. */
@@ -200,7 +189,6 @@ type MembershipRow = {
   personal_left: number | null;
   /** Пакетный клуб: остаток диагностик тела. */
   diagnostics_left?: number | null;
-  auto_renew: boolean | null;
   cancelled_at: string | null;
   cancel_reason: string | null;
   freeze_days_used: number | null;
@@ -228,7 +216,6 @@ function membershipRef(m: MembershipRow["memberships"] | SaleRow["memberships"])
 function BalanceLines({
   m,
   left,
-  isPackages,
 }: {
   m: MembershipRow["memberships"] | SaleRow["memberships"];
   left: {
@@ -236,10 +223,9 @@ function BalanceLines({
     personal_left?: number | null;
     diagnostics_left?: number | null;
   };
-  isPackages: boolean;
 }) {
   const ref = membershipRef(m);
-  const lines = membershipBalance({ ...left, ...ref }, isPackages);
+  const lines = membershipBalance({ ...left, ...ref });
   return (
     <div className="mt-1 space-y-0.5 text-xs">
       {lines.map((l) => (
@@ -272,10 +258,10 @@ function membershipFreezeAllowed(m: MembershipRow["memberships"]): number {
 }
 
 const SALE_COLUMNS =
-  "id, studio_id, studio:studios(name), sold_at, total_amount, down_payment_amount, remaining_installments, source, admin_name, comment, memberships(name, kind, visits_count, personal_count, diagnostics_count), client_memberships(id, status, auto_renew, ends_at, cancelled_at, started_at, starts_on_first_visit, visits_left, personal_left, diagnostics_left)";
+  "id, studio_id, studio:studios(name), sold_at, total_amount, down_payment_amount, remaining_installments, source, admin_name, comment, memberships(name, kind, visits_count, personal_count, diagnostics_count), client_memberships(id, status, ends_at, cancelled_at, started_at, starts_on_first_visit, visits_left, personal_left, diagnostics_left)";
 
 const MEMBERSHIP_COLUMNS =
-  "id, status, source, started_at, ends_at, visits_left, personal_left, diagnostics_left, auto_renew, cancelled_at, cancel_reason, freeze_days_used, frozen_until, starts_on_first_visit, memberships(name, freeze_days_allowed, kind, visits_count, personal_count, diagnostics_count)";
+  "id, status, source, started_at, ends_at, visits_left, personal_left, diagnostics_left, cancelled_at, cancel_reason, freeze_days_used, frozen_until, starts_on_first_visit, memberships(name, freeze_days_allowed, kind, visits_count, personal_count, diagnostics_count)";
 
 /**
  * Карточка клиента — одна и та же, откуда бы её ни открыли (раздел
@@ -319,16 +305,12 @@ function ClientCard({ client: initial, onClose }: { client: ClientLike; onClose:
   const [saved, setSaved] = useState<SavedClient | null>(null);
   const client: ClientLike = { ...initial, ...saved };
   // Клуб, где работают с клиентом: продажа — в нём. У общей базы клиентов
-  // (пакетные клубы, 2026-10-17) это активный клуб, где бы карточку ни
-  // завели; клиент подписочного клуба из поиска «в другом клубе» — его клуб.
+  // (2026-10-17) это активный клуб, где бы карточку ни завели.
   const activeStudioId = useActiveStudioId();
   const cardStudioId = client.studio_id ?? activeStudioId;
   const studioId = useWorkStudioId(cardStudioId);
   const { data: studios } = useStudios();
   const studio = studios?.find((s) => s.id === studioId) ?? null;
-  // Формат — по клубу карточки: он может быть пакетным клубом, где у
-  // сотрудника нет роли (useStudios его не знает).
-  const isPackages = (useStudioFormat(cardStudioId) ?? studio?.format) === "packages";
   const otherStudio = !!studio && studio.id !== activeStudioId;
   const userId = client.user_id ?? null;
 
@@ -401,17 +383,10 @@ function ClientCard({ client: initial, onClose }: { client: ClientLike; onClose:
     }
   };
 
-  // Пакетный клуб: сначала тот же выбор типа продажи, что в «Абонементах»
-  // («Новая», «Оплата пробного», «Допродажа», «Продление» — решение
-  // владельца 2026-10-19), потом форма продажи этого типа. У подписочного
-  // типов нет — форма сразу.
-  const startSale = () => {
-    if (isPackages) setPickerOpen(true);
-    else {
-      setPickedKind("new");
-      setSaleOpen(true);
-    }
-  };
+  // Сначала тот же выбор типа продажи, что в «Абонементах» («Новая»,
+  // «Оплата пробного», «Допродажа», «Продление» — решение владельца
+  // 2026-10-19), потом форма продажи этого типа.
+  const startSale = () => setPickerOpen(true);
   const pickSaleKind = (k: SaleKind) => {
     setPickerOpen(false);
     setPickedKind(k);
@@ -524,10 +499,9 @@ function ClientCard({ client: initial, onClose }: { client: ClientLike; onClose:
                       "срок — с первого посещения"
                     )}
                   </div>
-                  <BalanceLines m={active.memberships} left={active} isPackages={isPackages} />
+                  <BalanceLines m={active.memberships} left={active} />
                   <div className="mt-2 flex flex-wrap items-center gap-1.5">
                     <MembershipStatusBadge m={active} />
-                    <AutoRenewBadge on={active.auto_renew} />
                   </div>
                   {/* Цвет статуса несут бейджи выше; здесь только подробности. */}
                   {active.status === "frozen" && active.frozen_until && (
@@ -591,9 +565,6 @@ function ClientCard({ client: initial, onClose }: { client: ClientLike; onClose:
                               {membershipName(s.memberships)}
                             </div>
                             {cm && <MembershipStatusBadge m={cm} />}
-                            {cm && isLiveStatus(effectiveStatus(cm)) && (
-                              <AutoRenewBadge on={cm.auto_renew} />
-                            )}
                           </div>
                           <div className="text-xs text-muted-foreground">
                             {formatDate(s.sold_at)}
@@ -606,9 +577,7 @@ function ClientCard({ client: initial, onClose }: { client: ClientLike; onClose:
                               ? ` · рассрочка 1 + ${s.remaining_installments}, первый взнос ${formatMoney(Number(s.down_payment_amount))}`
                               : ""}
                           </div>
-                          {cm && (
-                            <BalanceLines m={s.memberships} left={cm} isPackages={isPackages} />
-                          )}
+                          {cm && <BalanceLines m={s.memberships} left={cm} />}
                         </div>
                         <div className="shrink-0 font-medium tabular-nums">
                           {formatMoney(Number(s.total_amount))}
@@ -630,16 +599,15 @@ function ClientCard({ client: initial, onClose }: { client: ClientLike; onClose:
               profile={profile}
               loading={loadingProfile}
               hasUser={!!userId}
-              isPackages={isPackages}
             />
             {/* Что написали тренеры в мобильном приложении (2026-11-05). */}
-            {isPackages && <TrainerCommentsBlock clientId={client.id} />}
+            <TrainerCommentsBlock clientId={client.id} />
           </TabsContent>
 
           {/* Устройства, уведомления и активность в мобильном приложении. */}
           <TabsContent value="app" className="mt-4 space-y-4">
-            {/* Пользователь приложения — тренер (пакетные клубы, 2026-11-05). */}
-            {isPackages && <ClientTrainerField clientId={client.id} cardStudioId={cardStudioId} />}
+            {/* Пользователь приложения — тренер (2026-11-05). */}
+            <ClientTrainerField clientId={client.id} cardStudioId={cardStudioId} />
             <ClientAppTab clientId={client.id} hasUser={!!userId} />
           </TabsContent>
         </Tabs>
@@ -674,7 +642,6 @@ function ClientCard({ client: initial, onClose }: { client: ClientLike; onClose:
               }
             : null
         }
-        isPackages={isPackages}
         onSaved={reloadMemberships}
       />
       <EditActiveMembershipDialog
@@ -696,7 +663,6 @@ function ClientCard({ client: initial, onClose }: { client: ClientLike; onClose:
               }
             : null
         }
-        isPackages={isPackages}
         onSaved={reloadMemberships}
       />
       <SaleKindPickerDialog
@@ -752,18 +718,17 @@ function ProfileRow({ label, value }: { label: string; value: React.ReactNode })
   );
 }
 
-// В пакетных студиях своя анкета: без мотивации, срока, группового формата,
-// роста и пола, с датой рождения вместо года (apps/client, formats/packages).
+// Анкета приложения: без мотивации, срока, группового формата, роста и пола
+// (их спрашивала прежняя анкета), с датой рождения вместо года
+// (apps/client, formats/packages). Год рождения — у старых анкет.
 function ProfileTab({
   profile,
   loading,
   hasUser,
-  isPackages,
 }: {
   profile: MemberProfile | null;
   loading: boolean;
   hasUser: boolean;
-  isPackages: boolean;
 }) {
   if (!hasUser) {
     return (
@@ -785,23 +750,13 @@ function ProfileTab({
   const exp = profile.experience_level
     ? (EXPERIENCE_LABELS[profile.experience_level] ?? profile.experience_level)
     : null;
-  const tf = profile.target_timeframe
-    ? (TIMEFRAME_LABELS[profile.target_timeframe] ?? profile.target_timeframe)
-    : null;
   const act =
     profile.current_weekly_activity != null
       ? (ACTIVITY_LABELS[profile.current_weekly_activity] ??
         String(profile.current_weekly_activity))
       : null;
-  const hiit =
-    profile.tried_group_hiit == null
-      ? null
-      : profile.tried_group_hiit
-        ? "Да, формат знаком"
-        : "Нет, будет впервые";
   const flags = (profile.health_flags ?? []).map((f) => HEALTH_LABELS[f] ?? f).join(", ") || null;
   const times = (profile.preferred_times ?? []).map((t) => TIME_LABELS[t] ?? t).join(", ") || null;
-  const gender = profile.gender ? (PROFILE_GENDER[profile.gender] ?? profile.gender) : null;
   const ref = profile.referral_source
     ? (REFERRAL_LABELS[profile.referral_source] ?? profile.referral_source)
     : null;
@@ -824,35 +779,24 @@ function ProfileTab({
 
       <Section title="Цели и мотивация">
         <ProfileRow label="Главная цель" value={goal} />
-        {!isPackages && (
-          <>
-            <ProfileRow label="Что подтолкнуло" value={profile.goal_motivation} />
-            <ProfileRow label="Срок" value={tf} />
-          </>
-        )}
         <ProfileRow label="Желаемая частота" value={freq} />
       </Section>
 
       <Section title="Опыт и нагрузка">
         <ProfileRow label="Опыт тренировок" value={exp} />
         <ProfileRow label="Текущая активность" value={act} />
-        {!isPackages && <ProfileRow label="Групповой формат (HIIT)" value={hiit} />}
         <ProfileRow label="Здоровье" value={flags} />
         <ProfileRow label="Комментарий по здоровью" value={profile.health_notes} />
       </Section>
 
       <Section title="Базовые параметры">
         <div className="grid grid-cols-2 gap-x-6">
-          {!isPackages && (
-            <ProfileRow label="Рост" value={profile.height_cm ? `${profile.height_cm} см` : null} />
-          )}
           <ProfileRow label="Вес" value={profile.weight_kg ? `${profile.weight_kg} кг` : null} />
           {profile.birth_date ? (
             <ProfileRow label="Дата рождения" value={formatDate(profile.birth_date)} />
           ) : (
             <ProfileRow label="Год рождения" value={profile.birth_year} />
           )}
-          {!isPackages && <ProfileRow label="Пол" value={gender} />}
         </div>
       </Section>
 

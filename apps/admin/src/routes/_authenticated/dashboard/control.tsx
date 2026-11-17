@@ -169,11 +169,9 @@ async function loadControl(clubIds: string[]): Promise<ControlData> {
 }
 
 function ControlBody(view: DashboardView) {
-  const packages = view.clubs.every((c) => c.format === "packages");
   const query = useQuery({
     queryKey: ["dashboard", view.scope, "control"],
     queryFn: () => loadControl(view.clubIds),
-    enabled: packages,
     meta: { errorMessage: `${view.name}: не удалось загрузить абонементы для проверки` },
   });
 
@@ -196,13 +194,6 @@ function ControlBody(view: DashboardView) {
       .map((s) => s.id);
     if (stale.some((id) => !seen.has(id))) setSeen(new Set([...seen, ...stale]));
   }
-
-  if (!packages)
-    return (
-      <div className="rounded-lg border bg-background p-8 text-center text-sm text-muted-foreground">
-        Проверки — для пакетных клубов: выберите в фильтре «Клубы» пакетный клуб.
-      </div>
-    );
 
   const today = todayISO();
   const multiClub = view.clubIds.length > 1;

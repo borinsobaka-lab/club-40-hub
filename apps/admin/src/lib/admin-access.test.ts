@@ -81,12 +81,11 @@ describe("права в админке", () => {
     expect(canOpenClubSection(limited, "other", "schedule")).toBe(false);
   });
 
-  test("номенклатуры обоих форматов — один раздел прав", () => {
+  test("номенклатуры — раздел прав memberships", () => {
     const memberships: AdminAccess = {
       ...limited,
       studios: { [A]: { owner: false, sections: ["memberships"] } },
     };
-    expect(canOpenPath(memberships, A, "/memberships")).toBe(true);
     expect(canOpenPath(memberships, A, "/packages")).toBe(true);
     expect(canOpenPath(limited, A, "/packages")).toBe(false);
   });

@@ -152,8 +152,6 @@ export function createAssistantTools(
   // База клиентов пакетных клубов — тоже общая (2026-10-17): клиент абонемента
   // или продажи клуба мог быть заведён в другом пакетном клубе.
   const clientStudioIds = async () => networkStudioIds(await studios(), studioId);
-  const isPackages = async () =>
-    (await studios()).find((s) => s.id === studioId)?.format === "packages";
 
   return {
     // ====== КЛИЕНТЫ ======
@@ -249,7 +247,7 @@ export function createAssistantTools(
             supabase
               .from("client_memberships")
               .select(
-                "id, studio_id, status, balance_kind, started_at, ends_at, visits_left, personal_left, diagnostics_left, starts_on_first_visit, frozen_until, auto_renew, created_at, memberships(name, kind, visits_count, personal_count, duration_days, price)",
+                "id, studio_id, status, balance_kind, started_at, ends_at, visits_left, personal_left, diagnostics_left, starts_on_first_visit, frozen_until, created_at, memberships(name, kind, visits_count, personal_count, duration_days, price)",
               )
               .eq("client_id", client_id)
               .order("created_at", { ascending: false })
@@ -266,7 +264,7 @@ export function createAssistantTools(
               .limit(20),
           ),
         };
-        if (canSee("sales") || canSee("client-memberships")) {
+        if (canSee("client-memberships")) {
           parts.sales = part(
             supabase
               .from("sales")
@@ -470,7 +468,7 @@ export function createAssistantTools(
         let q = supabase
           .from("memberships")
           .select(
-            "id, name, kind, description, benefits, visits_count, personal_count, diagnostics_count, duration_days, auto_renew, installment_enabled, max_payments, price, is_active, for_couple, created_at",
+            "id, name, kind, description, benefits, visits_count, personal_count, diagnostics_count, duration_days, installment_enabled, max_payments, price, is_active, for_couple, created_at",
           )
           .in("studio_id", await catalogIds())
           .limit(limit);
@@ -539,22 +537,19 @@ export function createAssistantTools(
           .min(0)
           .max(20)
           .default(2)
-          .describe("Пакетные клубы: остаток тренировок не больше этого числа"),
+          .describe("Остаток тренировок не больше этого числа"),
         include_renewed: z.boolean().default(false),
         limit: limit(300, 50),
       }),
       execute: async ({ within_days, low_balance, include_renewed, limit }) => {
         const today = studioToday();
-        const packages = await isPackages();
         const until = addDays(today, within_days);
         const soon = `and(ends_at.gte.${today},ends_at.lte.${until})`;
-        const low = packages
-          ? `,and(balance_kind.eq.group,visits_left.lte.${low_balance}),and(balance_kind.eq.personal,personal_left.lte.${low_balance})`
-          : "";
+        const low = `,and(balance_kind.eq.group,visits_left.lte.${low_balance}),and(balance_kind.eq.personal,personal_left.lte.${low_balance})`;
         const { data, error } = await supabase
           .from("client_memberships")
           .select(
-            `id, studio_id, client_id, status, balance_kind, started_at, ends_at, visits_left, personal_left, starts_on_first_visit, auto_renew, created_at, clients(${CLIENT_COLUMNS}), memberships(name, kind, visits_count, personal_count, price)`,
+            `id, studio_id, client_id, status, balance_kind, started_at, ends_at, visits_left, personal_left, starts_on_first_visit, created_at, clients(${CLIENT_COLUMNS}), memberships(name, kind, visits_count, personal_count, price)`,
           )
           .in("studio_id", await clientStudioIds())
           .eq("status", "active")
@@ -627,7 +622,6 @@ export function createAssistantTools(
                 : null,
               balance_left: balanceLeft,
               awaiting_first_visit: !!r.starts_on_first_visit && !r.started_at,
-              auto_renew: r.auto_renew,
               renewal_bought: renewed.has(r.id as string),
               studio_id: r.studio_id,
             };
@@ -663,9 +657,6 @@ export function createAssistantTools(
         limit: limit(500, 100),
       }),
       execute: async (input) => {
-        if (!(await isPackages())) {
-          return { error: "Раздел «Абонементы» есть только у клубов с пакетами тренировок" };
-        }
         let q = supabase
           .from("client_packages_list")
           .select(

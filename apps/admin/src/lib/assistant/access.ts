@@ -17,9 +17,9 @@ import {
  */
 type Need = { club?: ClubSectionKey[]; rail?: RailAccessKey[] };
 
-const CLIENT_DATA: ClubSectionKey[] = ["clients", "client-memberships", "sales"];
-const MEMBERSHIP_DATA: ClubSectionKey[] = ["client-memberships", "sales", "clients"];
-const SALES_DATA: ClubSectionKey[] = ["sales", "client-memberships"];
+const CLIENT_DATA: ClubSectionKey[] = ["clients", "client-memberships"];
+const MEMBERSHIP_DATA: ClubSectionKey[] = ["client-memberships", "clients"];
+const SALES_DATA: ClubSectionKey[] = ["client-memberships"];
 
 export const TOOL_SECTIONS: Record<string, Need> = {
   list_clients: { club: CLIENT_DATA },
@@ -31,7 +31,7 @@ export const TOOL_SECTIONS: Record<string, Need> = {
   list_workouts: { club: ["workouts", "schedule"] },
   list_schedule: { club: ["schedule"] },
   list_schedule_bookings: { club: ["schedule"] },
-  list_memberships: { club: ["memberships", "client-memberships", "sales"] },
+  list_memberships: { club: ["memberships", "client-memberships"] },
   list_client_memberships: { club: MEMBERSHIP_DATA },
   list_expiring_client_memberships: { club: MEMBERSHIP_DATA },
   list_package_sales: { club: MEMBERSHIP_DATA },

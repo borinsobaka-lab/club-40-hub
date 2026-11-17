@@ -20,7 +20,6 @@ import { toast } from "sonner";
 
 import { AdminShell } from "@/components/admin-shell";
 import { RequireStudio } from "@/components/require-studio";
-import { RequireFormat } from "@/components/require-format";
 import { useActiveStudioId } from "@/hooks/use-active-studio";
 import { useStudios } from "@/hooks/use-studios";
 import { catalogStudiosQuery, useNetworkStudioIds } from "@/hooks/use-catalog-studios";
@@ -122,10 +121,9 @@ import { balanceKindOf, membershipBalance } from "@/lib/membership-balance";
 import { SaleKindDot, SaleKindPickerDialog } from "@/components/sale-kind-picker";
 import { RefundDialog, type RefundSale } from "@/components/refund-dialog";
 
-// «Абонементы» пакетной студии (STUDIO_FORMATS.md): проданные клиентам
-// абонементы, одна строка — одна продажа. С 2026-10-13 это и раздел продаж
-// пакетного клуба («Продаж» у него нет): кнопка «Продажа», возврат и удаление
-// — здесь. С 2026-10-20 раздел общий для всех пакетных клубов сети (как база
+// «Абонементы» (STUDIO_FORMATS.md): проданные клиентам абонементы, одна
+// строка — одна продажа. С 2026-10-13 это и раздел продаж клуба: кнопка
+// «Продажа», возврат и удаление — здесь. С 2026-10-20 раздел общий для всех клубов сети (как база
 // клиентов): фильтр «Клуб» и колонка «Клуб продажи»; продажа по-прежнему
 // клуба, где её внесли (касса, зарплаты, дашборд — по нему). Платежи и
 // комментарии любой строки правит сотрудник любого клуба сети (решение
@@ -298,7 +296,7 @@ type Row = {
   } | null;
   membership_status: string | null;
   visits_left: number | null;
-  /** Остаток персональных (пакетный формат). */
+  /** Остаток персональных. */
   personal_left: number | null;
   /** Остаток диагностик тела (2026-10-15_zz_diagnostics_client_requests.sql). */
   diagnostics_left: number | null;
@@ -358,16 +356,8 @@ const TRANSFERABLE_STATES = new Set(["active", "awaiting", "frozen", "pending"])
 export const Route = createFileRoute("/_authenticated/client-memberships")({
   head: () => ({ meta: [{ title: "Абонементы — Base40 Admin" }] }),
   pendingComponent: ClientMembershipsPageSkeleton,
-  component: ClientMembershipsRoute,
+  component: ClientMembershipsPage,
 });
-
-function ClientMembershipsRoute() {
-  return (
-    <RequireFormat format="packages" title="Абонементы" other={{ subscription: "/sales" }}>
-      <ClientMembershipsPage />
-    </RequireFormat>
-  );
-}
 
 /** Дней от сегодня до даты (по календарю, без часовых поясов). */
 function daysUntil(iso: string) {
@@ -428,7 +418,7 @@ function ClientMembershipsPage() {
       return next;
     });
 
-  // Клубы раздела — вся сеть пакетных клубов (как база клиентов). Платежи и
+  // Клубы раздела — вся сеть клубов (как база клиентов). Платежи и
   // комментарии правит любой клуб сети, меню строки (возврат, удаление,
   // «Переоформить») — только клуб продажи (RLS: «sales studio rw»;
   // db/migrations/2026-10-20_zz_packages_network_payments.sql).
@@ -436,8 +426,8 @@ function ClientMembershipsPage() {
   const { data: allStudios } = useQuery(catalogStudiosQuery);
   const networkStudios = (allStudios ?? []).filter((s) => networkIds?.includes(s.id));
   const { data: myStudios } = useStudios();
-  const myPackagesIds = (myStudios ?? []).filter((s) => s.format === "packages").map((s) => s.id);
-  const canEdit = (r: Row) => myPackagesIds.includes(r.studio_id);
+  const myStudioIds = (myStudios ?? []).map((s) => s.id);
+  const canEdit = (r: Row) => myStudioIds.includes(r.studio_id);
 
   // Продавцы — администраторы клубов раздела (выбранного клуба) из
   // «Сотрудников», как в форме продажи.
@@ -459,10 +449,10 @@ function ClientMembershipsPage() {
 
   // Досчитать очередь продлений: у кого срок текущего абонемента вышел без
   // записей, продление становится действующим (packages_settle_studio). Один
-  // раз при открытии раздела (и по «Обновить») по каждому своему пакетному
+  // раз при открытии раздела (и по «Обновить») по каждому своему
   // клубу (досчитывать можно только свои), а не на каждую страницу и фильтр;
   // список его не ждёт — после досчёта перечитывается.
-  const settleKey = myPackagesIds.join(",");
+  const settleKey = myStudioIds.join(",");
   useQuery({
     queryKey: ["packages_settle_studio", settleKey],
     queryFn: async () => {
@@ -1195,7 +1185,7 @@ function carryoverParts(row: Row) {
     Персональные: "перс.",
     Диагностики: "диагн.",
   };
-  return membershipBalance({ ...row, kind: "carryover" }, true).map(
+  return membershipBalance({ ...row, kind: "carryover" }).map(
     (l) => `${l.left ?? "—"} ${unit[l.label] ?? ""}`,
   );
 }

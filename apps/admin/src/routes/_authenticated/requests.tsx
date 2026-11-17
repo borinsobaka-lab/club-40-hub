@@ -8,7 +8,6 @@ import { toast } from "sonner";
 
 import { AdminShell } from "@/components/admin-shell";
 import { RequireStudio } from "@/components/require-studio";
-import { RequireFormat } from "@/components/require-format";
 import { useActiveStudioId } from "@/hooks/use-active-studio";
 import { studioIdsKey, useSectionStudios } from "@/hooks/use-section-studios";
 import { StudioFilter, StudioLabel } from "@/components/studio-label";
@@ -73,16 +72,8 @@ const TIPS = {
 export const Route = createFileRoute("/_authenticated/requests")({
   head: () => ({ meta: [{ title: "Заявки — Base40 Admin" }] }),
   pendingComponent: RequestsPageSkeleton,
-  component: RequestsRoute,
+  component: RequestsPage,
 });
-
-function RequestsRoute() {
-  return (
-    <RequireFormat format="packages" title="Заявки">
-      <RequestsPage />
-    </RequireFormat>
-  );
-}
 
 type RequestRow = {
   id: string;

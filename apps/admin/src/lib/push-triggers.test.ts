@@ -7,7 +7,6 @@ import {
   insertAt,
   templateVars,
   triggerDef,
-  triggersOfFormat,
   unknownVars,
 } from "./push-triggers";
 
@@ -44,13 +43,6 @@ describe("каталог триггеров", () => {
       expect(chunk).toContain("{name}");
       expect(unknownVars([chunk], t.vars)).toEqual([]);
     }
-  });
-
-  test("пакетные триггеры — только у пакетного приложения", () => {
-    const subscription = triggersOfFormat("subscription").map((t) => t.key);
-    expect(subscription).not.toContain("visits_low");
-    expect(subscription).not.toContain("rate_trainer");
-    expect(triggersOfFormat("packages")).toHaveLength(PUSH_TRIGGERS.length);
   });
 
   test("описание учитывает параметры", () => {

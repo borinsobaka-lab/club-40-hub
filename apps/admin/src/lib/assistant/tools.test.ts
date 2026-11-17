@@ -98,19 +98,15 @@ describe("инструменты Kate", () => {
     expect(res.total_amount).toBe(150.5);
   });
 
-  test("клиенты пакетного клуба — общей базы всех пакетных клубов, подписочного — только его", async () => {
+  test("клиенты клуба — общей базы всех клубов сети", async () => {
     const studios = [
       { id: "p1", format: "packages" },
-      { id: "s1", format: "subscription" },
       { id: "p2", format: "packages" },
     ];
     const answer = (table: string) => ({ data: table === "studios" ? studios : [], error: null });
     const pack = fakeSupabase(answer);
     await run(createAssistantTools(pack.client, "p2"), "list_clients", { limit: 10 });
     expect(pack.calls).toContain('clients_with_status.in("studio_id", ["p1","p2"])');
-    const sub = fakeSupabase(answer);
-    await run(createAssistantTools(sub.client, "s1"), "list_clients", { limit: 10 });
-    expect(sub.calls).toContain('clients_with_status.in("studio_id", ["s1"])');
   });
 
   test("сводка не выдаёт ошибку запроса за ноль", async () => {
@@ -154,7 +150,7 @@ describe("инструменты Kate", () => {
     expect(calls).toContain('rpc.assistant_birthdays({"p_studio_id":"s1","p_days":3})');
   });
 
-  test("заканчивающиеся: в пакетном клубе — и по остатку; купившие продление и пробные исключены", async () => {
+  test("заканчивающиеся: и по сроку, и по остатку; купившие продление и пробные исключены", async () => {
     const today = studioToday();
     const soon = addDays(today, 3);
     const studios = [{ id: "p1", format: "packages" }];
@@ -243,23 +239,6 @@ describe("инструменты Kate", () => {
     );
   });
 
-  test("заканчивающиеся в подписочном клубе — без условия по остатку", async () => {
-    const studios = [{ id: "s1", format: "subscription" }];
-    const { client, calls } = fakeSupabase((t) => ({
-      data: t === "studios" ? studios : [],
-      error: null,
-    }));
-    await run(createAssistantTools(client, "s1"), "list_expiring_client_memberships", {
-      within_days: 7,
-      low_balance: 2,
-      include_renewed: false,
-      limit: 50,
-    });
-    const or = calls.find((c) => c.startsWith("client_memberships.or("));
-    expect(or).toBeDefined();
-    expect(or).not.toContain("visits_left");
-  });
-
   test("пробные без покупки: купившие после пробного не попадают, отменённая покупка — не покупка", async () => {
     const studios = [{ id: "p1", format: "packages" }];
     let salesCall = 0;
@@ -328,18 +307,6 @@ describe("инструменты Kate", () => {
     expect(res.rows.map((r) => r.client_name)).toEqual(["Думает", "Вернула"]);
     expect(res.trials_total).toBe(3);
     expect(res.conversion_percent).toBe(33);
-  });
-
-  test("«Абонементы» пакетного клуба в подписочном — понятная ошибка, без запроса", async () => {
-    const { client, calls } = fakeSupabase((t) => ({
-      data: t === "studios" ? [{ id: "s1", format: "subscription" }] : [],
-      error: null,
-    }));
-    const res = (await run(createAssistantTools(client, "s1"), "list_package_sales", {
-      limit: 10,
-    })) as { error?: string };
-    expect(res.error).toContain("только у клубов с пакетами");
-    expect(calls.some((c) => c.startsWith("client_packages_list"))).toBe(false);
   });
 
   test("платежи: просроченные отдельно, сумма просрочки", async () => {

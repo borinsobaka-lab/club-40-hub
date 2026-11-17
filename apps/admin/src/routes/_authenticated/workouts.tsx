@@ -5,9 +5,8 @@ import { Plus, Loader2, Pencil, Trash2 } from "lucide-react";
 
 import { AdminShell } from "@/components/admin-shell";
 import { RequireStudio } from "@/components/require-studio";
-import { ImageUploadField, StorageImage } from "@/components/image-upload-field";
 import { useActiveStudioId } from "@/hooks/use-active-studio";
-import { useActiveStudio, useStudios, type Studio } from "@/hooks/use-studios";
+import { useStudios, type Studio } from "@/hooks/use-studios";
 import { useCatalogStudioIds } from "@/hooks/use-catalog-studios";
 import { supabase } from "@/integrations/supabase/client";
 import { unwrap } from "@/lib/query";
@@ -42,22 +41,7 @@ import { toast } from "sonner";
 import { DataPagination, usePagination } from "@/components/data-pagination";
 import { useTableSort } from "@/hooks/use-table-sort";
 import { TableToolbar, ToolbarSearch } from "@/components/table-toolbar";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  DAY_TYPES,
-  DAY_TYPE_COLORS,
-  WORKOUT_COLORS,
-  type DayType,
-  dayTypeColor,
-  dayTypeLabel,
-  isWorkoutColor,
-} from "@/lib/workout-types";
+import { WORKOUT_COLORS, isWorkoutColor } from "@/lib/workout-types";
 import { TableSkeletonRows } from "@/components/skeletons";
 import { useConfirm } from "@/components/confirm-dialog";
 import { RowContextMenu } from "@/components/row-context-menu";
@@ -67,7 +51,6 @@ import { WorkoutsPageSkeleton } from "@/components/page-skeletons";
 const TIPS = {
   description:
     "Клиенты видят его в карточке занятия в расписании приложения. Можно выделять жирным, делать списки и ссылки.",
-  type: "Задаёт цвет метки и MET по умолчанию, если поле MET пустое.",
   capacity:
     "Сколько человек вмещает зал клуба на этой тренировке — своя цифра в каждом клубе. Её подставит «Расписание» новому занятию (там её можно поменять на один день). Когда места заняты, новые записи встают в лист ожидания.",
   color:
@@ -86,14 +69,12 @@ type Workout = {
   studio_id: string;
   name: string;
   description: string | null;
-  photo_url: string | null;
   /** По умолчанию — для клуба без своей строки в capacities. */
   capacity: number | null;
   /** Вместимость в каждом клубе (workout_capacities): null — без лимита. */
   capacities: WorkoutCapacity[];
-  type: DayType | null;
   met_value: number | null;
-  /** Пакетный формат: цвет полоски в расписании (#rrggbb). */
+  /** Цвет полоски в расписании (#rrggbb). */
   color: string | null;
   /** Переводы для приложения: {en|ka: {name, description}}. */
   translations: ContentTranslations;
@@ -105,19 +86,6 @@ type WorkoutCapacity = { studio_id: string; capacity: number | null };
 function capacityIn(w: Pick<Workout, "capacity" | "capacities">, studioId: string) {
   const own = w.capacities?.find((c) => c.studio_id === studioId);
   return own ? own.capacity : w.capacity;
-}
-
-const NONE_TYPE = "__none__" as const;
-
-function WorkoutTypeBadge({ value }: { value: DayType | null }) {
-  const color = dayTypeColor(value);
-  if (!color) return <span className="text-muted-foreground">—</span>;
-  return (
-    <span className="inline-flex items-center gap-1.5 text-sm">
-      <span className={`inline-block h-2.5 w-2.5 rounded-full ${color.dot}`} />
-      {dayTypeLabel(value)}
-    </span>
-  );
 }
 
 function ColorSwatch({ value }: { value: string | null }) {
@@ -151,16 +119,15 @@ function CapacityCell({ workout, studios }: { workout: Workout; studios: Studio[
 function WorkoutsPage() {
   const { confirm, confirmDialog } = useConfirm();
   const studioId = useActiveStudioId();
-  // В пакетных студиях у тренировки нет типа и иконки, зато есть цвет, а
-  // MET ставится вручную всегда (STUDIO_FORMATS.md, 2026-10-11).
-  const packages = useActiveStudio()?.format === "packages";
-  // У пакетных клубов список общий на все пакетные клубы (lib/studio-catalog.ts).
+  // У тренировки нет типа и иконки, зато есть цвет, а MET ставится вручную
+  // всегда (STUDIO_FORMATS.md, 2026-10-11). Список общий на все клубы сети
+  // (lib/studio-catalog.ts).
   const catalogIds = useCatalogStudioIds();
   // Вместимость — по клубам каталога, где сотрудник работает (решение
   // владельца 2026-10-14): столько полей, сколько у него таких клубов.
   const { data: myStudios = [] } = useStudios();
   const capacityStudios = catalogIds ? myStudios.filter((st) => catalogIds.includes(st.id)) : [];
-  const columns = packages ? 5 : 6;
+  const columns = 5;
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Workout | null>(null);
@@ -184,10 +151,7 @@ function WorkoutsPage() {
   const q = search.trim().toLowerCase();
   const filteredWorkouts = q
     ? workouts.filter(
-        (w) =>
-          w.name.toLowerCase().includes(q) ||
-          (w.description ?? "").toLowerCase().includes(q) ||
-          dayTypeLabel(w.type).toLowerCase().includes(q),
+        (w) => w.name.toLowerCase().includes(q) || (w.description ?? "").toLowerCase().includes(q),
       )
     : workouts;
 
@@ -195,7 +159,6 @@ function WorkoutsPage() {
   const sort = useTableSort<Workout>({
     color: (w) => w.color,
     name: (w) => w.name,
-    type: (w) => (w.type ? dayTypeLabel(w.type) : null),
     description: (w) => (w.description ? stripFormatting(w.description) : null),
     capacity: (w) => (studioId ? capacityIn(w, studioId) : w.capacity),
     met: (w) => (w.met_value != null ? Number(w.met_value) : null),
@@ -206,9 +169,7 @@ function WorkoutsPage() {
     if (
       !(await confirm({
         title: "Удалить тренировку?",
-        description: packages
-          ? `«${w.name}» будет удалена во всех клубах с пакетами тренировок. Занятия в расписании этих клубов, использующие её, тоже пропадут.`
-          : `«${w.name}» будет удалена. Занятия в расписании, использующие её, тоже пропадут.`,
+        description: `«${w.name}» будет удалена во всех клубах. Занятия в расписании, использующие её, тоже пропадут.`,
       }))
     )
       return;
@@ -254,30 +215,17 @@ function WorkoutsPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  {packages ? (
-                    <TableHead className="w-[80px]" tip={TIPS.color} {...sort.head("color")}>
-                      Цвет
-                    </TableHead>
-                  ) : (
-                    <TableHead className="w-[100px]">Иконка</TableHead>
-                  )}
+                  <TableHead className="w-[80px]" tip={TIPS.color} {...sort.head("color")}>
+                    Цвет
+                  </TableHead>
                   <TableHead {...sort.head("name")}>Название</TableHead>
-                  {!packages && (
-                    <TableHead className="w-[160px]" tip={TIPS.type} {...sort.head("type")}>
-                      Тип
-                    </TableHead>
-                  )}
                   <TableHead tip={TIPS.description} {...sort.head("description")}>
                     Описание
                   </TableHead>
                   <TableHead className="w-[160px]" tip={TIPS.capacity} {...sort.head("capacity")}>
                     Вместимость
                   </TableHead>
-                  <TableHead
-                    className="w-[90px]"
-                    tip={packages ? TIPS.met : undefined}
-                    {...sort.head("met")}
-                  >
+                  <TableHead className="w-[90px]" tip={TIPS.met} {...sort.head("met")}>
                     MET
                   </TableHead>
                 </TableRow>
@@ -312,18 +260,9 @@ function WorkoutsPage() {
                     >
                       <TableRow>
                         <TableCell>
-                          {packages ? (
-                            <ColorSwatch value={w.color} />
-                          ) : (
-                            <StorageImage bucket="workouts" value={w.photo_url} alt={w.name} />
-                          )}
+                          <ColorSwatch value={w.color} />
                         </TableCell>
                         <TableCell className="font-medium">{w.name}</TableCell>
-                        {!packages && (
-                          <TableCell>
-                            <WorkoutTypeBadge value={w.type} />
-                          </TableCell>
-                        )}
                         <TableCell className="max-w-[420px] truncate text-muted-foreground">
                           {w.description ? stripFormatting(w.description) : "—"}
                         </TableCell>
@@ -349,7 +288,6 @@ function WorkoutsPage() {
         onOpenChange={setOpen}
         studioId={studioId}
         workout={editing}
-        packages={packages}
         capacityStudios={capacityStudios}
         usedColors={workouts.map((w) => w.color)}
         onSaved={reload}
@@ -364,8 +302,6 @@ type DialogProps = {
   onOpenChange: (v: boolean) => void;
   studioId: string | null;
   workout: Workout | null;
-  /** Пакетная студия: цвет вместо типа и иконки, MET обязателен. */
-  packages: boolean;
   /** Клубы каталога, где работает сотрудник, — поле вместимости на каждый. */
   capacityStudios: Studio[];
   /** Цвета других тренировок — новой предлагается ещё не занятый. */
@@ -388,14 +324,12 @@ function WorkoutForm({
   onOpenChange,
   studioId,
   workout,
-  packages,
   capacityStudios,
   usedColors,
   onSaved,
 }: DialogProps) {
   const [name, setName] = useState(workout?.name ?? "");
   const [description, setDescription] = useState(workout?.description ?? "");
-  const [photoUrl, setPhotoUrl] = useState(workout?.photo_url ?? null);
   // Клуб → вместимость строкой («» — без лимита).
   const [capacities, setCapacities] = useState<Record<string, string>>(() =>
     Object.fromEntries(
@@ -408,7 +342,6 @@ function WorkoutForm({
   const [metValue, setMetValue] = useState(
     workout?.met_value != null ? String(workout.met_value) : "",
   );
-  const [type, setType] = useState<DayType | typeof NONE_TYPE>(workout?.type ?? NONE_TYPE);
   const [color, setColor] = useState(
     () =>
       workout?.color ??
@@ -444,7 +377,7 @@ function WorkoutForm({
     const defaultCapacity = (capacityRows.find((r) => r.studio_id === studioId) ?? capacityRows[0])
       ?.capacity;
     const metNum = metValue.trim() === "" ? null : Number(metValue);
-    if (packages && metNum == null) {
+    if (metNum == null) {
       toast.error("Укажите интенсивность (MET)");
       return;
     }
@@ -452,29 +385,27 @@ function WorkoutForm({
       toast.error("MET должен быть положительным числом");
       return;
     }
-    if (packages && !isWorkoutColor(color)) {
+    if (!isWorkoutColor(color)) {
       toast.error("Цвет — в формате #RRGGBB");
       return;
     }
 
     setSaving(true);
     try {
-      const common = {
+      // Тип и иконку не пишем вовсе: у тренировки их нет, цвет — свой.
+      const payload: Record<string, unknown> = {
         name: name.trim(),
         description: description.trim() || null,
         translations: tr.cleaned(),
         ...(defaultCapacity !== undefined ? { capacity: defaultCapacity } : {}),
         met_value: metNum,
+        type: null,
+        color: color.toLowerCase(),
       };
-      // Пакетной тренировке тип и иконку не пишем вовсе: у неё их нет.
-      // Подписочной — не пишем цвет: её цвет по-прежнему от типа.
-      const payload: Record<string, unknown> = packages
-        ? { ...common, type: null, color: color.toLowerCase() }
-        : { ...common, photo_url: photoUrl, type: type === NONE_TYPE ? null : type };
       const { data: saved, error } = workout
         ? await supabase.from("workouts").update(payload).eq("id", workout.id).select("id").single()
-        : // Новая — в активном клубе; у пакетных она сразу видна во всех пакетных
-          // клубах. Правка клуб строки не меняет.
+        : // Новая — в активном клубе, сразу видна во всех клубах. Правка клуб
+          // строки не меняет.
           await supabase
             .from("workouts")
             .insert({ ...payload, studio_id: studioId })
@@ -512,9 +443,7 @@ function WorkoutForm({
       <DialogHeader>
         <DialogTitle>{workout ? "Редактировать тренировку" : "Новая тренировка"}</DialogTitle>
         <DialogDescription>
-          {packages
-            ? "Тренировка общая для всех клубов с пакетами тренировок: изменения сразу видны во всех клубах."
-            : "Заполните данные тренировки клуба."}
+          Тренировка общая для всех клубов: изменения сразу видны во всех клубах.
         </DialogDescription>
         <ContentLangSwitch tr={tr} />
       </DialogHeader>
@@ -522,25 +451,6 @@ function WorkoutForm({
         <DialogBody>
           <div className="space-y-4">
             <ContentLangNote lang={tr.lang} />
-            {!packages && (
-              <FormField label="Иконка" htmlFor={null} optional>
-                <ImageUploadField
-                  bucket="workouts"
-                  folder={`${studioId}`}
-                  value={photoUrl}
-                  onChange={setPhotoUrl}
-                  preview={
-                    <StorageImage
-                      bucket="workouts"
-                      value={photoUrl}
-                      alt="Иконка"
-                      className="size-16"
-                    />
-                  }
-                  disabled={!studioId}
-                />
-              </FormField>
-            )}
 
             <FormField
               label={<ContentLangLabel lang={tr.lang}>Название</ContentLangLabel>}
@@ -565,42 +475,14 @@ function WorkoutForm({
               />
             </FormField>
 
-            {packages ? (
-              <FormField label="Цвет" htmlFor={null} tip={TIPS.color} required>
-                <ColorInput
-                  value={color}
-                  onChange={setColor}
-                  fallback={WORKOUT_COLORS[0].hex}
-                  swatches={WORKOUT_COLORS}
-                />
-              </FormField>
-            ) : (
-              <FormField label="Тип тренировки" tip={TIPS.type} optional>
-                <Select
-                  value={type}
-                  onValueChange={(v) => setType(v as DayType | typeof NONE_TYPE)}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Выберите тип" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value={NONE_TYPE}>
-                      <span className="text-muted-foreground">Не указан</span>
-                    </SelectItem>
-                    {DAY_TYPES.map((t) => (
-                      <SelectItem key={t.value} value={t.value}>
-                        <span className="inline-flex items-center gap-2">
-                          <span
-                            className={`inline-block h-2.5 w-2.5 rounded-full ${DAY_TYPE_COLORS[t.value].dot}`}
-                          />
-                          {t.label}
-                        </span>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </FormField>
-            )}
+            <FormField label="Цвет" htmlFor={null} tip={TIPS.color} required>
+              <ColorInput
+                value={color}
+                onChange={setColor}
+                fallback={WORKOUT_COLORS[0].hex}
+                swatches={WORKOUT_COLORS}
+              />
+            </FormField>
 
             {capacityStudios.length > 0 && (
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -632,14 +514,9 @@ function WorkoutForm({
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <FormField
                 label="MET — интенсивность"
-                optional={!packages}
-                required={packages}
-                tip={packages ? TIPS.met : undefined}
-                hint={
-                  packages
-                    ? "Например: растяжка 2.5, пилатес 3.0, силовая 6.0, кардио 8.0."
-                    : "Для оценки калорий: ккал ≈ MET × 3.5 × вес / 200 × мин. Если пусто — значение по умолчанию для типа: кардио 8.5, силовая 7.0, гибрид 8.0, восстановление 2.8."
-                }
+                required
+                tip={TIPS.met}
+                hint="Например: растяжка 2.5, пилатес 3.0, силовая 6.0, кардио 8.0."
               >
                 <Input
                   type="number"

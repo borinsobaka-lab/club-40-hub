@@ -210,7 +210,7 @@ type SortKey = keyof typeof SORTS;
 
 /**
  * Сортировка «Тренеров» — в порядке блоков таблицы; значение — ключ
- * `values` строки. Конверсия — только при пакетном клубе в выборе.
+ * `values` строки.
  */
 const TRAINER_SORTS = {
   conversion: { label: "По конверсии", value: "trialConversion" },
@@ -231,9 +231,7 @@ const ratingFormat = new Intl.NumberFormat("ru-RU", {
 function ClassesBody(view: DashboardView) {
   const { period, prev, periodEnd } = view;
   const color = view.color;
-  const hasTrials = view.clubs.some((c) => c.format === "packages");
-  const [trainerSortPick, setTrainerSort] = useState<TrainerSortKey>("fill");
-  const trainerSort = !hasTrials && trainerSortPick === "conversion" ? "fill" : trainerSortPick;
+  const [trainerSort, setTrainerSort] = useState<TrainerSortKey>("fill");
   /** Раскрытые блоки «Тренеров» — на созвоне раскрывают нужный. */
   const [openBlocks, setOpenBlocks] = useState<ReadonlySet<string>>(new Set());
   const toggleBlock = (key: string) =>
@@ -439,11 +437,11 @@ function ClassesBody(view: DashboardView) {
     };
     return { rows, summary };
   }, [data, purchases, trainerSort, color]);
-  // Пробных абонементов у подписочных клубов нет — блок конверсии только у пакетных.
-  const trainerBlocks = TRAINER_BLOCKS.filter((b) => !b.trial || hasTrials);
-  const trainerSortOptions = (Object.keys(TRAINER_SORTS) as TrainerSortKey[])
-    .filter((k) => k !== "conversion" || hasTrials)
-    .map((k) => ({ key: k, label: TRAINER_SORTS[k].label }));
+  const trainerBlocks = TRAINER_BLOCKS;
+  const trainerSortOptions = (Object.keys(TRAINER_SORTS) as TrainerSortKey[]).map((k) => ({
+    key: k,
+    label: TRAINER_SORTS[k].label,
+  }));
 
   const workoutRows = useMemo<MetricRow[]>(() => {
     if (!data) return [];

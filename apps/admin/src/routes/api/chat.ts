@@ -20,7 +20,6 @@ import {
 import { describeAiError } from "@/lib/assistant/errors";
 import { buildSystemPrompt } from "@/lib/assistant/prompt";
 import { createAssistantTools } from "@/lib/assistant/tools.server";
-import type { StudioFormat } from "@/lib/studio-formats";
 import { authenticateStaff } from "@/lib/staff-auth.server";
 
 // Сколько шагов (вызовов инструментов) модель может сделать за один ответ.
@@ -151,7 +150,7 @@ export const Route = createFileRoute("/api/chat")({
           }
 
           const [{ data: studio }, { data: profile }, access] = await Promise.all([
-            supabase.from("studios").select("name, format").eq("id", studioId).maybeSingle(),
+            supabase.from("studios").select("name").eq("id", studioId).maybeSingle(),
             supabase.from("profiles").select("full_name").eq("id", userId).maybeSingle(),
             loadAdminAccess(supabase, userId, studioId, roles),
           ]);
@@ -170,10 +169,7 @@ export const Route = createFileRoute("/api/chat")({
             providerOptions: chat.providerOptions,
             system: buildSystemPrompt({
               today: studioToday(),
-              studio: {
-                name: (studio?.name as string | null | undefined) ?? null,
-                format: (studio?.format as StudioFormat | null | undefined) ?? null,
-              },
+              studio: { name: (studio?.name as string | null | undefined) ?? null },
               staffName: (profile?.full_name as string | null | undefined) ?? null,
             }),
             // Модели — только текст последних сообщений: строки данных из

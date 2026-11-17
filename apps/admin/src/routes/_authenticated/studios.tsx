@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ExternalLink, Loader2, LogIn, Pencil, Plus, Trash2 } from "lucide-react";
+import { Loader2, LogIn, Pencil, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { AdminShell } from "@/components/admin-shell";
@@ -26,13 +26,6 @@ import { Input } from "@/components/ui/input";
 import { ColorInput } from "@/components/ui/color-input";
 import { FormField, InfoNote, SwitchRow } from "@/components/ui/form-field";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
   Table,
   TableBody,
   TableCell,
@@ -49,21 +42,12 @@ import { supabase } from "@/integrations/supabase/client";
 import { unwrapPage } from "@/lib/query";
 import { squareImage, useStorageUrl } from "@/lib/storage";
 import { cn } from "@/lib/utils";
-import {
-  DEFAULT_BRAND_COLOR,
-  STUDIO_FORMATS,
-  STUDIO_FORMAT_APP_URL,
-  STUDIO_FORMAT_LABEL,
-  isBrandColor,
-  type StudioFormat,
-} from "@/lib/studio-formats";
+import { DEFAULT_BRAND_COLOR, isBrandColor } from "@/lib/studio-formats";
 import { StudiosPageSkeleton } from "@/components/page-skeletons";
 import { normalizeMapUrl } from "@/lib/map-links";
 
 /** Подсказки «?»: один текст у поля формы и у колонки таблицы. */
 const TIPS = {
-  format:
-    "От типа зависят абонементы, тренировки и расписание клуба, а клиенты пользуются приложением этого типа.",
   color: "Цвет иконки активного пункта меню и акцентов админки, пока открыт этот клуб.",
   logo: "Показывается в шапке бокового меню. Без логотипа там будет название клуба.",
   address: "Клиенты видят его в приложении под названием клуба — на главной и в выборе клуба.",
@@ -81,8 +65,9 @@ export const Route = createFileRoute("/_authenticated/studios")({
 });
 
 /**
- * Студии сети. Каждая студия — в переключателе в шапке; у студии формат
- * (STUDIO_FORMATS.md), логотип в меню и основной цвет админки.
+ * Студии сети. Каждая студия — в переключателе в шапке; у студии логотип в
+ * меню и основной цвет админки. Все клубы — с пакетами тренировок
+ * (подписочного формата больше нет — решение владельца 2026-11-17).
  * Создаёт студию владелец любой студии (RPC create_studio — он же становится
  * владельцем новой), правит и удаляет — владелец этой студии (RPC
  * delete_studio, db/migrations/2026-10-10_studio_delete.sql).
@@ -97,9 +82,7 @@ function StudiosPage() {
   const access = useAdminAccess();
   const sort = useTableSort<Studio>({
     name: (s) => s.name,
-    format: (s) => STUDIO_FORMAT_LABEL[s.format],
     color: (s) => s.brand_color,
-    app: (s) => STUDIO_FORMAT_APP_URL[s.format],
   });
 
   // Создать клуб — право «Создаёт клубы» (раньше — любой владелец клуба).
@@ -131,21 +114,17 @@ function StudiosPage() {
               <TableHead className="w-[180px]" tip={TIPS.logo}>
                 Логотип
               </TableHead>
-              <TableHead tip={TIPS.format} {...sort.head("format")}>
-                Тип
-              </TableHead>
               <TableHead tip={TIPS.color} {...sort.head("color")}>
                 Цвет
               </TableHead>
-              <TableHead {...sort.head("app")}>Приложение клиентов</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {isLoading ? (
-              <TableSkeletonRows columns={5} rows={2} />
+              <TableSkeletonRows columns={3} rows={2} />
             ) : studios.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={5} className="py-8 text-center text-sm text-muted-foreground">
+                <TableCell colSpan={3} className="py-8 text-center text-sm text-muted-foreground">
                   Нет клубов, где вы сотрудник.
                 </TableCell>
               </TableRow>
@@ -202,7 +181,6 @@ function StudiosPage() {
                       <TableCell>
                         <LogoPreview value={s.logo_url} name={s.name} compact />
                       </TableCell>
-                      <TableCell>{STUDIO_FORMAT_LABEL[s.format]}</TableCell>
                       <TableCell>
                         <span className="inline-flex items-center gap-2 font-mono text-xs uppercase">
                           <span
@@ -211,17 +189,6 @@ function StudiosPage() {
                           />
                           {s.brand_color}
                         </span>
-                      </TableCell>
-                      <TableCell>
-                        <a
-                          href={STUDIO_FORMAT_APP_URL[s.format]}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="inline-flex items-center gap-1 text-sm text-link underline-offset-4 hover:text-link-hover hover:underline"
-                        >
-                          {STUDIO_FORMAT_APP_URL[s.format].replace(/^https?:\/\//, "")}
-                          <ExternalLink className="size-3.5" />
-                        </a>
                       </TableCell>
                     </TableRow>
                   </RowContextMenu>
@@ -324,19 +291,17 @@ function DeleteStudioForm({
       const [clients, sales, heir] = await Promise.all([
         unwrapPage(supabase.from("clients").select("id", head).eq("studio_id", studio.id)),
         unwrapPage(supabase.from("sales").select("id", head).eq("studio_id", studio.id)),
-        // Пакетный клуб: клиенты и каталог общие — уходят в самый старый из
-        // остальных пакетных (studios_packages_catalog_rehome в базе).
-        studio.format === "packages"
-          ? supabase
-              .from("studios")
-              .select("name")
-              .eq("format", "packages")
-              .neq("id", studio.id)
-              .order("created_at")
-              .order("id")
-              .limit(1)
-              .maybeSingle()
-          : Promise.resolve({ data: null }),
+        // Клиенты и каталог общие — уходят в самый старый из остальных
+        // клубов (studios_packages_catalog_rehome в базе).
+        supabase
+          .from("studios")
+          .select("name")
+          .eq("format", "packages")
+          .neq("id", studio.id)
+          .order("created_at")
+          .order("id")
+          .limit(1)
+          .maybeSingle(),
       ]);
       return {
         clients: clients.count,
@@ -437,7 +402,6 @@ function StudioForm({
   onSaved: () => void;
 }) {
   const [name, setName] = useState(item?.name ?? "");
-  const [format, setFormat] = useState<StudioFormat>(item?.format ?? "subscription");
   const [color, setColor] = useState(item?.brand_color ?? DEFAULT_BRAND_COLOR);
   const [logo, setLogo] = useState<string | null>(item?.logo_url ?? null);
   const [address, setAddress] = useState(item?.address ?? "");
@@ -494,7 +458,7 @@ function StudioForm({
       } else {
         const created = await supabase.rpc("create_studio", {
           _name: name.trim(),
-          _format: format,
+          _format: "packages",
           _brand_color: brandColor,
           _logo_url: logo,
         });
@@ -538,7 +502,6 @@ function StudioForm({
     }
   };
 
-  const appHost = (f: StudioFormat) => STUDIO_FORMAT_APP_URL[f].replace(/^https?:\/\//, "");
 
   return (
     <>
@@ -596,34 +559,6 @@ function StudioForm({
               checked={bookingClosed}
               onCheckedChange={setBookingClosed}
             />
-
-            {item ? (
-              <InfoNote>
-                Тип:{" "}
-                <span className="font-medium text-foreground">{STUDIO_FORMAT_LABEL[format]}</span>.
-                Тип задаётся при создании и не меняется. Приложение клиентов — {appHost(format)}.
-              </InfoNote>
-            ) : (
-              <FormField
-                label="Тип клуба"
-                required
-                tip={TIPS.format}
-                hint={`Приложение клиентов — ${appHost(format)}. После создания тип не меняется.`}
-              >
-                <Select value={format} onValueChange={(v) => setFormat(v as StudioFormat)}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {STUDIO_FORMATS.map((f) => (
-                      <SelectItem key={f} value={f}>
-                        {STUDIO_FORMAT_LABEL[f]}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </FormField>
-            )}
 
             <FormField
               label="Основной цвет"

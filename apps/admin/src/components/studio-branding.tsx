@@ -8,7 +8,6 @@ import { readableOn, textOnTint } from "@/lib/color-contrast";
 import { kbBasesQuery } from "@/lib/kb/data";
 import { KB_DARK_BG, setKbThemeRoot, useKbDarkTheme } from "@/lib/kb/theme";
 import { kbBaseIdOf, railSectionKey } from "@/lib/nav-sections";
-import { rememberStudioFormat } from "@/lib/page-skeleton-layout";
 
 // На сервере useLayoutEffect ругается в консоль; там класс и не нужен.
 const useIsomorphicLayoutEffect = typeof window === "undefined" ? useEffect : useLayoutEffect;
@@ -25,8 +24,7 @@ const SIDEBAR_HEX = "#1a2027";
  *   Внутри базы знаний со своим цветом (kb_bases.brand_color, решение
  *   владельца 2026-10-25) — её цвет: всё, что красится цветом клуба
  *   (надзаголовки, точки и метки правок, оглавление), красится цветом базы.
- * Фавикон с 2026-10-20 один на всю админку (__root.tsx), по формату клуба не
- * меняется.
+ * Фавикон с 2026-10-20 один на всю админку (__root.tsx).
  */
 export function StudioBranding() {
   const { data: studios } = useStudios();
@@ -37,12 +35,6 @@ export function StudioBranding() {
     if (!studios?.length) return;
     if (!activeId || !studios.some((s) => s.id === activeId)) setActiveStudioId(studios[0].id);
   }, [studios, activeId]);
-
-  // Формат клуба — для скелетонов страниц, чья раскладка от него зависит
-  // («Продажи», «Тренировки», «Расписание»): при следующем открытии он нужен
-  // раньше, чем придёт список клубов.
-  const format = active?.format;
-  useEffect(() => rememberStudioFormat(format), [format]);
 
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const kbBaseId = kbBaseIdOf(pathname);

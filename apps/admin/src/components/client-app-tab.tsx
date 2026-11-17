@@ -65,12 +65,11 @@ export function ClientAppTab({ clientId, hasUser }: { clientId: string; hasUser:
   }
   if (isLoading || !data) return <ClientAppTabSkeleton />;
 
-  const format = data.app_format;
   const devices = data.devices ?? [];
   const seen = lastSeenAt(devices);
   const strip = activityStrip(data.activity?.days ?? []);
   const sessions30 = strip.reduce((sum, d) => sum + d.sessions, 0);
-  const screens = screensRanking(data.activity?.screens_30d ?? {}, format);
+  const screens = screensRanking(data.activity?.screens_30d ?? {});
   const insights = appInsights(data);
   const push = data.push;
   const actions = data.actions;
@@ -125,12 +124,10 @@ export function ClientAppTab({ clientId, hasUser }: { clientId: string; hasUser:
               devices.length ? `${activeDays(strip, 7)} из 7 · ${activeDays(strip, 30)} из 30` : "—"
             }
           />
-          {format === "packages" && (
-            <Value
-              label="Согласие с политикой"
-              value={formatDate(data.account?.privacy_accepted_at)}
-            />
-          )}
+          <Value
+            label="Согласие с политикой"
+            value={formatDate(data.account?.privacy_accepted_at)}
+          />
           <Value
             label="Язык приложения"
             value={latest?.locale ? (LOCALE_LABEL[latest.locale] ?? latest.locale) : "—"}
@@ -197,9 +194,7 @@ export function ClientAppTab({ clientId, hasUser }: { clientId: string; hasUser:
               }
             />
             <Value label="Оценки тренерам" value={String(actions.trainer_reviews)} />
-            {format === "packages" && (
-              <Value label="Заявки администратору" value={String(actions.requests)} />
-            )}
+            <Value label="Заявки администратору" value={String(actions.requests)} />
             <Value
               label="Последний NPS"
               value={

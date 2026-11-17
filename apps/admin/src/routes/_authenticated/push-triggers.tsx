@@ -13,7 +13,6 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { FormField, InfoNote, SwitchRow } from "@/components/ui/form-field";
-import { SegmentedControl } from "@/components/ui/segmented-control";
 import { StatusChip } from "@/components/ui/status-chip";
 import {
   Select,
@@ -50,36 +49,29 @@ import {
 import { getPushServiceStatus } from "@/lib/push.functions";
 import { plural } from "@/lib/payroll";
 import {
+  PUSH_TRIGGERS,
   TRIGGER_GROUPS,
   cleanParams,
   hourLabel,
   insertAt,
-  triggersOfFormat,
   unknownVars,
   type TriggerDef,
   type TriggerParamKey,
   type TriggerParams,
 } from "@/lib/push-triggers";
-import {
-  STUDIO_FORMATS,
-  STUDIO_FORMAT_APP_URL,
-  STUDIO_FORMAT_LABEL,
-  type StudioFormat,
-} from "@/lib/studio-formats";
+import type { StudioFormat } from "@/lib/studio-formats";
 import { cn } from "@/lib/utils";
 
 /**
  * Триггерные уведомления: автоматические пуши клиентам по событиям
- * (напоминание о занятии, отмена, абонемент заканчивается, платёж…). У
- * каждого клиентского приложения (формата клубов) свой набор: включение,
- * тексты на трёх языках, параметры. Когда и кому уходит — решает база
+ * (напоминание о занятии, отмена, абонемент заканчивается, платёж…):
+ * включение, тексты на трёх языках, параметры. Когда и кому уходит — решает база
  * (db/migrations/2026-10-15_push_triggers.sql), отправляет сервер админки
  * вместе с рассылками (lib/push/push-worker.server.ts); каталог с подписями
  * и переменными — lib/push-triggers.ts.
  */
 
 const TIPS = {
-  app: "У каждого клиентского приложения свой набор триггеров и свои тексты — для всех его клубов.",
   enabled:
     "Выключенный триггер ничего не отправляет. После включения он реагирует только на новые события — старые не рассылаются.",
   actionUrl:
@@ -121,13 +113,12 @@ const TABLE = "push_triggers";
 function PushTriggersPage() {
   const queryClient = useQueryClient();
   const { data: studios = [], isPending: studiosLoading } = useStudios();
-  const formats = STUDIO_FORMATS.filter((f) => studios.some((s) => s.format === f));
-  const [picked, setPicked] = useState<StudioFormat | null>(null);
-  const format = picked && formats.includes(picked) ? picked : (formats[0] ?? null);
+  // Приложение клубов — пакетное (строки push_triggers — на формат).
+  const format: StudioFormat | null = studios.length ? "packages" : null;
 
   const { data: rows = [], isPending: rowsLoading } = useQuery({
     queryKey: [TABLE],
-    queryFn: () => unwrap<TriggerRow[]>(supabase.from(TABLE).select("*")),
+    queryFn: () => unwrap<TriggerRow[]>(supabase.from(TABLE).select("*").eq("format", "packages")),
     meta: { errorMessage: "Не удалось загрузить триггеры" },
   });
 
@@ -178,7 +169,7 @@ function PushTriggersPage() {
 
   const loading = studiosLoading || rowsLoading;
   const formatRows = rows.filter((r) => r.format === format);
-  const defs = format ? triggersOfFormat(format) : [];
+  const defs = format ? PUSH_TRIGGERS : [];
 
   return (
     <AdminShell title="Триггерные уведомления">
@@ -188,21 +179,6 @@ function PushTriggersPage() {
             Рассылка не настроена на сервере: не задан сервис-ключ Supabase
             (APP_SUPABASE_SERVICE_KEY). Триггерные уведомления не отправляются.
           </InfoNote>
-        ) : null}
-
-        {formats.length > 1 && format ? (
-          <FormField label="Приложение" tip={TIPS.app} htmlFor={null}>
-            <SegmentedControl
-              aria-label="Приложение"
-              value={format}
-              onChange={setPicked}
-              options={formats.map((f) => ({
-                value: f,
-                label: STUDIO_FORMAT_APP_URL[f].replace(/^https?:\/\//, ""),
-                title: STUDIO_FORMAT_LABEL[f],
-              }))}
-            />
-          </FormField>
         ) : null}
 
         <InfoNote>

@@ -120,12 +120,11 @@ describe("устройство", () => {
     ).toBe("Android · Chrome 141");
   });
 
-  test("разделы по убыванию, подписи по формату", () => {
-    expect(screensRanking({ home: 3, club: 5, memberships: 0 }, "packages")).toEqual([
+  test("разделы по убыванию, с подписями", () => {
+    expect(screensRanking({ home: 3, club: 5, memberships: 0 })).toEqual([
       { key: "club", label: "Студия", count: 5 },
       { key: "home", label: "Главная", count: 3 },
     ]);
-    expect(screensRanking({ club: 1 }, "subscription")[0].label).toBe("Клуб");
   });
 });
 

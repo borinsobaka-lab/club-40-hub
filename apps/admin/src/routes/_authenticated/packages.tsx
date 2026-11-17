@@ -5,7 +5,6 @@ import { Plus, Loader2, Pencil, Trash2, Copy, GripVertical } from "lucide-react"
 
 import { AdminShell } from "@/components/admin-shell";
 import { RequireStudio } from "@/components/require-studio";
-import { RequireFormat } from "@/components/require-format";
 import { useActiveStudioId } from "@/hooks/use-active-studio";
 import { useCatalogStudioIds } from "@/hooks/use-catalog-studios";
 import { supabase } from "@/integrations/supabase/client";
@@ -133,7 +132,7 @@ const MAX_PAYMENTS_LIMIT = 12;
 export const Route = createFileRoute("/_authenticated/packages")({
   head: () => ({ meta: [{ title: "Номенклатуры — Base40 Admin" }] }),
   pendingComponent: PackagesPageSkeleton,
-  component: PackagesRoute,
+  component: PackagesPage,
 });
 
 type Package = {
@@ -205,14 +204,6 @@ function formatDuration(days: number | null) {
   if (days % 365 === 0) return `${days / 365} г.`;
   if (days % 30 === 0) return `${days / 30} мес.`;
   return `${days} дн.`;
-}
-
-function PackagesRoute() {
-  return (
-    <RequireFormat format="packages" title="Номенклатуры" other={{ subscription: "/memberships" }}>
-      <PackagesPage />
-    </RequireFormat>
-  );
 }
 
 function PackagesPage() {

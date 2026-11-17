@@ -62,7 +62,6 @@ import type {
   OrgPosition,
   OrgUnit,
 } from "@/lib/access/types";
-import { STUDIO_FORMAT_LABEL } from "@/lib/studio-formats";
 import { unwrap } from "@/lib/query";
 import { cn } from "@/lib/utils";
 import { useAccessNames } from "@/hooks/use-access-names";
@@ -988,13 +987,7 @@ function NetworkTab({ canEdit }: { canEdit: boolean }) {
             <TableBody>
               {(studios ?? []).map((s) => (
                 <TableRow key={s.id}>
-                  <TableCell>
-                    <div className="font-medium">{s.name}</div>
-                    <div className="text-xs text-muted-foreground">
-                      {STUDIO_FORMAT_LABEL[s.format as keyof typeof STUDIO_FORMAT_LABEL] ??
-                        s.format}
-                    </div>
-                  </TableCell>
+                  <TableCell className="font-medium">{s.name}</TableCell>
                   <TableCell>
                     <Select
                       value={s.brand_id ?? NONE}

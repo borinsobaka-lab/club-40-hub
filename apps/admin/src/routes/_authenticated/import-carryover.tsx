@@ -103,10 +103,8 @@ function ImportCarryoverPage() {
   const inputRef = useRef<HTMLInputElement>(null);
   const today = todayISO();
 
-  // Клубы — пакетные, где сотрудник владелец (переносит только владелец).
-  const clubs = (studios ?? []).filter(
-    (s) => s.format === "packages" && access?.studios[s.id]?.owner,
-  );
+  // Клубы, где сотрудник владелец (переносит только владелец).
+  const clubs = (studios ?? []).filter((s) => access?.studios[s.id]?.owner);
   const [studioId, setStudioId] = useState("");
   const [membershipId, setMembershipId] = useState("");
   const [debtDue, setDebtDue] = useState(DEFAULT_DEBT_DUE);

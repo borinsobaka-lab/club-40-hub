@@ -173,7 +173,7 @@ describe("новые клиенты периода", () => {
   ];
 
   test("путь: каждый шаг — от всех новых клиентов", () => {
-    const steps = newClientsFunnel(cohort, sales, new Set(["a", "b"]), true);
+    const steps = newClientsFunnel(cohort, sales, new Set(["a", "b"]));
     expect(steps.map((s) => [s.key, s.value])).toEqual([
       ["new", 3],
       ["app", 2],
@@ -182,9 +182,6 @@ describe("новые клиенты периода", () => {
       ["visit", 2],
       ["purchase", 1],
     ]);
-    const keys = newClientsFunnel(cohort, sales, new Set(), false).map((s) => s.key);
-    expect(keys).not.toContain("trial");
-    expect(keys).not.toContain("single");
   });
 
   test("по ответу анкеты; без ответа — последней строкой", () => {

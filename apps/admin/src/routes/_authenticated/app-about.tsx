@@ -108,14 +108,13 @@ function toFormValues(s: Settings | null | undefined): FormValues {
   };
 }
 
-// «О нас» — история бренда в приложении пакетных клубов (Lady Stretch).
+// «О нас» — история бренда в приложении клубов (Lady Stretch).
 // Тексты и даты — в коде приложения (apps/client/src/formats/packages/
 // about-config.ts), здесь — фото, цифры сообщества и Instagram:
 // app_about_settings, строка на формат
 // (db/migrations/2026-10-12_zzzzzz_app_about_page.sql; галерея массажного
-// кабинета — 2026-10-12_zzzzzzz_app_about_massage.sql). Пока в приложении
-// одна такая история — у пакетного; правит раздел «Мобильное приложение» и
-// сотрудник пакетного клуба (так же пускает RLS).
+// кабинета — 2026-10-12_zzzzzzz_app_about_massage.sql). Правит раздел
+// «Мобильное приложение» и сотрудник клуба (так же пускает RLS).
 const TABLE = "app_about_settings";
 const FORMAT = "packages";
 const QUERY_KEY = [TABLE, FORMAT];
@@ -124,14 +123,14 @@ const FORM_ID = "app-about-form";
 
 function AppAboutPage() {
   const { data: studios = [], isPending: studiosLoading } = useStudios();
-  const hasPackages = studios.some((s) => s.format === FORMAT);
+  const hasClubs = studios.length > 0;
   const [saving, setSaving] = useState(false);
 
   return (
     <AdminShell
       title="О нас"
       actions={
-        <Button type="submit" form={FORM_ID} disabled={saving || studiosLoading || !hasPackages}>
+        <Button type="submit" form={FORM_ID} disabled={saving || studiosLoading || !hasClubs}>
           {saving ? <Loader2 className="animate-spin" /> : <Save />}
           Сохранить
         </Button>
@@ -139,10 +138,9 @@ function AppAboutPage() {
     >
       {studiosLoading ? (
         <AppAboutFormSkeleton />
-      ) : !hasPackages ? (
+      ) : !hasClubs ? (
         <InfoNote variant="empty" className="max-w-2xl">
-          Раздел «О нас» есть только в приложении клубов с пакетами тренировок, а у вас таких клубов
-          нет.
+          Раздел «О нас» правят сотрудники клубов, а у вас клубов нет.
         </InfoNote>
       ) : (
         <AppAboutForm onSavingChange={setSaving} />

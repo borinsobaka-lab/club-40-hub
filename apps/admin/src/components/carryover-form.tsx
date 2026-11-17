@@ -78,7 +78,7 @@ export function CarryoverForm({
   const queryClient = useQueryClient();
   const { ensure: ensureStaff } = useStaffProfile();
   const { data: studios } = useStudios();
-  const saleStudios = (studios ?? []).filter((s) => s.format === "packages");
+  const saleStudios = studios ?? [];
   const [saleStudioId, setSaleStudioId] = useState(studioId);
   const today = todayISO();
   const [form, setForm] = useState<CarryoverFields>(() => ({

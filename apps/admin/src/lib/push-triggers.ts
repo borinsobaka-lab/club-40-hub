@@ -8,7 +8,6 @@
  * подписи, описание срабатывания, переменные текста и поля параметров.
  * Ключи и параметры должны совпадать с миграцией.
  */
-import type { StudioFormat } from "@/lib/studio-formats";
 import { plural } from "@/lib/payroll";
 
 export type TriggerGroup = "classes" | "memberships" | "payments" | "engagement" | "trainers";
@@ -39,7 +38,6 @@ export type TriggerDef = {
   key: string;
   group: TriggerGroup;
   name: string;
-  formats: readonly StudioFormat[];
   /** Когда и кому уходит — с текущими параметрами. */
   describe: (p: TriggerParams) => string;
   params: TriggerParamDef[];
@@ -47,9 +45,6 @@ export type TriggerDef = {
   defaults: TriggerParams;
   vars: TriggerVars;
 };
-
-const BOTH: readonly StudioFormat[] = ["subscription", "packages"];
-const PACKAGES: readonly StudioFormat[] = ["packages"];
 
 const NAME = { name: "имя клиента" };
 const CLUB = { club: "клуб" };
@@ -94,7 +89,6 @@ const TRAINER_TRIGGERS: TriggerDef[] = [
     key: "trainer_class_cancelled",
     group: "trainers",
     name: "Тренировка тренера отменена",
-    formats: PACKAGES,
     defaults: {},
     describe: () =>
       "Сразу после отмены будущего занятия — его тренеру, если в карточке клиента ему указан тренер. Приходит в любое время суток.",
@@ -105,7 +99,6 @@ const TRAINER_TRIGGERS: TriggerDef[] = [
     key: "trainer_replaced",
     group: "trainers",
     name: "Тренера заменили",
-    formats: PACKAGES,
     defaults: {},
     describe: () =>
       "Сразу, когда на будущем занятии поставили замену, — тренеру, которого заменили. {substitute} — кто заменит.",
@@ -116,7 +109,6 @@ const TRAINER_TRIGGERS: TriggerDef[] = [
     key: "trainer_substitute",
     group: "trainers",
     name: "Тренер на замене",
-    formats: PACKAGES,
     defaults: {},
     describe: () =>
       "Сразу, когда тренера поставили заменяющим на будущее занятие, — ему. {replaced} — кого заменяет.",
@@ -130,7 +122,6 @@ export const PUSH_TRIGGERS: TriggerDef[] = [
     key: "class_reminder",
     group: "classes",
     name: "Напоминание о занятии",
-    formats: BOTH,
     defaults: { hours: 3 },
     describe: (p) =>
       `За ${hoursText(p.hours ?? 3)} до начала — всем записанным. Если это время выпадает на ночь (22:00–09:00) — в 09:00 или накануне в 21:00. Записавшимся позже не приходит.`,
@@ -141,7 +132,6 @@ export const PUSH_TRIGGERS: TriggerDef[] = [
     key: "booked_for_client",
     group: "classes",
     name: "Вас записали на занятие",
-    formats: BOTH,
     defaults: {},
     describe: () =>
       "Сразу, когда клиента записал администратор (в админке). Если клиент записался сам — не приходит.",
@@ -152,7 +142,6 @@ export const PUSH_TRIGGERS: TriggerDef[] = [
     key: "class_cancelled",
     group: "classes",
     name: "Занятие отменено",
-    formats: BOTH,
     defaults: {},
     describe: () =>
       "Сразу после отмены занятия в расписании — всем, кто был записан. Приходит в любое время суток.",
@@ -164,7 +153,6 @@ export const PUSH_TRIGGERS: TriggerDef[] = [
     key: "waitlist_spot_open",
     group: "classes",
     name: "Освободилось место",
-    formats: BOTH,
     defaults: {},
     describe: () =>
       "Сразу, когда на заполненном занятии освободилось место (клиент отменил запись, запись удалили, вместимость увеличили), — всем из листа ожидания; записывается тот, кто успел первым. Не приходит, если до начала меньше 15 минут, и повторно тому же человеку в течение 10 минут. Приходит в любое время суток.",
@@ -175,7 +163,6 @@ export const PUSH_TRIGGERS: TriggerDef[] = [
     key: "trainer_substitution",
     group: "classes",
     name: "Замена тренера",
-    formats: BOTH,
     defaults: {},
     describe: () =>
       "Сразу, когда на занятии поставили замену тренера, — тем, кто записался раньше замены. {trainer} — новый тренер.",
@@ -186,7 +173,6 @@ export const PUSH_TRIGGERS: TriggerDef[] = [
     key: "membership_activated",
     group: "memberships",
     name: "Абонемент оформлен",
-    formats: BOTH,
     defaults: {},
     describe: () =>
       "Сразу после продажи абонемента — в админке или покупки в приложении (в том числе продление в очереди).",
@@ -197,7 +183,6 @@ export const PUSH_TRIGGERS: TriggerDef[] = [
     key: "membership_expiring",
     group: "memberships",
     name: "Абонемент скоро закончится",
-    formats: BOTH,
     defaults: { days: 3, send_hour: 11 },
     describe: (p) =>
       `За ${daysText(p.days ?? 3)} до окончания срока${at(p, { send_hour: 11 })}. Не приходит, если продление уже куплено, включено автопродление или это пробный.`,
@@ -214,7 +199,6 @@ export const PUSH_TRIGGERS: TriggerDef[] = [
     key: "membership_ended",
     group: "memberships",
     name: "Абонемент закончился",
-    formats: BOTH,
     defaults: { send_hour: 11 },
     describe: (p) =>
       `На следующий день после окончания срока${at(p, { send_hour: 11 })}, если нового абонемента нет и тренировки в нём ещё оставались (об отхоженном — «Тренировки закончились»). Пробный — не в счёт.`,
@@ -225,7 +209,6 @@ export const PUSH_TRIGGERS: TriggerDef[] = [
     key: "visits_low",
     group: "memberships",
     name: "Осталось мало тренировок",
-    formats: PACKAGES,
     defaults: { left: 2 },
     describe: (p) =>
       `После списания тренировки, когда в абонементе осталось ${p.left ?? 2} или меньше (но не ноль). Один раз на абонемент; не приходит, если продление уже куплено. Пробное и разовое посещение — не в счёт.`,
@@ -244,7 +227,6 @@ export const PUSH_TRIGGERS: TriggerDef[] = [
     key: "visits_exhausted",
     group: "memberships",
     name: "Тренировки закончились",
-    formats: PACKAGES,
     defaults: {},
     describe: () =>
       "Когда списана последняя тренировка абонемента и продления нет. Пробное и разовое посещение — не в счёт.",
@@ -255,7 +237,6 @@ export const PUSH_TRIGGERS: TriggerDef[] = [
     key: "installment_due",
     group: "payments",
     name: "Скоро платёж по рассрочке",
-    formats: BOTH,
     defaults: { days: 1, send_hour: 11 },
     describe: (p) => {
       const days = p.days ?? 1;
@@ -283,7 +264,6 @@ export const PUSH_TRIGGERS: TriggerDef[] = [
     key: "installment_overdue",
     group: "payments",
     name: "Платёж просрочен",
-    formats: BOTH,
     defaults: { days: 1, send_hour: 11 },
     describe: (p) =>
       `Через ${daysText(p.days ?? 1)} после даты платежа${at(p, { send_hour: 11 })}, если он не внесён. Один раз на платёж.`,
@@ -300,7 +280,6 @@ export const PUSH_TRIGGERS: TriggerDef[] = [
     key: "trial_followup",
     group: "engagement",
     name: "После пробной тренировки",
-    formats: PACKAGES,
     defaults: { hours: 3 },
     describe: (p) =>
       `Через ${hoursText(p.hours ?? 3)} после посещённой пробной тренировки, если абонемент ещё не куплен. Ночью ждёт до 09:00.`,
@@ -311,7 +290,6 @@ export const PUSH_TRIGGERS: TriggerDef[] = [
     key: "rate_trainer",
     group: "engagement",
     name: "Оцените тренера",
-    formats: PACKAGES,
     defaults: { hours: 2 },
     describe: (p) =>
       `Через ${hoursText(p.hours ?? 2)} после посещённого занятия — если клиент ещё не оценивал этого тренера. Один раз на тренера; ночью ждёт до 09:00.`,
@@ -322,7 +300,6 @@ export const PUSH_TRIGGERS: TriggerDef[] = [
     key: "no_visits",
     group: "engagement",
     name: "Давно не был в клубе",
-    formats: BOTH,
     defaults: { days: 14, send_hour: 12 },
     describe: (p) =>
       `Клиенту с действующим абонементом, если ${daysText(p.days ?? 14)} не было посещений и нет будущих записей${at(p, { send_hour: 12 })}. Один раз после каждого последнего посещения.`,
@@ -338,7 +315,6 @@ export const PUSH_TRIGGERS: TriggerDef[] = [
     key: "birthday",
     group: "engagement",
     name: "День рождения",
-    formats: BOTH,
     defaults: { send_hour: 10 },
     describe: (p) =>
       `В день рождения${at(p, { send_hour: 10 })}. Дата — из карточки клиента или анкеты приложения.`,
@@ -349,9 +325,6 @@ export const PUSH_TRIGGERS: TriggerDef[] = [
 ];
 
 export const triggerDef = (key: string) => PUSH_TRIGGERS.find((t) => t.key === key);
-
-export const triggersOfFormat = (format: StudioFormat) =>
-  PUSH_TRIGGERS.filter((t) => t.formats.includes(format));
 
 /** Переменные в тексте: «{name}, ждём на {class}» → ["name", "class"]. */
 export function templateVars(text: string | null | undefined): string[] {

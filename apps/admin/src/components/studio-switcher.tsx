@@ -1,6 +1,5 @@
 import { setActiveStudioId, useActiveStudioId } from "@/hooks/use-active-studio";
 import { useStudios } from "@/hooks/use-studios";
-import { STUDIO_FORMAT_LABEL } from "@/lib/studio-formats";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -30,10 +29,9 @@ export function StudioSwitcher({ triggerClassName }: { triggerClassName?: string
         onValueChange={setActiveStudioId}
         disabled={studios.length === 0}
       >
-        {/* Тип студии — только в выпадающем списке, в поле хватает названия. */}
         <SelectTrigger
           aria-label="Клуб"
-          className={cn("w-60 [&_.studio-format]:hidden", triggerClassName)}
+          className={cn("w-60", triggerClassName)}
         >
           <SelectValue placeholder={studios.length === 0 ? "Нет клубов" : "Выберите клуб"} />
         </SelectTrigger>
@@ -46,11 +44,6 @@ export function StudioSwitcher({ triggerClassName }: { triggerClassName?: string
                   style={{ backgroundColor: s.brand_color }}
                 />
                 <span className="truncate">{s.name}</span>
-                {studios.length > 1 && (
-                  <span className="studio-format truncate text-xs text-muted-foreground">
-                    {STUDIO_FORMAT_LABEL[s.format]}
-                  </span>
-                )}
               </span>
             </SelectItem>
           ))}

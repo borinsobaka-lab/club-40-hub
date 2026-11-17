@@ -4,7 +4,6 @@ import { Loader2, Plus, X } from "lucide-react";
 import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
-import { useActiveStudio } from "@/hooks/use-studios";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { unwrap } from "@/lib/query";
 import { Button } from "@/components/ui/button";
@@ -84,8 +83,7 @@ export function ClientDialog(props: ClientDialogProps) {
 }
 
 /**
- * Почта или номер уже у другой карточки той же базы клиентов (пакетные клубы —
- * вся сеть, подписочный — свой клуб): RPC client_contact_check, схема —
+ * Почта или номер уже у другой карточки общей базы клиентов сети: RPC client_contact_check, схема —
  * db/migrations/2026-11-12_zz_client_contacts_unique.sql. Сохранить такую
  * карточку не даёт и база (ошибка 23505) — здесь подсказка заранее.
  */
@@ -142,10 +140,9 @@ function ClientForm({
   // После попытки сохранить ошибки полей видны и без ухода из них.
   const [submitted, setSubmitted] = useState(false);
   const [birthday, setBirthday] = useState(client?.birthday ?? "");
-  // Новый клиент пакетной студии — по умолчанию женщина (решение владельца
+  // Новый клиент — по умолчанию женщина (решение владельца
   // 2026-10-11, залы в основном женские); администратор может поменять.
-  const packages = useActiveStudio()?.format === "packages";
-  const [gender, setGender] = useState(client ? (client.gender ?? "") : packages ? "female" : "");
+  const [gender, setGender] = useState(client ? (client.gender ?? "") : "female");
   const [notes, setNotes] = useState(client?.notes ?? "");
   // Новому клиенту дата регистрации — сегодня (можно поменять при переносе истории).
   const [registrationDate, setRegistrationDate] = useState(

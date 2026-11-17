@@ -15,15 +15,12 @@ import { unwrap } from "@/lib/query";
 import {
   PAYMENT_METHOD_LABEL,
   PAYMENT_METHODS,
-  PAYMENT_TYPE_LABEL,
-  PAYMENT_TYPES,
   SALE_KIND_HINT,
   SALE_KIND_LABEL,
   SALE_TIPS,
   addMonthsISO,
   type MembershipKind,
   type PaymentMethod,
-  type PaymentType,
   type SaleKind,
 } from "@/lib/payments";
 import { celebrateSale } from "@/lib/confetti";
@@ -31,7 +28,6 @@ import { clientName, formatDate, formatMoney, formatMoneyPrecise, todayISO } fro
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { FormField, InfoNote } from "@/components/ui/form-field";
-import { SegmentedControl } from "@/components/ui/segmented-control";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
@@ -55,32 +51,29 @@ import { SearchableCombobox } from "@/components/searchable-combobox";
 import { useConfirm } from "@/components/confirm-dialog";
 import { CarryoverForm } from "@/components/carryover-form";
 
-// Диалог «Новая продажа» абонемента. Открывается из «Продаж» (подписочный
-// клуб), «Абонементов» (пакетный) и из карточки клиента («Добавить продажу» —
-// клиент уже подставлен).
+// Диалог «Новая продажа» абонемента. Открывается из «Абонементов» и из
+// карточки клиента («Добавить продажу» — клиент уже подставлен).
 //
-// Рассрочка зависит от формата студии (STUDIO_FORMATS.md):
-// - подписочный — у тарифа флаг installment_enabled, остаток на 2 или 3 мес.;
-// - пакетный — у пакета max_payments («сколькими платежами можно оплатить»),
-//   администратор выбирает число платежей от 1 до него; поля «Тип оплаты» нет.
-// В обоих случаях первый платёж — в день продажи, остальные — ежемесячно.
+// Рассрочка: у пакета max_payments («сколькими платежами можно оплатить»),
+// администратор выбирает число платежей от 1 до него. Первый платёж — в день
+// продажи, остальные — ежемесячно.
 //
-// В пакетной студии у продажи есть тип (sales.sale_kind, плитки в «Абонементах»):
+// У продажи есть тип (sales.sale_kind, плитки в «Абонементах»):
 // новая продажа, пробное, допродажа, продление. «Пробное» предлагает только
 // номенклатуры «Пробное посещение» и подставляет первую сама, остальные типы —
-// пакеты тренировок и пакеты персональных. Подписочная студия тип не пишет.
+// пакеты тренировок и пакеты персональных.
 //
-// Ещё в пакетной студии — «Тренер» (sales.trainer_id + снимок имени
+// «Тренер» (sales.trainer_id + снимок имени
 // trainer_name): кто был тренером при продаже, ему начисляется бонус. Продажи
 // с тренером и рассрочкой видны в разделе «Абонементы». У «Оплаты пробного»
 // тренера нет (решение владельца 2026-10-14): клиент ещё не был на тренировке.
 //
-// «Администратор» (оба формата) — выбирается из администраторов студии
+// «Администратор» — выбирается из администраторов студии
 // (lib/studio-staff.ts, components/seller-select.tsx): sales.seller_id + снимок admin_name;
 // admin_id — тот, кто внёс продажу.
 //
-// «Клуб продажи» (пакетный формат, решение владельца 2026-10-20) —
-// обязательный выбор из пакетных клубов сотрудника, по умолчанию — клуб, в
+// «Клуб продажи» (решение владельца 2026-10-20) —
+// обязательный выбор из клубов сотрудника, по умолчанию — клуб, в
 // котором открыта форма. По нему sales.studio_id: «Абонементы» общие для
 // клубов сети, а касса, зарплаты и дашборд считаются по клубу продажи.
 // Администраторы и тренеры в списках — этого клуба.
@@ -93,10 +86,9 @@ type MembershipRow = {
   price: number;
   duration_days: number | null;
   visits_count: number | null;
-  installment_enabled: boolean;
-  /** Пакетный формат: сколькими платежами можно оплатить (1 — только сразу). */
+  /** Сколькими платежами можно оплатить (1 — только сразу). */
   max_payments: number;
-  /** Пакетный формат: пакет тренировок, персональных, разовое или пробное посещение. */
+  /** Пакет тренировок, персональных, разовое или пробное посещение. */
   kind: MembershipKind;
   /** Персональных в пакете: пакет на 1 персональную администратору бонуса не даёт. */
   personal_count: number | null;
@@ -125,28 +117,23 @@ type SaleFields = {
   soldAt: string;
   amount: string;
   downPayment: string;
-  /** Подписочный формат: на сколько месяцев разбить остаток. */
-  remainingCount: 2 | 3;
-  /** Пакетный формат: всего платежей, включая первый (1 — оплата сразу). */
+  /** Всего платежей, включая первый (1 — оплата сразу). */
   paymentsCount: number;
-  paymentType: PaymentType;
   paymentMethod: PaymentMethod;
   promoCode: string;
   comment: string;
-  /** Пакетный формат: тренер при продаже; NO_TRAINER — не было. */
+  /** Тренер при продаже; NO_TRAINER — не было. */
   trainerId: string;
   /** Администратор, который продал (сотрудник справочника). */
   sellerId: string;
 };
 
 /** Суммы продажи по форме: итог, первый взнос, скидка от тарифа, график рассрочки. */
-function saleTotals(form: SaleFields, membership: MembershipRow | null, isPackages: boolean) {
-  const installment = isPackages
-    ? form.paymentsCount > 1
-    : (membership?.installment_enabled ?? false);
+function saleTotals(form: SaleFields, membership: MembershipRow | null) {
+  const installment = form.paymentsCount > 1;
   const total = Number(form.amount) || 0;
   const down = installment ? Number(form.downPayment) || 0 : total;
-  const remaining = !installment ? 0 : isPackages ? form.paymentsCount - 1 : form.remainingCount;
+  const remaining = installment ? form.paymentsCount - 1 : 0;
   const remainingTotal = Math.max(0, total - down);
   const listPrice = membership?.price != null ? Number(membership.price) : null;
   const discount = listPrice != null ? Math.max(0, listPrice - total) : 0;
@@ -193,7 +180,7 @@ export type SaleDialogProps = {
   onSaved: () => void;
   /** Клиент, подставленный заранее (продажа из карточки клиента); сменить можно. */
   initialClient?: ClientOption | null;
-  /** Тип продажи (пакетная студия); по умолчанию — новая продажа. */
+  /** Тип продажи; по умолчанию — новая продажа. */
   kind?: SaleKind;
 };
 
@@ -224,13 +211,12 @@ function SaleForm({
   const queryClient = useQueryClient();
   const { ensure: ensureStaff } = useStaffProfile();
   const { data: studios } = useStudios();
-  const isPackages = studios?.find((s) => s.id === studioId)?.format === "packages";
-  const isTrial = isPackages && kind === "trial";
-  const isRenewal = isPackages && kind === "renewal";
-  // Клуб продажи — из пакетных клубов сотрудника (вносить продажу можно только
-  // там, где он сотрудник); у подписочного — сам клуб формы.
+  const isTrial = kind === "trial";
+  const isRenewal = kind === "renewal";
+  // Клуб продажи — из клубов сотрудника (вносить продажу можно только там,
+  // где он сотрудник).
   const [saleStudioId, setSaleStudioId] = useState(studioId);
-  const saleStudios = isPackages ? (studios ?? []).filter((s) => s.format === "packages") : [];
+  const saleStudios = studios ?? [];
   const [form, setForm] = useState<SaleFields>(() => ({
     clientId: initialClient?.id ?? "",
     clientLabel: initialClient ? clientName(initialClient) : "",
@@ -238,9 +224,7 @@ function SaleForm({
     soldAt: todayISO(),
     amount: "",
     downPayment: "",
-    remainingCount: 2,
     paymentsCount: 1,
-    paymentType: "first",
     paymentMethod: "cash",
     promoCode: "",
     comment: "",
@@ -251,7 +235,7 @@ function SaleForm({
     setForm((f) => ({ ...f, [key]: value }));
   const [saving, setSaving] = useState(false);
 
-  // У пакетных клубов номенклатура общая на все пакетные клубы.
+  // Номенклатура общая на все клубы сети.
   const catalogIds = useCatalogStudioIds(studioId);
   const { data: memberships = [], isFetched: membershipsFetched } = useQuery({
     queryKey: ["memberships", studioId, "options", catalogIds?.join(",")],
@@ -260,7 +244,7 @@ function SaleForm({
         supabase
           .from("memberships")
           .select(
-            "id, name, price, duration_days, visits_count, installment_enabled, max_payments, kind, personal_count",
+            "id, name, price, duration_days, visits_count, max_payments, kind, personal_count",
           )
           .in("studio_id", catalogIds!)
           .order("name"),
@@ -269,8 +253,7 @@ function SaleForm({
     meta: { errorMessage: "Не удалось загрузить абонементы" },
   });
 
-  // Сотрудники клуба продажи: администраторы — кто продал, тренеры (пакетный
-  // формат) — кто был с клиентом при продаже. Выбранный, которого нет в
+  // Сотрудники клуба продажи: администраторы — кто продал, тренеры — кто был с клиентом при продаже. Выбранный, которого нет в
   // другом клубе, сбрасывается сам: seller / trainer ищутся в новом списке.
   const { data: staffRows = [], isLoading: staffLoading } = useStudioStaff(saleStudioId);
   const trainers = staffRows.filter((r) => r.role === "trainer");
@@ -279,15 +262,15 @@ function SaleForm({
   const admins = staffRows.filter((r) => isAdminRole(r.role));
   const seller = admins.find((r) => r.id === form.sellerId) ?? null;
 
-  // Пакетная студия: «Пробное» — только пробные посещения, остальное — пакеты
+  // «Пробное» — только пробные посещения, остальное — пакеты
   // и разовое посещение (его продают только здесь, в приложении его нет).
   // Абонемент переноса выдаётся своей формой («Перенос»), здесь его нет.
-  const options = isPackages
-    ? memberships.filter((m) => m.kind !== "carryover" && (m.kind === "trial") === isTrial)
-    : memberships;
+  const options = memberships.filter(
+    (m) => m.kind !== "carryover" && (m.kind === "trial") === isTrial,
+  );
   const membership = options.find((m) => m.id === form.membershipId) ?? null;
-  const t = saleTotals(form, membership, isPackages);
-  const maxPayments = isPackages ? Math.max(1, membership?.max_payments ?? 1) : 1;
+  const t = saleTotals(form, membership);
+  const maxPayments = Math.max(1, membership?.max_payments ?? 1);
 
   // Цена подставляется при выборе, а не эффектом по выбранному абонементу:
   // эффект срабатывал и на перезагрузку списка и затирал введённую скидку.
@@ -298,7 +281,6 @@ function SaleForm({
       membershipId: id,
       amount: m ? String(m.price ?? 0) : "",
       downPayment: "",
-      remainingCount: 2,
       paymentsCount: 1,
     }));
   };
@@ -310,7 +292,7 @@ function SaleForm({
   const firstTrialId = isTrial ? (options[0]?.id ?? "") : "";
   if (firstTrialId && !form.membershipId) pickMembership(firstTrialId);
 
-  // Пакетный формат: при выборе числа платежей первый платёж предлагается
+  // При выборе числа платежей первый платёж предлагается
   // равной долей — график виден сразу, администратор правит сумму, внесённую
   // на месте, остаток пересчитывается на следующие платежи.
   const pickPaymentsCount = (n: number) => {
@@ -330,7 +312,7 @@ function SaleForm({
       (!saleStudioId ? "Выберите клуб продажи" : null) ??
       (!seller ? "Выберите администратора, который продал" : null) ??
       saleFormError(form, t) ??
-      (isPackages && form.paymentsCount > maxPayments
+      (form.paymentsCount > maxPayments
         ? `Этот пакет можно оплатить не больше чем ${maxPayments} платежами`
         : null);
     if (invalid) {
@@ -345,19 +327,15 @@ function SaleForm({
       // замороженный (activate_membership_from_sale), поэтому предупреждаем о
       // любом из них. limit(1), а не maybeSingle: при двух строках maybeSingle
       // отдаёт ошибку, и предупреждение молча пропадало.
-      // Пакетная студия: пакет персональных и пакет тренировок — разные
-      // балансы, вытесняется только абонемент того же вида (balance_kind).
-      let currentQuery = supabase
+      // Пакет персональных и пакет тренировок — разные балансы, вытесняется
+      // только абонемент того же вида (balance_kind).
+      const { data: currentRows, error: currentErr } = await supabase
         .from("client_memberships")
         .select("id, status, memberships(name, kind)")
         .eq("client_id", form.clientId)
-        .in("status", ["active", "frozen"]);
-      if (isPackages)
-        currentQuery = currentQuery.eq(
-          "balance_kind",
-          membership?.kind === "personal" ? "personal" : "group",
-        );
-      const { data: currentRows, error: currentErr } = await currentQuery.limit(1);
+        .in("status", ["active", "frozen"])
+        .eq("balance_kind", membership?.kind === "personal" ? "personal" : "group")
+        .limit(1);
       if (currentErr) {
         toast.error("Не удалось проверить абонементы клиента: " + currentErr.message);
         return;
@@ -366,12 +344,11 @@ function SaleForm({
       const currentInfo = Array.isArray(current?.memberships)
         ? current?.memberships[0]
         : current?.memberships;
-      // Продление в пакетной студии ничего не заменяет — встаёт в очередь
+      // Продление ничего не заменяет — встаёт в очередь
       // после текущего (db/migrations/2026-10-11_zzz_packages_renewal_queue.sql);
       // так же — разовое посещение и пакет при разовом
       // (db/migrations/2026-10-15_zzzz_packages_review_fixes.sql).
       const queued =
-        isPackages &&
         membership?.kind !== "personal" &&
         (membership?.kind === "single" || currentInfo?.kind === "single");
       if (current && !isRenewal && !queued) {
@@ -402,15 +379,10 @@ function SaleForm({
           down_payment_amount: t.down,
           remaining_installments: t.remaining,
           source: "admin",
-          // В пакетных студиях типа оплаты нет — колонка остаётся по умолчанию,
-          // зато есть тип продажи.
-          ...(isPackages
-            ? {
-                sale_kind: kind,
-                trainer_id: trainer?.id ?? null,
-                trainer_name: trainer?.full_name ?? null,
-              }
-            : { payment_type: form.paymentType }),
+          // Типа оплаты нет — колонка остаётся по умолчанию, зато есть тип продажи.
+          sale_kind: kind,
+          trainer_id: trainer?.id ?? null,
+          trainer_name: trainer?.full_name ?? null,
           payment_method: form.paymentMethod,
           list_price: t.listPrice,
           discount_amount: t.discount,
@@ -455,7 +427,7 @@ function SaleForm({
       }
       toast.success("Продажа создана");
       celebrateSale();
-      // Продажа пакетной студии сразу появляется в «Абонементах» — откуда бы
+      // Продажа сразу появляется в «Абонементах» — откуда бы
       // её ни оформили (из «Абонементов» или из карточки клиента).
       queryClient.invalidateQueries({ queryKey: ["client_packages_list"] });
       onOpenChange(false);
@@ -468,12 +440,8 @@ function SaleForm({
   return (
     <>
       <DialogHeader>
-        <DialogTitle>{isPackages ? SALE_KIND_LABEL[kind] : "Новая продажа"}</DialogTitle>
-        <DialogDescription>
-          {isPackages
-            ? SALE_KIND_HINT[kind]
-            : "Выберите клиента и абонемент. Стоимость подтянется автоматически."}
-        </DialogDescription>
+        <DialogTitle>{SALE_KIND_LABEL[kind]}</DialogTitle>
+        <DialogDescription>{SALE_KIND_HINT[kind]}</DialogDescription>
       </DialogHeader>
       <DialogForm onSubmit={handleSave}>
         <DialogBody>
@@ -490,22 +458,20 @@ function SaleForm({
               />
             </FormField>
 
-            {isPackages && (
-              <FormField label="Клуб продажи" tip={SALE_STUDIO_TIP} required>
-                <Select value={saleStudioId ?? ""} onValueChange={setSaleStudioId}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Выберите клуб" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {saleStudios.map((s) => (
-                      <SelectItem key={s.id} value={s.id}>
-                        {s.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </FormField>
-            )}
+            <FormField label="Клуб продажи" tip={SALE_STUDIO_TIP} required>
+              <Select value={saleStudioId ?? ""} onValueChange={setSaleStudioId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Выберите клуб" />
+                </SelectTrigger>
+                <SelectContent>
+                  {saleStudios.map((s) => (
+                    <SelectItem key={s.id} value={s.id}>
+                      {s.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </FormField>
 
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <FormField label="Дата продажи" tip={SALE_TIPS.soldAt} required>
@@ -539,11 +505,11 @@ function SaleForm({
               tip={SALE_TIPS.membership}
               required
               hint={
-                isPackages && membershipsFetched && options.length === 0
+                membershipsFetched && options.length === 0
                   ? isTrial
                     ? "Нет пробных посещений. Добавьте в «Номенклатурах» номенклатуру с типом «Пробное посещение»."
                     : "Нет пакетов тренировок. Добавьте их в «Номенклатурах»."
-                  : isPackages && membership?.kind === "personal"
+                  : membership?.kind === "personal"
                     ? // Пакет персональных: администратору бонус всегда, тренеру —
                       // только первая покупка персональных клиентом
                       // (payroll_sale_payment_rows, 2026-11-01_zzz_payroll_personal_admin_single.sql).
@@ -556,7 +522,7 @@ function SaleForm({
                       : isRenewal
                         ? "С продления пакета персональных бонус идёт администратору, тренеру — нет."
                         : "С пакета персональных бонус администратору — всегда, тренеру — только за первую покупку персональных клиентом (за продление — нет)."
-                    : isPackages && membership?.kind === "single"
+                    : membership?.kind === "single"
                       ? "С разового посещения бонус к зарплате не идёт."
                       : undefined
               }
@@ -571,9 +537,9 @@ function SaleForm({
                   value: m.id,
                   label: m.name,
                   hint:
-                    isPackages && m.kind === "personal"
+                    m.kind === "personal"
                       ? `Персональные · ${formatMoney(Number(m.price ?? 0))}`
-                      : isPackages && m.kind === "single"
+                      : m.kind === "single"
                         ? `Разовое · ${formatMoney(Number(m.price ?? 0))}`
                         : formatMoney(Number(m.price ?? 0)),
                   searchText: m.name,
@@ -623,98 +589,45 @@ function SaleForm({
               </FormField>
             </div>
 
-            {isPackages ? (
-              maxPayments > 1 && (
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  <FormField label="Платежей" tip={SALE_TIPS.paymentsCount} required>
-                    <Select
-                      value={String(form.paymentsCount)}
-                      onValueChange={(v) => pickPaymentsCount(Number(v))}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {Array.from({ length: maxPayments }, (_, i) => i + 1).map((n) => (
-                          <SelectItem key={n} value={String(n)}>
-                            {n === 1 ? "1 — оплата сразу" : n}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </FormField>
-                  {t.installment && (
-                    <FormField label="Первый платёж, ₾" tip={SALE_TIPS.firstPayment} required>
-                      <Input
-                        type="number"
-                        min={0}
-                        step="0.01"
-                        value={form.downPayment}
-                        onChange={(e) => set("downPayment", e.target.value)}
-                        placeholder="Сколько внесено сейчас"
-                      />
-                    </FormField>
-                  )}
-                  {t.schedule.length > 0 && (
-                    <InfoNote className="sm:col-span-2">
-                      <ul className="space-y-1">
-                        {t.schedule.map((p, i) => (
-                          <li key={i} className="flex items-center justify-between gap-3">
-                            <span>
-                              Платёж {i + 1} — {formatDate(p.date)}
-                              {p.isDownPayment && " (сегодня, в клубе)"}
-                            </span>
-                            <span className="font-medium tabular-nums text-foreground">
-                              {formatMoneyPrecise(p.amount)}
-                            </span>
-                          </li>
-                        ))}
-                      </ul>
-                    </InfoNote>
-                  )}
-                </div>
-              )
-            ) : t.installment ? (
-              <div className="space-y-3">
-                <div className="text-xs font-medium uppercase text-muted-foreground">Рассрочка</div>
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  <FormField label="Первый взнос, ₾" tip={SALE_TIPS.downPayment} required>
+            {maxPayments > 1 && (
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <FormField label="Платежей" tip={SALE_TIPS.paymentsCount} required>
+                  <Select
+                    value={String(form.paymentsCount)}
+                    onValueChange={(v) => pickPaymentsCount(Number(v))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Array.from({ length: maxPayments }, (_, i) => i + 1).map((n) => (
+                        <SelectItem key={n} value={String(n)}>
+                          {n === 1 ? "1 — оплата сразу" : n}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </FormField>
+                {t.installment && (
+                  <FormField label="Первый платёж, ₾" tip={SALE_TIPS.firstPayment} required>
                     <Input
                       type="number"
                       min={0}
                       step="0.01"
                       value={form.downPayment}
                       onChange={(e) => set("downPayment", e.target.value)}
-                      placeholder="Сколько вносит сейчас"
+                      placeholder="Сколько внесено сейчас"
                     />
                   </FormField>
-                  <FormField
-                    label="Ещё платежей"
-                    tip={SALE_TIPS.installments}
-                    htmlFor={null}
-                    required
-                  >
-                    <SegmentedControl<"2" | "3">
-                      fullWidth
-                      aria-label="Ещё платежей"
-                      value={form.remainingCount === 3 ? "3" : "2"}
-                      onChange={(v) => set("remainingCount", v === "3" ? 3 : 2)}
-                      options={[
-                        { value: "2", label: "2 мес." },
-                        { value: "3", label: "3 мес." },
-                      ]}
-                    />
-                  </FormField>
-                </div>
-
+                )}
                 {t.schedule.length > 0 && (
-                  <InfoNote>
+                  <InfoNote className="sm:col-span-2">
                     <ul className="space-y-1">
                       {t.schedule.map((p, i) => (
                         <li key={i} className="flex items-center justify-between gap-3">
                           <span>
-                            {p.isDownPayment ? "Первый взнос" : `Платёж ${i + 1}`} —{" "}
-                            {formatDate(p.date)}
+                            Платёж {i + 1} — {formatDate(p.date)}
+                            {p.isDownPayment && " (сегодня, в клубе)"}
                           </span>
                           <span className="font-medium tabular-nums text-foreground">
                             {formatMoneyPrecise(p.amount)}
@@ -725,14 +638,10 @@ function SaleForm({
                   </InfoNote>
                 )}
               </div>
-            ) : membership ? (
-              <InfoNote>
-                Рассрочка недоступна для этого абонемента. Оплата производится сразу.
-              </InfoNote>
-            ) : null}
+            )}
 
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              {isPackages && !isTrial && (
+              {!isTrial && (
                 <FormField label="Тренер" tip={SALE_TIPS.trainer} optional>
                   <Select
                     value={trainer ? form.trainerId : NO_TRAINER}
@@ -746,25 +655,6 @@ function SaleForm({
                       {trainers.map((r) => (
                         <SelectItem key={r.id} value={r.id} textValue={r.full_name}>
                           <StaffOption name={r.full_name} photo={r.photo_url} />
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </FormField>
-              )}
-              {!isPackages && (
-                <FormField label="Тип оплаты" tip={SALE_TIPS.paymentType} required>
-                  <Select
-                    value={form.paymentType}
-                    onValueChange={(v) => set("paymentType", v as PaymentType)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {PAYMENT_TYPES.map((p) => (
-                        <SelectItem key={p} value={p}>
-                          {PAYMENT_TYPE_LABEL[p]}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -792,7 +682,7 @@ function SaleForm({
                 абонемента пойдёт с первого посещения по нему.
               </InfoNote>
             )}
-            {isPackages && !isRenewal && membership?.kind === "single" && (
+            {!isRenewal && membership?.kind === "single" && (
               <InfoNote>
                 Разовое посещение не заменяет действующий абонемент клиента: встанет в очередь и
                 спишется, когда текущий истечёт или на нём закончатся тренировки. Так же и пакет,
@@ -803,7 +693,7 @@ function SaleForm({
             {form.clientId && membership && (
               <InfoNote>
                 Продажа абонемента «{membership.name}» клиенту {form.clientLabel}.
-                {isPackages && !isRenewal && (
+                {!isRenewal && (
                   <>
                     {" "}
                     Абонемент будет ожидать посещения: срок действия начнётся с первой тренировки
