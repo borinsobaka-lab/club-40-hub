@@ -88,7 +88,7 @@ export function renderSitePage(key: string): string | null {
 <meta property="og:description" content="${esc(page.description)}">
 <meta property="og:image" content="https://app.lady-stretch.one/site/img/hero-aero.webp">
 <link rel="icon" href="/favicon.ico">
-<link rel="preload" href="/site/fonts/roboto-cyrillic-600-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/site/fonts/libertinus-sans-cyrillic-400-normal.woff2" as="font" type="font/woff2" crossorigin>
 ${page.preload ? `<link rel="preload" href="${page.preload}" as="image">` : ""}
 <style>${styles}</style>
 </head>
