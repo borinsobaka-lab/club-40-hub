@@ -69,8 +69,8 @@ function Panel({
 }) {
   return (
     <section className="rounded-lg border bg-background">
-      <header className="flex items-center justify-between gap-2 border-b bg-muted/50 px-3 py-2">
-        <h2 className="truncate text-sm font-semibold">{title}</h2>
+      <header className="flex flex-wrap items-center justify-between gap-2 border-b bg-muted/50 px-3 py-2">
+        <h2 className="text-sm font-semibold">{title}</h2>
         {action}
       </header>
       {children}
@@ -132,7 +132,7 @@ export function ChannelsPanel() {
     <Panel
       title="Каналы"
       action={
-        <div className="flex flex-wrap justify-end gap-1.5">
+        <div className="flex flex-wrap gap-1.5 sm:justify-end">
           {(["telegram_bot", "telegram_user", "whatsapp", "instagram", "facebook"] as const).map(
             (k) => (
               <Button key={k} variant="outline" size="xs" onClick={() => setAdding(k)}>

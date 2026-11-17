@@ -14,6 +14,8 @@ import { NONE } from "@/lib/crm/logic";
 import { DropIndicator } from "@/components/kb/drop-indicator";
 import { CrmSettingsPageSkeleton } from "@/components/page-skeletons";
 import { CardSkeleton } from "@/components/skeletons";
+import { TableToolbar } from "@/components/table-toolbar";
+import { SegmentedControl } from "@/components/ui/segmented-control";
 import { Button } from "@/components/ui/button";
 import { ColorInput } from "@/components/ui/color-input";
 import {
@@ -41,9 +43,20 @@ import { reorderIds } from "@/lib/crm/logic";
 import type { CrmLossReason, CrmPipeline, CrmStage } from "@/lib/crm/types";
 import { cn } from "@/lib/utils";
 
+const SETTINGS_TABS = [
+  { value: "pipelines", label: "Воронки и этапы" },
+  { value: "channels", label: "Каналы" },
+  { value: "templates", label: "Шаблоны" },
+  { value: "lists", label: "Задачи и отказы" },
+] as const;
+type SettingsTab = (typeof SETTINGS_TABS)[number]["value"];
+
 export const Route = createFileRoute("/_authenticated/crm/settings")({
   head: () => ({ meta: [{ title: "Настройки — CRM — Base40 Admin" }] }),
   pendingComponent: CrmSettingsPageSkeleton,
+  validateSearch: (s: Record<string, unknown>): { tab?: SettingsTab } => ({
+    tab: SETTINGS_TABS.some((t) => t.value === s.tab) ? (s.tab as SettingsTab) : undefined,
+  }),
   component: CrmSettingsPage,
 });
 
@@ -81,6 +94,8 @@ function CrmSettingsPage() {
   const { data: setup, isLoading } = useQuery(crmSetupQuery);
   const { data: automations = [] } = useQuery(crmAutomationsQuery);
   const { confirm, confirmDialog } = useConfirm();
+  const tab = Route.useSearch().tab ?? "pipelines";
+  const navigate = Route.useNavigate();
   const [selected, setSelected] = useState<string | null>(null);
   const [editing, setEditing] = useState<Editing | null>(null);
 
@@ -164,12 +179,24 @@ function CrmSettingsPage() {
   return (
     <AdminShell title="Настройки CRM">
       <div className="mx-auto max-w-5xl space-y-4">
-        <InfoNote>
-          Воронки и этапы общие для всех клубов. Строки переставляются перетаскиванием за ручку;
-          «Успешно реализовано» и «Закрыто и не реализовано» есть у каждой воронки и всегда стоят
-          последними.
-        </InfoNote>
-        {isLoading || !setup ? (
+        <TableToolbar>
+          <div className="toolbar-full overflow-x-auto">
+            <SegmentedControl
+              aria-label="Раздел настроек"
+              value={tab}
+              onChange={(v) => void navigate({ search: { tab: v }, replace: true })}
+              options={SETTINGS_TABS.map((t) => ({ value: t.value, label: t.label }))}
+            />
+          </div>
+        </TableToolbar>
+        {tab === "pipelines" && (
+          <InfoNote>
+            Воронки и этапы общие для всех клубов. Строки переставляются перетаскиванием за ручку;
+            «Успешно реализовано» и «Закрыто и не реализовано» есть у каждой воронки и всегда стоят
+            последними.
+          </InfoNote>
+        )}
+        {tab !== "pipelines" ? null : isLoading || !setup ? (
           <CardSkeleton rows={4} />
         ) : (
           <div className="grid grid-cols-1 gap-4 md:grid-cols-[18rem_1fr]">
@@ -291,11 +318,11 @@ function CrmSettingsPage() {
           </div>
         )}
 
-        {setup && <ChannelsPanel />}
-        {setup && <WaTemplatesPanel />}
-        {setup && <TemplatesPanel />}
-        {setup && <TaskTypesPanel />}
-        {setup && (
+        {setup && tab === "channels" && <ChannelsPanel />}
+        {setup && tab === "templates" && <TemplatesPanel />}
+        {setup && tab === "templates" && <WaTemplatesPanel />}
+        {setup && tab === "lists" && <TaskTypesPanel />}
+        {setup && tab === "lists" && (
           <Panel
             title="Причины отказа"
             action={

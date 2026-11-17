@@ -483,7 +483,7 @@ function ClientCard({ client: initial, onClose }: { client: ClientLike; onClose:
       </DialogHeader>
       <DialogBody
         className={cn(
-          chatAside && "grid grid-cols-[minmax(0,1fr)_24rem] overflow-hidden p-0 sm:px-0",
+          chatAside && "grid grid-cols-[minmax(0,1fr)_28rem] overflow-hidden p-0 sm:px-0",
         )}
       >
         <div className={cn(chatAside && "min-h-0 overflow-y-auto px-6 py-4")}>
@@ -495,14 +495,15 @@ function ClientCard({ client: initial, onClose }: { client: ClientLike; onClose:
             {/* На телефоне четыре вкладки не помещаются в строку — прокручиваются. */}
             <TabsList className="max-w-full justify-start overflow-x-auto">
               <TabsTrigger value="card">Карточка</TabsTrigger>
-              <TabsTrigger value="visits">Посещения</TabsTrigger>
-              <TabsTrigger value="profile">Анкета</TabsTrigger>
-              <TabsTrigger value="app">Приложение</TabsTrigger>
+              {/* Переписка — второй: на телефоне её не должно быть за краем. */}
               {crm && isMobile && (
                 <TabsTrigger value="chat">
                   Переписка{unreadChats > 0 ? ` · ${unreadChats}` : ""}
                 </TabsTrigger>
               )}
+              <TabsTrigger value="visits">Посещения</TabsTrigger>
+              <TabsTrigger value="profile">Анкета</TabsTrigger>
+              <TabsTrigger value="app">Приложение</TabsTrigger>
             </TabsList>
 
             <TabsContent value="card" className="mt-4 space-y-5">

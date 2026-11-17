@@ -2871,12 +2871,12 @@ export function CrmSettingsPageSkeleton() {
   return (
     <ShellSkeleton title="Настройки CRM" network>
       <div className="mx-auto max-w-5xl space-y-4">
+        <ToolbarSkeleton search={false} controls={["w-96"]} />
         <Skeleton className="h-14 w-full rounded-lg" />
         <div className="grid grid-cols-1 gap-4 md:grid-cols-[18rem_1fr]">
           {panel(2, "Воронки")}
           {panel(7, "Этапы")}
         </div>
-        {panel(6, "Причины отказа")}
       </div>
     </ShellSkeleton>
   );
@@ -2906,9 +2906,9 @@ export function CrmReportsPageSkeleton() {
   return (
     <ShellSkeleton title="Отчёт" network>
       <div className="mx-auto max-w-5xl space-y-4">
-        <ToolbarSkeleton search={false} controls={["w-56", "w-40", "w-40"]} />
-        <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
-          {Array.from({ length: 5 }, (_, i) => (
+        <ToolbarSkeleton search={false} controls={["w-56", "w-56"]} />
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
+          {Array.from({ length: 6 }, (_, i) => (
             <Skeleton key={i} className="h-20 w-full rounded-lg" />
           ))}
         </div>

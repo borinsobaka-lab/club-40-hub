@@ -7,6 +7,7 @@ import { Plus } from "lucide-react";
 
 import { StaffAvatar } from "@/components/employee-photo";
 import { Button } from "@/components/ui/button";
+import type { ContactUnread } from "@/lib/crm/data";
 import { ageLabel, sumBudget } from "@/lib/crm/logic";
 import type { CrmDeal, CrmPerson, CrmStage } from "@/lib/crm/types";
 import { formatMoney, formatPhone } from "@/lib/format";
@@ -26,6 +27,7 @@ export function Kanban({
   nextTask,
   people,
   studioNames,
+  unread,
   now,
   onOpen,
   onMove,
@@ -37,6 +39,8 @@ export function Kanban({
   nextTask: Map<string, string>;
   people: Map<string, CrmPerson>;
   studioNames: Map<string, string>;
+  /** Непрочитанные сообщения контакта: клиент ждёт ответа. */
+  unread?: Map<string, ContactUnread>;
   now: Date;
   onOpen: (dealId: string) => void;
   onMove: (deal: CrmDeal, stage: CrmStage) => void;
@@ -59,6 +63,7 @@ export function Kanban({
               due={nextTask.get(deal.id)}
               person={deal.responsible_id ? people.get(deal.responsible_id) : undefined}
               studioName={deal.studio_id ? studioNames.get(deal.studio_id) : undefined}
+              unread={deal.contact_id ? unread?.get(deal.contact_id) : undefined}
               closed={stage.kind !== "open"}
               now={now}
               onOpen={onOpen}
@@ -158,6 +163,7 @@ function DealTile({
   due,
   person,
   studioName,
+  unread,
   closed,
   now,
   onOpen,
@@ -166,6 +172,7 @@ function DealTile({
   due: string | undefined;
   person: CrmPerson | undefined;
   studioName: string | undefined;
+  unread: ContactUnread | undefined;
   closed: boolean;
   now: Date;
   onOpen: (dealId: string) => void;
@@ -199,6 +206,7 @@ function DealTile({
       onClick={() => onOpen(deal.id)}
       className={cn(
         "w-full cursor-pointer rounded-md border bg-background p-2.5 text-left shadow-xs transition-shadow hover:shadow-md focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none",
+        unread && "border-brand/50",
         dragging && "opacity-40",
       )}
     >
@@ -232,6 +240,14 @@ function DealTile({
               #{t}
             </span>
           ))}
+        </div>
+      )}
+      {unread && (
+        <div className="mt-2 flex items-center gap-1.5 rounded-md bg-brand/10 px-2 py-1 text-xs">
+          <span className="flex h-4 min-w-4 shrink-0 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-semibold text-white">
+            {unread.count}
+          </span>
+          <span className="truncate font-medium">{unread.text || "Новое сообщение"}</span>
         </div>
       )}
       <div className="mt-2 flex items-center justify-between gap-2">

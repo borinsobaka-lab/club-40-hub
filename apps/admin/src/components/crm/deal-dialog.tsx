@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Check, Loader2, Pencil, Plus, Send, Trash2, X } from "lucide-react";
+import { Check, Loader2, Pencil, Phone, Plus, Send, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 
 import { ClientCombobox } from "@/components/client-combobox";
@@ -59,8 +59,8 @@ import {
   parseBudget,
   parseTags,
 } from "@/lib/crm/logic";
-import type { CrmContact, CrmDeal, CrmEvent, CrmTask } from "@/lib/crm/types";
-import { formatDateTime, formatPhone, toDateTimeLocalValue } from "@/lib/format";
+import type { CrmContact, CrmDeal, CrmEvent, CrmStage, CrmTask } from "@/lib/crm/types";
+import { formatDateTime, formatMoney, formatPhone, toDateTimeLocalValue } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { PersonSelect, StageSelect, StudioPick, TaskDue } from "./parts";
 import { NONE, replyBlock } from "@/lib/crm/logic";
@@ -92,6 +92,8 @@ function DealCard({ dealId, onClose }: { dealId: string; onClose: () => void }) 
   const canManage = hasRight(access, "crm.manage");
 
   const deal = data?.deal ?? null;
+  // Телефон: «Лента и переписка» или «Контакт и задачи».
+  const [pane, setPane] = useState<"main" | "info">("main");
 
   const patch = async (p: DealPatch) => {
     try {
@@ -143,58 +145,66 @@ function DealCard({ dealId, onClose }: { dealId: string; onClose: () => void }) 
   const stages = setup.stages.filter((s) => s.pipeline_id === deal.pipeline_id);
   const stage = stages.find((s) => s.id === deal.stage_id);
 
-  return (
-    <>
-      <div className="border-b px-4 py-3 pr-12 sm:px-6">
-        <DialogTitle asChild>
-          <div>
-            <InlineText
-              value={deal.title}
-              aria-label="Название сделки"
-              className="h-9 border-transparent bg-transparent px-1 text-lg! font-semibold shadow-none hover:border-input"
-              onSave={(v) => (v ? patch({ title: v }) : undefined)}
-            />
-          </div>
-        </DialogTitle>
-        <DialogDescription className="px-1">
-          Создана {formatDateTime(deal.created_at)}
-          {deal.closed_at ? ` · закрыта ${formatDateTime(deal.closed_at)}` : ""}
-        </DialogDescription>
-      </div>
-
-      <div className="grid min-h-0 flex-1 grid-cols-1 overflow-y-auto md:grid-cols-[20rem_1fr] md:overflow-hidden">
-        {/* Слева: сделка и контакт */}
-        <div className="space-y-4 border-b p-4 md:overflow-y-auto md:border-r md:border-b-0 sm:p-5">
-          <Row label="Воронка">
-            <Select
-              value={deal.pipeline_id}
-              onValueChange={(v) => {
-                const first = setup.stages.find((s) => s.pipeline_id === v);
-                if (first) void patch({ pipeline_id: v, stage_id: first.id });
-              }}
-            >
-              <SelectTrigger aria-label="Воронка">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {setup.pipelines
-                  .filter((p) => !p.is_archived || p.id === deal.pipeline_id)
-                  .map((p) => (
-                    <SelectItem key={p.id} value={p.id}>
-                      {p.name}
-                    </SelectItem>
-                  ))}
-              </SelectContent>
-            </Select>
-          </Row>
-          <Row label="Этап">
-            <StageSelect
-              stages={stages}
-              value={deal.stage_id}
-              onChange={(v) => void patch({ stage_id: v })}
-            />
-          </Row>
-          {stage?.kind === "lost" && (
+  const openTasks = (data?.tasks ?? []).filter((t) => !t.done_at).length;
+  const fields = (
+    <section className="space-y-3">
+      <h3 className="text-sm font-semibold">Сделка</h3>
+      <div className="grid grid-cols-2 gap-x-3 gap-y-3">
+        <Row label="Воронка">
+          <Select
+            value={deal.pipeline_id}
+            onValueChange={(v) => {
+              const first = setup.stages.find((s) => s.pipeline_id === v);
+              if (first) void patch({ pipeline_id: v, stage_id: first.id });
+            }}
+          >
+            <SelectTrigger aria-label="Воронка">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {setup.pipelines
+                .filter((p) => !p.is_archived || p.id === deal.pipeline_id)
+                .map((p) => (
+                  <SelectItem key={p.id} value={p.id}>
+                    {p.name}
+                  </SelectItem>
+                ))}
+            </SelectContent>
+          </Select>
+        </Row>
+        <Row label="Клуб">
+          <StudioPick
+            value={deal.studio_id}
+            onChange={(v) => void patch({ studio_id: v })}
+            studios={studios}
+          />
+        </Row>
+        <Row label="Бюджет, ₾">
+          <InlineText
+            value={deal.budget === null ? "" : String(deal.budget)}
+            aria-label="Бюджет"
+            inputMode="decimal"
+            placeholder="Не указан"
+            onSave={(v) => {
+              const n = parseBudget(v);
+              if (n === undefined) {
+                toast.error("Бюджет — неотрицательное число");
+                return false;
+              }
+              return patch({ budget: n });
+            }}
+          />
+        </Row>
+        <Row label="Источник">
+          <InlineText
+            value={deal.source ?? ""}
+            aria-label="Источник"
+            placeholder="Не указан"
+            onSave={(v) => patch({ source: v || null })}
+          />
+        </Row>
+        {stage?.kind === "lost" && (
+          <div className="col-span-2">
             <Row label="Причина отказа">
               <Select
                 value={deal.loss_reason_id ?? NONE}
@@ -215,44 +225,9 @@ function DealCard({ dealId, onClose }: { dealId: string; onClose: () => void }) 
                 </SelectContent>
               </Select>
             </Row>
-          )}
-          <Row label="Ответственный">
-            <PersonSelect
-              value={deal.responsible_id}
-              onChange={(v) => void patch({ responsible_id: v })}
-            />
-          </Row>
-          <Row label="Клуб">
-            <StudioPick
-              value={deal.studio_id}
-              onChange={(v) => void patch({ studio_id: v })}
-              studios={studios}
-            />
-          </Row>
-          <Row label="Бюджет, ₾">
-            <InlineText
-              value={deal.budget === null ? "" : String(deal.budget)}
-              aria-label="Бюджет"
-              inputMode="decimal"
-              placeholder="Не указан"
-              onSave={(v) => {
-                const n = parseBudget(v);
-                if (n === undefined) {
-                  toast.error("Бюджет — неотрицательное число");
-                  return false;
-                }
-                return patch({ budget: n });
-              }}
-            />
-          </Row>
-          <Row label="Источник">
-            <InlineText
-              value={deal.source ?? ""}
-              aria-label="Источник"
-              placeholder="Не указан"
-              onSave={(v) => patch({ source: v || null })}
-            />
-          </Row>
+          </div>
+        )}
+        <div className="col-span-2">
           <Row label="Теги">
             <InlineText
               value={deal.tags.join(", ")}
@@ -261,9 +236,91 @@ function DealCard({ dealId, onClose }: { dealId: string; onClose: () => void }) 
               onSave={(v) => patch({ tags: parseTags(v) })}
             />
           </Row>
+        </div>
+      </div>
+    </section>
+  );
 
+  return (
+    <>
+      {/* Шапка: главное о сделке — название, этап, ответственный, телефон. */}
+      <div className="space-y-2 border-b px-4 py-3 sm:px-6">
+        <div className="pr-10">
+          <DialogTitle asChild>
+            <div>
+              <InlineText
+                value={deal.title}
+                aria-label="Название сделки"
+                className="h-9 border-transparent bg-transparent px-1 text-lg! font-semibold shadow-none hover:border-input"
+                onSave={(v) => (v ? patch({ title: v }) : undefined)}
+              />
+            </div>
+          </DialogTitle>
+          <DialogDescription className="px-1 max-md:sr-only">
+            Создана {formatDateTime(deal.created_at)}
+            {deal.closed_at ? ` · закрыта ${formatDateTime(deal.closed_at)}` : ""}
+          </DialogDescription>
+        </div>
+        <StageBar
+          stages={stages}
+          value={deal.stage_id}
+          onChange={(v) => void patch({ stage_id: v })}
+        />
+        <div className="grid grid-cols-2 items-center gap-2 md:flex md:flex-wrap">
+          <StageSelect
+            stages={stages}
+            value={deal.stage_id}
+            onChange={(v) => void patch({ stage_id: v })}
+            className="md:w-60"
+          />
+          <div className="min-w-0 md:w-56">
+            <PersonSelect
+              value={deal.responsible_id}
+              onChange={(v) => void patch({ responsible_id: v })}
+            />
+          </div>
+          <div className="col-span-2 flex flex-wrap items-center gap-x-4 gap-y-1 md:ml-auto">
+            {deal.contact?.phone && (
+              <a
+                href={`tel:${deal.contact.phone}`}
+                className="flex items-center gap-1.5 text-sm font-medium tabular-nums hover:underline"
+              >
+                <Phone className="size-4 text-muted-foreground" />
+                {formatPhone(deal.contact.phone)}
+              </a>
+            )}
+            {deal.budget !== null && (
+              <span className="text-sm font-semibold tabular-nums">{formatMoney(deal.budget)}</span>
+            )}
+          </div>
+        </div>
+        {/* Телефон: одно окно не помещает обе части — переключатель. */}
+        <SegmentedControl
+          aria-label="Часть карточки"
+          className="w-full md:hidden"
+          value={pane}
+          onChange={(v) => setPane(v as "main" | "info")}
+          options={[
+            { value: "main", label: "Лента и переписка" },
+            {
+              value: "info",
+              label: openTasks ? `Контакт и задачи · ${openTasks}` : "Контакт и задачи",
+            },
+          ]}
+        />
+      </div>
+
+      <div className="grid min-h-0 flex-1 grid-cols-1 overflow-hidden md:grid-cols-[22rem_1fr]">
+        {/* Слева: контакт, задачи, поля сделки */}
+        <div
+          className={cn(
+            "space-y-5 overflow-y-auto p-4 md:border-r sm:p-5",
+            pane === "main" && "max-md:hidden",
+          )}
+        >
+          <Tasks dealId={dealId} tasks={data?.tasks ?? []} responsibleId={deal.responsible_id} />
           <ContactBlock deal={deal} />
-
+          {fields}
           {canManage && (
             <Button
               variant="ghost"
@@ -277,18 +334,14 @@ function DealCard({ dealId, onClose }: { dealId: string; onClose: () => void }) 
           )}
         </div>
 
-        {/* Справа: задачи и лента или переписка */}
+        {/* Справа: лента или переписка */}
         <RightPane
+          className={pane === "info" ? "max-md:hidden" : undefined}
           deal={deal}
           studioName={studios.find((s) => s.id === deal.studio_id)?.name}
           feed={
             <>
-              <div className="flex-1 space-y-4 p-4 md:overflow-y-auto sm:p-5">
-                <Tasks
-                  dealId={dealId}
-                  tasks={data?.tasks ?? []}
-                  responsibleId={deal.responsible_id}
-                />
+              <div className="flex-1 space-y-4 overflow-y-auto p-4 sm:p-5">
                 <Timeline events={data?.events ?? []} />
               </div>
               <NoteInput dealId={dealId} />
@@ -302,6 +355,48 @@ function DealCard({ dealId, onClose }: { dealId: string; onClose: () => void }) 
 }
 
 /**
+ * Полоса этапов воронки (как в amoCRM): пройденные и текущий закрашены,
+ * нажатие переводит сделку в этап.
+ */
+function StageBar({
+  stages,
+  value,
+  onChange,
+}: {
+  stages: CrmStage[];
+  value: string;
+  onChange: (id: string) => void;
+}) {
+  const current = stages.findIndex((s) => s.id === value);
+  const kind = stages[current]?.kind;
+  // Закрытая сделка: «Успешно» — вся полоса зелёная, отказ — серая.
+  const open = stages.filter((s) => s.kind === "open");
+  return (
+    <div className="flex gap-1" role="group" aria-label="Этапы воронки">
+      {open.map((s, i) => {
+        const filled = kind === "won" || (kind === "open" && i <= current);
+        return (
+          <button
+            key={s.id}
+            type="button"
+            title={s.name}
+            aria-label={`Перевести в этап «${s.name}»`}
+            aria-current={s.id === value ? "step" : undefined}
+            onClick={() => s.id !== value && onChange(s.id)}
+            className="group h-4 flex-1 cursor-pointer py-1"
+          >
+            <span
+              className="block h-2 rounded-full bg-muted transition-opacity group-hover:opacity-70"
+              style={filled ? { backgroundColor: kind === "won" ? "#16a34a" : s.color } : undefined}
+            />
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+/**
  * Правая часть карточки: «Лента» (задачи, комментарии, события) и переписка
  * с контактом — вкладка на каждый его диалог, подписанная аккаунтом, в
  * который он пишет. Пришло непрочитанное — карточка открывается на нём.
@@ -310,10 +405,12 @@ function RightPane({
   deal,
   studioName,
   feed,
+  className,
 }: {
   deal: CrmDeal;
   studioName: string | undefined;
   feed: ReactNode;
+  className?: string;
 }) {
   const { data: conversations = [] } = useContactConversations(deal.contact_id);
   const { data: accounts = [] } = useQuery(crmAccountsQuery);
@@ -339,7 +436,7 @@ function RightPane({
     );
 
   return (
-    <div className="flex min-h-0 flex-col max-md:min-h-[70dvh]">
+    <div className={cn("flex min-h-0 flex-col", className)}>
       {(conversations.length > 0 || canStartWa || canStartTg) && (
         <div className="flex items-center gap-2 overflow-x-auto border-b px-4 py-2 sm:px-5">
           <SegmentedControl

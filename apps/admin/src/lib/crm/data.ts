@@ -440,6 +440,41 @@ export function useUnreadConversations(enabled: boolean) {
   return data ?? 0;
 }
 
+export type ContactUnread = { count: number; text: string | null };
+
+/** Непрочитанное по контактам — для карточек канбана: кто ждёт ответа. */
+export function useUnreadByContact(enabled = true) {
+  const { data } = useQuery({
+    queryKey: [CRM_KEY, "conversations", "unread-by-contact"],
+    queryFn: async () => {
+      const { data: rows, error } = await supabase
+        .from("crm_conversations")
+        .select("contact_id, unread_count, last_message_text, last_message_at")
+        .gt("unread_count", 0)
+        .order("last_message_at", { ascending: false, nullsFirst: false })
+        .limit(500);
+      if (error) throw new Error(error.message);
+      const map = new Map<string, ContactUnread>();
+      for (const r of (rows ?? []) as {
+        contact_id: string;
+        unread_count: number;
+        last_message_text: string | null;
+      }[]) {
+        const prev = map.get(r.contact_id);
+        map.set(r.contact_id, {
+          count: (prev?.count ?? 0) + r.unread_count,
+          text: prev?.text ?? r.last_message_text,
+        });
+      }
+      return map;
+    },
+    enabled,
+    refetchInterval: 20_000,
+    staleTime: 10_000,
+  });
+  return data;
+}
+
 export const markConversationRead = (id: string) =>
   crmRpc<void>("crm_conversation_read", { p_conversation: id });
 

@@ -10,7 +10,7 @@ import { DealForm } from "@/components/crm/deal-form";
 import { Kanban } from "@/components/crm/kanban";
 import { PersonSelect, StudioPick } from "@/components/crm/parts";
 import { NONE } from "@/lib/crm/logic";
-import { useCrmStudios } from "@/lib/crm/data";
+import { useCrmStudios, useUnreadByContact } from "@/lib/crm/data";
 import { CrmDealsPageSkeleton } from "@/components/page-skeletons";
 import { TableToolbar, ToolbarReset, ToolbarSearch } from "@/components/table-toolbar";
 import { Button } from "@/components/ui/button";
@@ -84,6 +84,7 @@ function CrmDealsPage() {
   const { data, isLoading } = usePipelineDeals(pipelineId);
 
   const now = new Date();
+  const unread = useUnreadByContact();
   const nextTask = useMemo(() => nextTaskByDeal(data?.tasks ?? []), [data]);
   const visible = useMemo(
     () => filterDeals(data?.deals ?? [], filter, nextTask),
@@ -187,6 +188,7 @@ function CrmDealsPage() {
             nextTask={nextTask}
             people={peopleMap}
             studioNames={studioNames}
+            unread={unread}
             now={now}
             onOpen={(id) => setSearch({ deal: id })}
             onAdd={(stageId) => setNewStage(stageId)}

@@ -1,12 +1,12 @@
 import { useState } from "react";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 
 import { AdminShell } from "@/components/admin-shell";
 import { StageDot } from "@/components/crm/parts";
+import { DateRangeFilter, type DateRange } from "@/components/date-range-filter";
 import { CrmReportsPageSkeleton } from "@/components/page-skeletons";
 import { TableToolbar } from "@/components/table-toolbar";
-import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -14,6 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { InfoNote } from "@/components/ui/form-field";
 import { StatTile } from "@/components/ui/stat-tile";
 import { crmPeopleQuery, crmSetupQuery, useCrmReport } from "@/lib/crm/data";
 import { percent, waitLabel } from "@/lib/crm/logic";
@@ -32,6 +33,9 @@ const TIPS = {
     "Сколько клиент ждал первого ответа сотрудника — медиана по диалогам, начатым за период. Автоматические сообщения ответом не считаются.",
 };
 
+const localISO = (d: Date) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+
 function monthStartISO() {
   return `${todayISO().slice(0, 8)}01`;
 }
@@ -46,8 +50,13 @@ function CrmReportsPage() {
   const { data: people = [] } = useQuery(crmPeopleQuery);
   const pipelines = setup?.pipelines ?? [];
   const [picked, setPicked] = useState<string | null>(null);
-  const [from, setFrom] = useState(monthStartISO);
-  const [to, setTo] = useState(todayISO);
+  const [range, setRange] = useState<DateRange | undefined>(() => ({
+    from: new Date(`${monthStartISO()}T00:00:00`),
+    to: new Date(`${todayISO()}T00:00:00`),
+  }));
+  // Период не выбран (сбросили) — текущий месяц.
+  const from = range?.from ? localISO(range.from) : monthStartISO();
+  const to = range?.to ? localISO(range.to) : range?.from ? localISO(range.from) : todayISO();
   const pipelineId = picked ?? pipelines.find((p) => !p.is_archived)?.id ?? null;
   const { data: report, isLoading } = useCrmReport(pipelineId, from, to);
   const stages = (setup?.stages ?? []).filter(
@@ -80,31 +89,21 @@ function CrmReportsPage() {
               </SelectContent>
             </Select>
           )}
-          <span className="text-sm text-muted-foreground">с</span>
-          <Input
-            type="date"
-            value={from}
-            max={to}
-            onChange={(e) => setFrom(e.target.value)}
-            aria-label="Период с"
-            className="w-40"
-          />
-          <span className="text-sm text-muted-foreground">по</span>
-          <Input
-            type="date"
-            value={to}
-            min={from}
-            onChange={(e) => setTo(e.target.value)}
-            aria-label="Период по"
-            className="w-40"
+          <DateRangeFilter
+            value={range}
+            onChange={setRange}
+            placeholder="Текущий месяц"
+            title="Период отчёта"
+            showLabel={false}
           />
         </TableToolbar>
 
-        <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
           <StatTile label="Создано сделок" value={report?.created} loading={loading} />
+          <StatTile label="Успешно" value={report?.won.count} loading={loading} />
           <StatTile
-            label="Успешно"
-            value={report ? `${report.won.count} · ${formatMoney(report.won.budget)}` : undefined}
+            label="Сумма успешных"
+            value={report ? formatMoney(report.won.budget) : undefined}
             loading={loading}
           />
           <StatTile label="Не реализовано" value={report?.lost.count} loading={loading} />
@@ -116,14 +115,17 @@ function CrmReportsPage() {
           <StatTile
             label={<span title={TIPS.reply}>Первый ответ</span>}
             value={waitLabel(report?.reply.median_minutes ?? null)}
-            tone={report && report.unanswered > 0 ? "warning" : "default"}
             loading={loading}
           />
         </div>
         {report && report.unanswered > 0 && (
-          <p className="text-sm text-amber-700">
-            Диалогов, где клиент ждёт ответа: {report.unanswered}.
-          </p>
+          <InfoNote variant="warning">
+            Клиент ждёт ответа в {report.unanswered}{" "}
+            {report.unanswered === 1 ? "диалоге" : "диалогах"}.{" "}
+            <Link to="/crm/inbox" className="font-medium underline underline-offset-2">
+              Открыть «Диалоги»
+            </Link>
+          </InfoNote>
         )}
 
         <Section title="Сейчас в этапах">
@@ -131,7 +133,7 @@ function CrmReportsPage() {
             const row = inStage.get(s.id);
             return (
               <div key={s.id} className="flex items-center gap-3 px-4 py-2">
-                <span className="flex w-52 shrink-0 items-center gap-2 truncate text-sm">
+                <span className="flex w-32 shrink-0 items-center gap-2 truncate text-sm sm:w-52">
                   <StageDot color={s.color} />
                   {s.name}
                 </span>

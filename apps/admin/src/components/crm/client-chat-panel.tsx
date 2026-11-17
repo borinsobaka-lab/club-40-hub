@@ -155,9 +155,7 @@ export function ClientChatPanel({
                 className="flex max-w-48 cursor-pointer items-center gap-1.5 rounded-full border bg-background px-2 py-0.5 text-xs hover:bg-muted"
               >
                 {stage && <StageDot color={stage.color} className="size-2" />}
-                <span className={d.closed_at ? "truncate text-muted-foreground" : "truncate"}>
-                  {stage?.name ?? d.title}
-                </span>
+                <span className="truncate">{stage?.name ?? d.title}</span>
               </button>
             );
           })}
