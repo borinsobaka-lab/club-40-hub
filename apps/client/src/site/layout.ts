@@ -118,7 +118,7 @@ ${page.preload ? `<link rel="preload" href="${page.preload}" as="image">` : ""}
   ${links("m")}
   <a class="btn btn-brand btn-lg" href="/site#trial">Записаться на пробное</a>
 </div>
-<main id="top" tabindex="-1">
+<main id="top">
 ${page.body.replace("<!--FINAL-->", finalHtml)}
 </main>
 <div class="mbar" id="mbar"><a class="btn btn-brand" href="/site#trial">Записаться на пробное — 14 ₾</a></div>

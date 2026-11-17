@@ -14,10 +14,10 @@
 
 /* Токены — из приложения Lady Stretch (apps/client/src/styles.css). */
 :root{
-  --brand:#db68ab; --brand-deep:#c9509a; --brand-soft:#fbecf5; --brand-tint:#f7d9eb;
+  --brand:#db68ab; --brand-deep:#a3357b; --brand-soft:#fbecf5; --brand-tint:#f7d9eb;
   --ink:#2a2b2f; --ink-2:#222326; --ink-3:#35363b;
   --bg:#fff; --card:#f4f5f7; --line:#e7e8ec;
-  --text:#14161f; --muted:#6a7080; --on-dark:#fff; --on-dark-muted:rgba(255,255,255,.66);
+  --text:#14161f; --muted:#5b6171; --on-dark:#fff; --on-dark-muted:rgba(255,255,255,.76);
   --r-xl:40px; --r-lg:28px; --r-md:20px;
   --ease:cubic-bezier(.22,1,.36,1);
   --wrap:1240px; --gut:clamp(16px,4vw,40px);
@@ -29,10 +29,10 @@ img{display:block;max-width:100%}
 a{color:inherit;text-decoration:none}
 button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
 ul{list-style:none}
-:focus-visible{outline:2px solid var(--brand);outline-offset:3px;border-radius:8px}
-.skip{position:fixed;z-index:60;left:16px;top:-80px;padding:12px 20px;border-radius:999px;background:#fff;color:var(--text);font-weight:600;transition:top .2s}
+:focus-visible{outline:2px solid #fff;outline-offset:2px;box-shadow:0 0 0 5px #14161f}
+.js [data-r]:focus-visible,.js [data-r]:focus-within{opacity:1;transform:none}
+.skip{position:fixed;z-index:60;left:16px;top:-80px;padding:12px 20px;border-radius:999px;background:#fff;color:var(--text);font-weight:600}
 .skip:focus{top:16px}
-main:focus{outline:0}
 .wrap{width:100%;max-width:calc(var(--wrap) + var(--gut)*2);margin:0 auto;padding:0 var(--gut)}
 h1,h2,h3{font-weight:600;letter-spacing:-.02em;line-height:1.08;text-wrap:balance}
 h2{font-size:clamp(32px,4.6vw,56px)}
@@ -48,7 +48,7 @@ p{text-wrap:pretty}
 .btn svg{width:20px;height:20px;flex:none}
 .btn-lg{height:56px;padding:0 30px;font-size:17px}
 .btn-brand{background:var(--brand);color:#fff;box-shadow:0 10px 30px -10px rgba(219,104,171,.75)}
-.btn-brand:hover{transform:translateY(-2px);box-shadow:0 18px 40px -12px rgba(219,104,171,.9);background:#e072b4}
+.btn-brand:hover{transform:translateY(-2px);box-shadow:0 18px 40px -12px rgba(219,104,171,.9);background:#d25f9f}
 .btn-ghost{background:rgba(255,255,255,.1);color:#fff;border:1px solid rgba(255,255,255,.12);backdrop-filter:blur(12px)}
 .btn-ghost:hover{background:rgba(255,255,255,.18)}
 .btn-dark{background:var(--ink);color:#fff}
@@ -182,7 +182,7 @@ section{padding:clamp(64px,9vw,120px) 0}
 .stat b sup{font-size:.55em;color:var(--brand);vertical-align:top;position:relative;top:.1em;margin-left:2px}
 .stat>span{display:block;margin-top:12px;color:var(--muted);font-size:15px;line-height:1.4}
 .stat.accent{background:var(--brand);color:#fff}
-.stat.accent>span{color:rgba(255,255,255,.85)}
+.stat.accent>span{color:#fff}
 .stat.accent b sup{color:#fff}
 
 /* О нас */
@@ -418,7 +418,12 @@ footer{position:relative;margin-top:clamp(72px,9vw,120px);border-top:1px solid r
   .collage .chip{max-width:calc(100% - 4px);padding:10px 12px 10px 10px;gap:10px}
   .collage .chip small{font-size:12px}
   .feats,.app-list{grid-template-columns:1fr}
-  .stat{padding:20px}
+  .stat{padding:18px;min-width:0}
+  .stats-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .stat b{font-size:clamp(26px,8.4vw,40px)}
+  .cls em{padding:6px 8px;font-size:10px}
+  .cls{gap:8px;padding:10px}
+  .panel p a{display:inline-flex;align-items:center;min-height:44px}
   .facts{gap:18px}
   .hero-cta .btn{width:100%}
   .f-grid{grid-template-columns:1fr;gap:32px}
@@ -435,6 +440,7 @@ footer{position:relative;margin-top:clamp(72px,9vw,120px);border-top:1px solid r
 .phero-grid{position:relative;display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,.9fr);gap:clamp(24px,5vw,72px);align-items:center}
 .phero.solo .phero-grid{grid-template-columns:minmax(0,1fr)}
 .phero.solo .phero-grid>div{max-width:860px}
+.phero .blobs{opacity:.62}
 .phero h1{font-size:clamp(40px,5.8vw,80px);line-height:1;letter-spacing:-.035em;margin:20px 0 22px}
 .phero h1 .w{display:inline-block;overflow:hidden;vertical-align:top;padding-bottom:.12em;margin-bottom:-.12em}
 .phero h1 .w>span{display:inline-block;transform:translateY(110%);animation:rise 1s var(--ease) forwards;animation-delay:calc(.15s + var(--i)*.07s)}
@@ -459,7 +465,7 @@ footer{position:relative;margin-top:clamp(72px,9vw,120px);border-top:1px solid r
 
 /* три факта */
 .tri{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
-.tri .stat h3{margin:16px 0 8px}
+.tri .stat h2{font-size:clamp(20px,2vw,24px);letter-spacing:-.01em;line-height:1.2;margin:16px 0 8px}
 .tri .stat p{color:var(--muted);font-size:15px}
 .tri .ico,.cards4 .ico,.am .ico{background:var(--brand-soft);color:var(--brand-deep);margin:0}
 
@@ -574,6 +580,7 @@ footer{position:relative;margin-top:clamp(72px,9vw,120px);border-top:1px solid r
 .opts button{padding:10px 16px;border-radius:999px;font-size:14.5px;font-weight:500;background:#fff;border:1.5px solid transparent;transition:.25s}
 .opts button.on{border-color:var(--brand);background:var(--brand-soft);color:var(--brand-deep)}
 .form .btn{margin-top:8px;justify-self:start}
+.form label{display:grid;gap:6px;font-size:14px;font-weight:500;color:var(--text)}
 .form small{color:var(--muted);font-size:13.5px}
 .docs{display:grid;gap:8px;margin-top:22px}
 .docs a{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:16px 20px;border-radius:18px;background:#fff;font-weight:500;transition:.3s var(--ease)}
