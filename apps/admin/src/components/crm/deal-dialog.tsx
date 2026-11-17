@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode, type RefObject } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Check, Loader2, Pencil, Phone, Plus, Send, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
@@ -73,16 +73,33 @@ import { useCrmStudios } from "@/lib/crm/data";
  * Переписка в мессенджерах появится в этой же ленте (этапы 2+, CRM.md).
  */
 export function DealDialog({ dealId, onClose }: { dealId: string | null; onClose: () => void }) {
+  // Сделку в работе без задачи закрыть нельзя: карточка спрашивает задачу.
+  const guard = useRef<(() => boolean) | null>(null);
   return (
-    <Dialog open={!!dealId} onOpenChange={(open) => !open && onClose()}>
+    <Dialog
+      open={!!dealId}
+      onOpenChange={(open) => {
+        if (open || (guard.current && !guard.current())) return;
+        onClose();
+      }}
+    >
       <DialogContent className="flex h-[92dvh] max-h-[92dvh] flex-col gap-0 overflow-hidden p-0 sm:max-w-5xl">
-        {dealId && <DealCard key={dealId} dealId={dealId} onClose={onClose} />}
+        {dealId && <DealCard key={dealId} dealId={dealId} onClose={onClose} closeGuard={guard} />}
       </DialogContent>
     </Dialog>
   );
 }
 
-function DealCard({ dealId, onClose }: { dealId: string; onClose: () => void }) {
+function DealCard({
+  dealId,
+  onClose,
+  closeGuard,
+}: {
+  dealId: string;
+  onClose: () => void;
+  /** Можно ли закрыть карточку: false — открыта форма обязательной задачи. */
+  closeGuard: RefObject<(() => boolean) | null>;
+}) {
   const qc = useQueryClient();
   const access = useAdminAccess();
   const { data, isLoading } = useDeal(dealId);
@@ -94,6 +111,20 @@ function DealCard({ dealId, onClose }: { dealId: string; onClose: () => void }) 
   const deal = data?.deal ?? null;
   // Телефон: «Лента и переписка» или «Контакт и задачи».
   const [pane, setPane] = useState<"main" | "info">("main");
+  const [needTask, setNeedTask] = useState(false);
+  const stageKind = setup?.stages.find((s) => s.id === deal?.stage_id)?.kind;
+  const withoutTask =
+    !!deal && stageKind === "open" && !(data?.tasks ?? []).some((t) => !t.done_at);
+  useEffect(() => {
+    closeGuard.current = () => {
+      if (!withoutTask) return true;
+      setNeedTask(true);
+      return false;
+    };
+    return () => {
+      closeGuard.current = null;
+    };
+  }, [closeGuard, withoutTask]);
 
   const patch = async (p: DealPatch) => {
     try {
@@ -350,6 +381,19 @@ function DealCard({ dealId, onClose }: { dealId: string; onClose: () => void }) 
         />
       </div>
       {confirmDialog}
+      <Dialog open={needTask} onOpenChange={setNeedTask}>
+        <DialogContent>
+          {needTask && (
+            <TaskForm
+              dealId={dealId}
+              task={null}
+              defaultAssigneeId={deal.responsible_id}
+              next="У сделки в работе всегда должна быть задача — без неё карточку не закрыть. Поставьте задачу или переведите сделку в закрытый этап."
+              onDone={() => setNeedTask(false)}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

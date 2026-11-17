@@ -9,7 +9,9 @@ import { StaffAvatar } from "@/components/employee-photo";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
+  Dialog,
   DialogBody,
+  DialogContent,
   DialogDescription,
   DialogFooter,
   DialogForm,
@@ -27,6 +29,7 @@ import {
   deleteTask,
   invalidateCrm,
   setTaskDone,
+  isLastOpenTask,
   updateTask,
 } from "@/lib/crm/data";
 import { defaultTaskDue, DUE_PRESETS, presetDue } from "@/lib/crm/logic";
@@ -71,9 +74,15 @@ export function TaskForm({
   task,
   defaultAssigneeId,
   onDone,
+  next,
 }: {
   dealId: string;
   task: CrmTask | null;
+  /**
+   * «Следующая задача»: у сделки в работе задача обязательна — форма
+   * открыта, потому что без новой задачи сделка осталась бы без задач.
+   */
+  next?: string;
   /** Новая задача: ответственный сделки (нет — ставящий). */
   defaultAssigneeId: string | null;
   onDone: () => void;
@@ -125,9 +134,12 @@ export function TaskForm({
   return (
     <>
       <DialogHeader>
-        <DialogTitle>{task ? "Изменить задачу" : "Новая задача"}</DialogTitle>
+        <DialogTitle>
+          {next ? "Следующая задача" : task ? "Изменить задачу" : "Новая задача"}
+        </DialogTitle>
         <DialogDescription>
-          Задача появится у исполнителя в разделе «Задачи» и на карточке сделки в воронке.
+          {next ??
+            "Задача появится у исполнителя в разделе «Задачи» и на карточке сделки в воронке."}
         </DialogDescription>
       </DialogHeader>
       <DialogForm onSubmit={() => void save()}>
@@ -245,6 +257,8 @@ export function TaskItem({
   const [completing, setCompleting] = useState(false);
   const [result, setResult] = useState("");
   const [busy, setBusy] = useState(false);
+  // Последняя задача сделки в работе: сначала ставится следующая.
+  const [next, setNext] = useState(false);
   const type = types.find((t) => t.id === task.type_id);
   const person = people.find((p) => p.id === task.assignee_id);
   const done = !!task.done_at;
@@ -317,7 +331,10 @@ export function TaskItem({
             className="mt-2 space-y-2"
             onSubmit={(e) => {
               e.preventDefault();
-              void act(() => setTaskDone(task.id, true, result.trim() || null));
+              void act(async () => {
+                if (await isLastOpenTask(task)) setNext(true);
+                else await setTaskDone(task.id, true, result.trim() || null);
+              });
             }}
           >
             <Input
@@ -370,6 +387,16 @@ export function TaskItem({
           title="Удалить задачу"
           disabled={busy}
           onClick={async () => {
+            if (!done && (await isLastOpenTask(task))) {
+              await confirm({
+                title: "Это единственная задача сделки",
+                description:
+                  "У сделки в работе всегда должна быть задача. Поставьте новую или измените эту — потом её можно будет удалить.",
+                confirmLabel: "Понятно",
+                hideCancel: true,
+              });
+              return;
+            }
             if (await confirm({ title: "Удалить задачу?", description: task.title }))
               await act(() => deleteTask(task.id));
           }}
@@ -378,6 +405,22 @@ export function TaskItem({
         </Button>
       </div>
       {confirmDialog}
+      <Dialog open={next} onOpenChange={setNext}>
+        <DialogContent>
+          {next && (
+            <TaskForm
+              dealId={task.deal_id}
+              task={null}
+              defaultAssigneeId={task.assignee_id}
+              next="У сделки в работе всегда должна быть задача. Поставьте следующую — и эта будет отмечена выполненной."
+              onDone={() => {
+                setNext(false);
+                void act(() => setTaskDone(task.id, true, result.trim() || null));
+              }}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

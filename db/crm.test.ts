@@ -608,7 +608,7 @@ describe.skipIf(!url)("CRM (база)", () => {
                values (${m.conversation_id}, 'out', 'Ждём вас', 'sent')`;
       await tx`update crm_automation_jobs set run_at = now() - interval '1 minute' where status = 'pending'`;
       await run(tx);
-      expect((await tx`select title from crm_tasks where deal_id = ${m.deal_id!}`).map((t) => t.title)).toEqual(["Клиент молчит"]);
+      expect((await tx`select title from crm_tasks where deal_id = ${m.deal_id!} order by created_at`).map((t) => t.title)).toEqual(["Связаться с клиентом", "Клиент молчит"]);
 
       // Клиент ответил до срока — задание пропускается.
       await tx`insert into crm_messages (conversation_id, direction, body, status, created_at)
@@ -616,7 +616,7 @@ describe.skipIf(!url)("CRM (база)", () => {
       await ingest(tx, bot, "9", { external_id: "9", name: "Нино Б." }, { external_id: "2", body: "Приду" });
       await tx`update crm_automation_jobs set run_at = now() - interval '1 minute' where status = 'pending'`;
       await run(tx);
-      expect((await tx`select 1 from crm_tasks where deal_id = ${m.deal_id!}`).length).toBe(1);
+      expect((await tx`select 1 from crm_tasks where deal_id = ${m.deal_id!} and title = 'Клиент молчит'`).length).toBe(1);
       const [job] = await tx`select result from crm_automation_jobs where event_key like 'out:%' and status = 'skipped'`;
       expect(job.result).toBe("Клиент ответил");
     }));
@@ -761,6 +761,8 @@ describe.skipIf(!url)("CRM (база)", () => {
       expect(t2.assignee_id).toBe(admin1);
 
       // Список: просроченная — первой; фильтр по исполнителю и типу.
+      // Задача по умолчанию новой сделки здесь не нужна.
+      await tx`delete from crm_tasks where deal_id = ${deal} and auto`;
       const list = await tx`select id, deal_title, stage_name from crm_tasks_list()`;
       expect(list.map((t) => t.id)).toEqual([t2.id, t1.id]);
       expect(list[0]).toMatchObject({ deal_title: "Д", stage_name: "Новая" });
@@ -855,5 +857,92 @@ describe.skipIf(!url)("CRM (база)", () => {
         () => tx`select crm_conversation_start(${wa}, '1', 'x', '+1', null)`,
       ])
         expect(await failure(tx, run)).toMatch(/permission denied|row-level security/);
+    }));
+
+  // Задача у каждой сделки и распределение (2026-11-18_zzz_crm_tasks_required_distribution.sql)
+
+  test("у открытой сделки всегда есть задача: новая, из сообщения, возвращённая из закрытых", () =>
+    scenario(async (tx) => {
+      const { s1, admin1, manager, pipeline, st1, st2, won } = await setup(tx);
+      await as(tx, admin1);
+      const [{ id: deal }] = await tx`
+        insert into crm_deals (title, pipeline_id, stage_id, studio_id, responsible_id)
+        values ('Д', ${pipeline}, ${st1}, ${s1}, ${admin1}) returning id`;
+      const open = () => tx`select title, assignee_id, auto from crm_tasks where deal_id = ${deal} and done_at is null`;
+      expect(await open()).toEqual([{ title: "Связаться с клиентом", assignee_id: admin1, auto: true }]);
+      // Переход между открытыми этапами второй задачи не ставит.
+      await tx`update crm_deals set stage_id = ${st2} where id = ${deal}`;
+      expect((await open()).length).toBe(1);
+      // Закрыли — задачи закрыты; вернули в работу — снова есть задача.
+      await tx`update crm_deals set stage_id = ${won} where id = ${deal}`;
+      expect((await open()).length).toBe(0);
+      await tx`update crm_deals set stage_id = ${st1} where id = ${deal}`;
+      expect((await open()).length).toBe(1);
+      // Сразу закрытая сделка задачи не получает.
+      const [{ id: closed }] = await tx`
+        insert into crm_deals (title, pipeline_id, stage_id, studio_id) values ('З', ${pipeline}, ${won}, ${s1}) returning id`;
+      expect((await tx`select 1 from crm_tasks where deal_id = ${closed}`).length).toBe(0);
+      // У этапа своё правило «вошла → задача» — задачу поставит оно.
+      await as(tx, manager);
+      await tx`insert into crm_automations (stage_id, trigger, action, params)
+               values (${st2}, 'enter', 'task', ${JSON.stringify({ title: "Позвонить", due_minutes: 30 })}::text::jsonb)`;
+      const [{ id: ruled }] = await tx`
+        insert into crm_deals (title, pipeline_id, stage_id, studio_id) values ('П', ${pipeline}, ${st2}, ${s1}) returning id`;
+      expect((await tx`select 1 from crm_tasks where deal_id = ${ruled}`).length).toBe(0);
+      // Входящее сообщение: новая сделка — с задачей.
+      await asServer(tx);
+      const tg = await account(tx, "telegram_bot", s1, pipeline);
+      const m = await ingest(tx, tg, "900", { external_id: "900", name: "Анна" }, { external_id: "1", body: "Привет" });
+      expect((await tx`select title from crm_tasks where deal_id = ${m.deal_id!}`).map((t) => t.title)).toEqual(["Связаться с клиентом"]);
+    }));
+
+  test("распределение новых заявок: по очереди между клубами и ответственными, случайно, выключено", () =>
+    scenario(async (tx) => {
+      const { s1, s2, admin1, admin2, manager, pipeline } = await setup(tx);
+      // Настройку правит только crm.manage.
+      await as(tx, admin1);
+      await tx`update crm_distribution set mode = 'order'`;
+      expect((await tx`select mode from crm_distribution`)[0].mode).toBe("off");
+      expect(await failure(tx, () => tx`insert into crm_distribution_studios (studio_id) values (${s1})`)).toContain("row-level security");
+      expect(await failure(tx, () => tx`select * from crm_distribution_next()`)).toContain("permission denied");
+      await as(tx, manager);
+      await tx`update crm_distribution set mode = 'order'`;
+      await tx`insert into crm_distribution_studios (studio_id, user_ids, sort_order)
+               values (${s1}, ${`{${admin1},${manager}}`}::uuid[], 1), (${s2}, ${`{${admin2}}`}::uuid[], 2)`;
+      await asServer(tx);
+      // Аккаунт клуба s1; новые люди делятся по очереди: s1, s2, s1, s2.
+      const tg = await account(tx, "telegram_bot", s1, pipeline);
+      const write = (n: number) =>
+        ingest(tx, tg, `c${n}`, { external_id: `c${n}`, name: `Клиент ${n}` }, { external_id: `m${n}`, body: "Здравствуйте" });
+      const got: [string, string | null][] = [];
+      for (const n of [1, 2, 3, 4]) {
+        const r = await write(n);
+        const [d] = await tx`select studio_id, responsible_id from crm_deals where id = ${r.deal_id!}`;
+        const [c] = await tx`select studio_id from crm_conversations where id = ${r.conversation_id}`;
+        // Диалог — в клубе сделки: его сотрудники видят переписку.
+        expect(c.studio_id).toBe(d.studio_id);
+        got.push([d.studio_id, d.responsible_id]);
+      }
+      expect(got).toEqual([[s1, admin1], [s2, admin2], [s1, manager], [s2, admin2]]);
+      // Задача новой сделки — на её ответственного.
+      expect((await tx`select count(*)::int as n from crm_tasks where assignee_id = ${admin2} and done_at is null`)[0].n).toBe(2);
+      // Тот же человек пишет снова после закрытия сделки — уже не «впервые»: клуб аккаунта.
+      const [{ contact_id: firstContact }] = await tx`select contact_id from crm_conversations where external_chat_id = 'c1'`;
+      await tx`update crm_deals set stage_id = (select id from crm_stages where pipeline_id = ${pipeline} and kind = 'lost')
+               where contact_id = ${firstContact}`;
+      const again = await ingest(tx, tg, "c1", { external_id: "c1", name: "Клиент 1" }, { external_id: "m1b", body: "Я снова" });
+      expect((await tx`select studio_id, responsible_id from crm_deals where id = ${again.deal_id!}`)[0]).toEqual({ studio_id: s1, responsible_id: null });
+      // Случайно — только клубы и люди из настройки.
+      await tx`update crm_distribution set mode = 'random'`;
+      for (const n of [10, 11, 12, 13, 14, 15]) {
+        const r = await write(n);
+        const [d] = await tx`select studio_id, responsible_id from crm_deals where id = ${r.deal_id!}`;
+        expect([s1, s2]).toContain(d.studio_id);
+        expect(d.studio_id === s1 ? [admin1, manager] : [admin2]).toContain(d.responsible_id);
+      }
+      // Выключено — клуб аккаунта, без ответственного.
+      await tx`update crm_distribution set mode = 'off'`;
+      const off = await write(20);
+      expect((await tx`select studio_id, responsible_id from crm_deals where id = ${off.deal_id!}`)[0]).toEqual({ studio_id: s1, responsible_id: null });
     }));
 });

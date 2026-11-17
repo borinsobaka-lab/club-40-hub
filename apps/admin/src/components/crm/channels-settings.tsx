@@ -58,7 +58,7 @@ const TIPS = {
   pipeline: "Куда попадает новое обращение: первый этап этой воронки.",
 };
 
-function Panel({
+export function Panel({
   title,
   action,
   children,

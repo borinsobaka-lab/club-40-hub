@@ -768,3 +768,68 @@ export async function startTelegramChat(input: {
     throw new Error(json?.error ?? "Не удалось отправить сообщение");
   return json.conversation_id;
 }
+
+/**
+ * Единственная невыполненная задача открытой сделки: у сделки в работе
+ * задача должна быть всегда (решение владельца 2026-11-18), поэтому такую
+ * нельзя выполнить или удалить, не поставив следующую.
+ */
+export async function isLastOpenTask(task: { id: string; deal_id: string }): Promise<boolean> {
+  const [deal, others] = await Promise.all([
+    supabase.from("crm_deals").select("closed_at").eq("id", task.deal_id).maybeSingle(),
+    supabase
+      .from("crm_tasks")
+      .select("id", { count: "exact", head: true })
+      .eq("deal_id", task.deal_id)
+      .is("done_at", null)
+      .neq("id", task.id),
+  ]);
+  if (deal.error || others.error) return false;
+  return !!deal.data && !deal.data.closed_at && (others.count ?? 0) === 0;
+}
+
+// Распределение новых заявок (db/migrations/2026-11-18_zzz_crm_tasks_required_distribution.sql)
+
+export type DistributionMode = "off" | "order" | "random";
+export type DistributionStudio = { studio_id: string; user_ids: string[]; sort_order: number };
+
+export const crmDistributionQuery = queryOptions({
+  queryKey: [CRM_KEY, "distribution"],
+  queryFn: async () => {
+    const [mode, studios] = await Promise.all([
+      unwrap<{ mode: DistributionMode } | null>(
+        supabase.from("crm_distribution").select("mode").maybeSingle(),
+      ),
+      unwrap<DistributionStudio[]>(
+        supabase
+          .from("crm_distribution_studios")
+          .select("studio_id, user_ids, sort_order")
+          .order("sort_order")
+          .order("created_at"),
+      ),
+    ]);
+    return { mode: mode?.mode ?? "off", studios };
+  },
+  meta: { errorMessage: "Не удалось загрузить распределение заявок" },
+});
+
+export async function setDistributionMode(mode: DistributionMode) {
+  const { error } = await supabase
+    .from("crm_distribution")
+    .update({ mode, updated_at: new Date().toISOString() })
+    .eq("id", true);
+  if (error) throw new Error(error.message);
+}
+
+export async function saveDistributionStudio(row: DistributionStudio) {
+  const { error } = await supabase.from("crm_distribution_studios").upsert(row);
+  if (error) throw new Error(error.message);
+}
+
+export async function removeDistributionStudio(studioId: string) {
+  const { error } = await supabase
+    .from("crm_distribution_studios")
+    .delete()
+    .eq("studio_id", studioId);
+  if (error) throw new Error(error.message);
+}

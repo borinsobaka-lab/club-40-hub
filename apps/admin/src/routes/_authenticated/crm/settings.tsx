@@ -8,6 +8,7 @@ import { AdminShell } from "@/components/admin-shell";
 import { useConfirm } from "@/components/confirm-dialog";
 import { StageDot, StageSelect } from "@/components/crm/parts";
 import { StageAutomations } from "@/components/crm/automations";
+import { DistributionPanel } from "@/components/crm/distribution-settings";
 import { WaTemplatesPanel } from "@/components/crm/wa-templates-settings";
 import { ChannelsPanel, TaskTypesPanel, TemplatesPanel } from "@/components/crm/channels-settings";
 import { NONE } from "@/lib/crm/logic";
@@ -45,7 +46,7 @@ import { cn } from "@/lib/utils";
 
 const SETTINGS_TABS = [
   { value: "pipelines", label: "Воронки и этапы" },
-  { value: "channels", label: "Каналы" },
+  { value: "channels", label: "Каналы и заявки" },
   { value: "templates", label: "Шаблоны" },
   { value: "lists", label: "Задачи и отказы" },
 ] as const;
@@ -319,6 +320,7 @@ function CrmSettingsPage() {
         )}
 
         {setup && tab === "channels" && <ChannelsPanel />}
+        {setup && tab === "channels" && <DistributionPanel />}
         {setup && tab === "templates" && <TemplatesPanel />}
         {setup && tab === "templates" && <WaTemplatesPanel />}
         {setup && tab === "lists" && <TaskTypesPanel />}
