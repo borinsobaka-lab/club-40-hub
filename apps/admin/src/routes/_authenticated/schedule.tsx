@@ -162,9 +162,8 @@ type Entry = {
   cancel_reason: string | null;
   workout?: {
     name: string;
-    type?: string;
     capacity?: number | null;
-    /** Пакетный формат: цвет полоски на карточке. */
+    /** Цвет полоски на карточке. */
     color?: string | null;
     translations?: unknown;
   } | null;
@@ -172,7 +171,7 @@ type Entry = {
     trainer_id: string;
     trainer: Trainer | null;
     /**
-     * Замена (пакетные клубы): этот тренер заменяет replaced_trainer_id —
+     * Замена: этот тренер заменяет replaced_trainer_id —
      * schedule_entry_substitutions. Связь «один к одному»; без схемы базы
      * разбор select может отдать и массив.
      */
@@ -1736,7 +1735,7 @@ function TrainerChecks({
 type TrainerOption = { id: string; full_name: string; photo_url?: string | null };
 
 /**
- * Тренер заведённой групповой тренировки (пакетные клубы): «Замена» (тренер
+ * Тренер заведённой групповой тренировки: «Замена» (тренер
  * заболел: клиенты увидят в приложении пометку «Замена» и прежнего тренера
  * неактивным) и «Редактировать» (ошиблись при заведении — просто другой
  * тренер, без следа в приложении). Замену можно отменить. Тренер на
@@ -2567,7 +2566,7 @@ async function entryRpc(
 }
 
 /**
- * Отмена занятия с причиной (пакетные студии): записанные снимаются, списанные
+ * Отмена занятия с причиной: записанные снимаются, списанные
  * тренировки возвращаются на абонементы, в сетке занятие остаётся
  * заштрихованным (db/migrations/2026-10-11_zzzzzzz_entry_cancel_no_show.sql).
  */
@@ -2698,7 +2697,7 @@ type ActiveMembershipRow = {
   started_at: string | null;
   ends_at: string | null;
   visits_left: number | null;
-  /** Пакетный формат: остаток персональных и вид баланса абонемента. */
+  /** Остаток персональных и вид баланса абонемента. */
   personal_left: number;
   /** Остаток диагностик тела. */
   diagnostics_left?: number | null;
@@ -2713,17 +2712,17 @@ type BookingsData = {
   bookings: BookingRow[];
   clientsById: Map<string, ClientRow>;
   clientsByUser: Map<string, ClientRow>;
-  /** У клиента пакетной студии может быть два: пакет тренировок и пакет персональных. */
+  /** У клиента может быть два: пакет тренировок и пакет персональных. */
   membershipsByClient: Map<string, ActiveMembershipRow[]>;
   /**
-   * Пакетная студия — хватает ли абонемента на это занятие (id записи →
+   * Хватает ли абонемента на это занятие (id записи →
    * остаток): balance — тренировок на балансе сейчас (с ждущим продлением),
    * ahead — сколько записей клиента на такие же занятия раньше этого ещё не
    * отмечены. Записаться можно и сверх остатка (решение владельца
    * 2026-10-13), а «Посетил» без остатка база не даст — сначала продажа.
    */
   coverage: Map<string, Coverage>;
-  /** Ждущие продления (пакетные клубы): «id клиента:вид баланса». */
+  /** Ждущие продления: «id клиента:вид баланса». */
   renewals: Set<string>;
 };
 
@@ -2857,8 +2856,7 @@ async function fetchBookings(entry: Entry, networkIds: string[]): Promise<Bookin
 }
 
 /**
- * Абонемент, с которого спишется посещение: на персональном (пакетная
- * студия) — с остатком персональных, иначе пакет персональных; на
+ * Абонемент, с которого спишется посещение: на персональном — с остатком персональных, иначе пакет персональных; на
  * диагностике — с остатком диагностик; на остальных — абонемент обычных
  * тренировок.
  */
@@ -3122,7 +3120,7 @@ function MembershipSummary({
   const count =
     balance === "personal" ? m.personal_left : balance === "diagnostic" ? null : m.visits_left;
   const left = balanceLeftLabel(m, balance);
-  // Пакетная продажа ждёт первого посещения — срок ещё не идёт.
+  // Продажа ждёт первого посещения — срок ещё не идёт.
   const term = m.ends_at
     ? `до ${formatDate(m.ends_at)}`
     : !m.started_at
@@ -3327,7 +3325,7 @@ function BookingsPanel({
                 ? pickMembership(data?.membershipsByClient.get(c.id), balance)
                 : undefined;
               const busy = attendingId === b.id;
-              // Пакетная студия: посещение без остатка база не отметит —
+              // Посещение без остатка база не отметит —
               // сначала продажа; если остаток уйдёт на более ранние записи —
               // предупреждаем заранее.
               const { noBalance, uncovered } = attendanceBlock(b, data?.coverage.get(b.id));
@@ -3548,7 +3546,7 @@ const NO_SHOW_OPTIONS = [
 ] as const;
 
 /**
- * «Не посетил» (пакетные студии): причина и короткий комментарий —
+ * «Не посетил»: причина и короткий комментарий —
  * RPC mark_booking_no_show; списание и возврат тренировки делает база.
  */
 function NoShowForm({

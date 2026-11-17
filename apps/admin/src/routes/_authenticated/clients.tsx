@@ -51,7 +51,7 @@ import { useConfirm } from "@/components/confirm-dialog";
 import { RowContextMenu } from "@/components/row-context-menu";
 import { ClientDialog } from "@/components/client-form-dialog";
 import { CLIENT_TIPS, clientSourceLabel } from "@/lib/client-fields";
-import { GOAL_LABELS, goalOptions } from "@/lib/client-profile";
+import { GOAL_LABELS, GOAL_OPTIONS } from "@/lib/client-profile";
 import { formatPhoneDisplay } from "@/lib/contacts";
 import { ClientsPageSkeleton } from "@/components/page-skeletons";
 
@@ -177,7 +177,7 @@ function ClientsPage() {
     appTo,
   );
   // Цели — из анкеты приложения.
-  const goals = goalOptions("packages");
+  const goals = GOAL_OPTIONS;
 
   // Общая база клиентов всех клубов сети (2026-10-17).
   const networkIds = useNetworkStudioIds(studioId);
