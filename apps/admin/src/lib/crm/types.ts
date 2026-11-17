@@ -84,3 +84,58 @@ export type CrmTaskWithDeal = CrmTask & {
 
 /** Кого можно назначить ответственным (RPC crm_people). */
 export type CrmPerson = { id: string; full_name: string | null; avatar_url: string | null };
+
+// Переписка (db/migrations/2026-11-17_zzzz_crm_messaging.sql) ------------------
+
+export type ChannelKind = "telegram_bot" | "telegram_user" | "whatsapp" | "instagram" | "facebook";
+
+export type CrmChannelAccount = {
+  id: string;
+  kind: ChannelKind;
+  name: string;
+  studio_id: string | null;
+  pipeline_id: string | null;
+  external_id: string | null;
+  username: string | null;
+  status: "active" | "error" | "disabled";
+  status_note: string | null;
+  last_event_at: string | null;
+};
+
+export type CrmConversation = {
+  id: string;
+  contact_id: string;
+  account_id: string;
+  studio_id: string | null;
+  last_message_at: string | null;
+  last_message_text: string | null;
+  last_direction: "in" | "out" | null;
+  last_inbound_at: string | null;
+  unread_count: number;
+  contact: { id: string; name: string; phone: string | null; client_id: string | null } | null;
+  identity: { username: string | null; display_name: string | null } | null;
+};
+
+export type CrmAttachment = {
+  kind: "image" | "video" | "audio" | "file";
+  /** Путь в бакете crm-media; пусто — файл не загружен. */
+  path: string;
+  name: string;
+  mime: string | null;
+  size: number | null;
+};
+
+export type CrmMessage = {
+  id: string;
+  conversation_id: string;
+  direction: "in" | "out";
+  body: string | null;
+  attachments: CrmAttachment[];
+  status: "received" | "sent" | "delivered" | "read" | "failed";
+  error: string | null;
+  sent_by_name: string | null;
+  auto: boolean;
+  created_at: string;
+};
+
+export type CrmReplyTemplate = { id: string; title: string; body: string; sort_order: number };

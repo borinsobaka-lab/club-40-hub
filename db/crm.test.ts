@@ -372,4 +372,129 @@ describe.skipIf(!url)("CRM (база)", () => {
       await as(tx, legacyAdmin);
       expect((await tx`select 1 from crm_pipelines`).length).toBe(0);
     }));
+  // Переписка (2026-11-17_zzzz_crm_messaging.sql) ------------------------------
+
+  async function account(tx: Tx, kind: string, studioId: string | null, pipeline: string | null = null) {
+    const [{ id }] = await tx`
+      insert into crm_channel_accounts (kind, name, studio_id, pipeline_id, external_id)
+      values (${kind}, ${kind}, ${studioId}, ${pipeline}, ${crypto.randomUUID()}) returning id`;
+    await tx`insert into crm_channel_secrets (account_id, token, webhook_secret) values (${id}, 'tok', 'sec')`;
+    return id as string;
+  }
+
+  async function ingest(
+    tx: Tx,
+    acc: string,
+    chat: string,
+    sender: Record<string, string | null>,
+    message: Record<string, unknown>,
+  ) {
+    const [{ r }] = await tx`
+      select crm_ingest_message(${acc}, ${chat}, ${JSON.stringify(sender)}::text::jsonb, ${JSON.stringify(message)}::text::jsonb) as r`;
+    return r as {
+      duplicate: boolean;
+      conversation_id: string;
+      message_id?: string;
+      contact_id: string;
+      deal_id?: string | null;
+    };
+  }
+
+  test("входящее: контакт, диалог, сообщение и сделка; повтор не задваивает", () =>
+    scenario(async (tx) => {
+      const { s1, pipeline, st1 } = await setup(tx);
+      const bot = await account(tx, "telegram_bot", s1, pipeline);
+      const sender = { external_id: "555", username: "anna", name: "Анна И." };
+      const first = await ingest(tx, bot, "555", sender, { external_id: "1", body: "Привет" });
+      expect(first.duplicate).toBe(false);
+      const [deal] = await tx`select title, stage_id, studio_id, source, contact_id from crm_deals where id = ${first.deal_id!}`;
+      expect(deal).toMatchObject({ title: "Анна И.", stage_id: st1, studio_id: s1, source: "Telegram" });
+      expect(deal.contact_id).toBe(first.contact_id);
+
+      const dup = await ingest(tx, bot, "555", sender, { external_id: "1", body: "Привет" });
+      expect(dup.duplicate).toBe(true);
+      const second = await ingest(tx, bot, "555", { ...sender, username: "anna_new" }, { external_id: "2", body: "Есть места?" });
+      expect(second.contact_id).toBe(first.contact_id);
+      expect(second.deal_id).toBe(first.deal_id);
+
+      const [conv] = await tx`
+        select unread_count, last_message_text, last_direction, studio_id from crm_conversations where id = ${first.conversation_id}`;
+      expect(conv).toMatchObject({ unread_count: 2, last_message_text: "Есть места?", last_direction: "in", studio_id: s1 });
+      expect((await tx`select 1 from crm_messages where conversation_id = ${first.conversation_id}`).length).toBe(2);
+      expect((await tx`select 1 from crm_deals where contact_id = ${first.contact_id}`).length).toBe(1);
+      const [ident] = await tx`select username from crm_contact_identities where contact_id = ${first.contact_id}`;
+      expect(ident.username).toBe("anna_new");
+
+      // Ответ сотрудника снимает непрочитанные; закрытая сделка — новое обращение.
+      await tx`insert into crm_messages (conversation_id, direction, body, status) values (${first.conversation_id}, 'out', 'Да!', 'sent')`;
+      const [after] = await tx`select unread_count, last_direction from crm_conversations where id = ${first.conversation_id}`;
+      expect(after).toMatchObject({ unread_count: 0, last_direction: "out" });
+      const won = (await tx`select id from crm_stages where pipeline_id = ${pipeline} and kind = 'won'`)[0].id;
+      await tx`update crm_deals set stage_id = ${won} where id = ${first.deal_id!}`;
+      const third = await ingest(tx, bot, "555", sender, { external_id: "3", body: "Хочу ещё" });
+      expect(third.deal_id).not.toBe(first.deal_id);
+    }));
+
+  test("одна карточка: Telegram — общий id, Instagram — по нику, WhatsApp — по телефону", () =>
+    scenario(async (tx) => {
+      const { s1, s2 } = await setup(tx);
+      const bot1 = await account(tx, "telegram_bot", s1);
+      const bot2 = await account(tx, "telegram_bot", s2);
+      const a = await ingest(tx, bot1, "7", { external_id: "7", name: "Нино" }, { external_id: "1", body: "a" });
+      const b = await ingest(tx, bot2, "7", { external_id: "7", name: "Нино" }, { external_id: "1", body: "b" });
+      expect(b.contact_id).toBe(a.contact_id);
+      expect(b.conversation_id).not.toBe(a.conversation_id);
+      expect((await tx`select 1 from crm_contact_identities where contact_id = ${a.contact_id}`).length).toBe(1);
+
+      const ig1 = await account(tx, "instagram", s1);
+      const ig2 = await account(tx, "instagram", s2);
+      const i1 = await ingest(tx, ig1, "ig-1", { external_id: "ig-1", username: "Mari.K", name: "Мари" }, { external_id: "m1", body: "x" });
+      const i2 = await ingest(tx, ig2, "ig-2", { external_id: "ig-2", username: "mari.k", name: "Мари" }, { external_id: "m1", body: "y" });
+      expect(i2.contact_id).toBe(i1.contact_id);
+      expect((await tx`select 1 from crm_contact_identities where contact_id = ${i1.contact_id}`).length).toBe(2);
+      const other = await ingest(tx, ig2, "ig-3", { external_id: "ig-3", username: "other", name: "Мари" }, { external_id: "m1", body: "z" });
+      expect(other.contact_id).not.toBe(i1.contact_id);
+
+      await tx`update crm_contacts set phone = '+995555123456' where id = ${a.contact_id}`;
+      const wa = await account(tx, "whatsapp", s1);
+      const w = await ingest(tx, wa, "995555123456", { external_id: "995555123456", name: "Nino", phone: "+995 555 12 34 56" }, { external_id: "w1", body: "hi" });
+      expect(w.contact_id).toBe(a.contact_id);
+    }));
+
+  test("диалоги: свой клуб и аккаунт без клуба — видно; писать и читать токены нельзя", () =>
+    scenario(async (tx) => {
+      const { s1, s2, admin1, admin2, manager } = await setup(tx);
+      const bot1 = await account(tx, "telegram_bot", s1);
+      const free = await account(tx, "telegram_bot", null);
+      const m1 = await ingest(tx, bot1, "1", { external_id: "1", name: "А" }, { external_id: "1", body: "в Ваке" });
+      const m2 = await ingest(tx, free, "2", { external_id: "2", name: "Б" }, { external_id: "1", body: "общий" });
+
+      await as(tx, admin2);
+      const seen = await tx`select id from crm_conversations`;
+      expect(seen.map((c) => c.id)).toEqual([m2.conversation_id]);
+      expect((await tx`select 1 from crm_messages where conversation_id = ${m1.conversation_id}`).length).toBe(0);
+      await tx`select crm_conversation_read(${m1.conversation_id})`;
+
+      await as(tx, admin1);
+      expect((await tx`select 1 from crm_conversations`).length).toBe(2);
+      expect((await tx`select 1 from crm_messages`).length).toBe(2);
+      for (const run of [
+        () => tx`insert into crm_messages (conversation_id, direction, body) values (${m1.conversation_id}, 'out', 'x')`,
+        () => tx`update crm_messages set body = 'x' where conversation_id = ${m1.conversation_id}`,
+        () => tx`select token from crm_channel_secrets`,
+        () => tx`select crm_ingest_message(${bot1}, '1', '{"external_id":"1"}'::jsonb, '{"body":"x"}'::jsonb)`,
+        () => tx`insert into crm_channel_accounts (kind, name) values ('telegram_bot', 'мой')`,
+      ])
+        expect(await failure(tx, run)).toMatch(/permission denied|row-level security/);
+      await tx`select crm_conversation_read(${m1.conversation_id})`;
+
+      await asServer(tx);
+      const counts = await tx`select id, unread_count from crm_conversations order by created_at`;
+      expect(counts.find((c) => c.id === m1.conversation_id)!.unread_count).toBe(0);
+      // Клуб аккаунта сменили — диалог ушёл за ним.
+      await as(tx, manager);
+      await tx`update crm_channel_accounts set studio_id = ${s2} where id = ${bot1}`;
+      await as(tx, admin1);
+      expect((await tx`select id from crm_conversations`).map((c) => c.id)).toEqual([m2.conversation_id]);
+    }));
 });

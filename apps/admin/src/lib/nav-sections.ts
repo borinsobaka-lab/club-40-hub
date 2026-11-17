@@ -19,6 +19,7 @@ import {
   ChartSquare,
   City,
   ChatRoundDots,
+  ChatRoundLine,
   ClipboardCheck,
   ClipboardList,
   ClipboardRemove,
@@ -237,8 +238,10 @@ const ANALYTICS_PATHS = [...ANALYTICS_ITEMS, ...ANALYTICS_DATA_ITEMS].map((i) =>
 export const CRM_URL = "/crm";
 export const CRM_SETTINGS_URL = "/crm/settings";
 export const CRM_TASKS_URL = "/crm/tasks";
+export const CRM_INBOX_URL = "/crm/inbox";
 export const CRM_ITEMS: NavItem[] = [
   { title: "Сделки", url: CRM_URL, icon: Case, exact: true },
+  { title: "Диалоги", url: CRM_INBOX_URL, icon: ChatRoundLine },
   { title: "Задачи", url: CRM_TASKS_URL, icon: ClipboardCheck },
   { title: "Настройки", url: CRM_SETTINGS_URL, icon: Settings },
 ];

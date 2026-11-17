@@ -190,3 +190,64 @@ export function formatDue(dueAt: string, now: Date): string {
         minute: "2-digit",
       });
 }
+
+// Переписка --------------------------------------------------------------------
+
+export const CHANNEL_LABEL: Record<string, string> = {
+  telegram_bot: "Telegram-бот",
+  telegram_user: "Telegram",
+  whatsapp: "WhatsApp",
+  instagram: "Instagram",
+  facebook: "Facebook",
+};
+
+/** Подпись диалога: «Telegram-бот · Ваке» — в какой аккаунт пишет человек. */
+export function accountLabel(account: { kind: string; name: string } | undefined | null): string {
+  if (!account) return "Канал";
+  const kind = CHANNEL_LABEL[account.kind] ?? account.kind;
+  return account.name && account.name !== kind ? `${kind} · ${account.name}` : kind;
+}
+
+/** Переменные шаблона ответа: {имя} — имя контакта, {клуб} — клуб аккаунта. */
+export function fillTemplate(
+  body: string,
+  vars: { name?: string | null; studio?: string | null },
+): string {
+  const first = (vars.name ?? "").trim().split(/\s+/)[0] ?? "";
+  return body
+    .replace(/\{имя\}/gi, first)
+    .replace(/\{клуб\}/gi, vars.studio ?? "")
+    .replace(/[ \t]+([,.!?])/g, "$1")
+    .replace(/[ \t]{2,}/g, " ")
+    .trim();
+}
+
+/** Время сообщения в списке диалогов: сегодня — «14:05», иначе «12 нояб.». */
+export function shortTime(iso: string | null, now: Date): string {
+  if (!iso) return "";
+  const d = new Date(iso);
+  const sameDay = d.toDateString() === now.toDateString();
+  return sameDay
+    ? d.toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })
+    : d.toLocaleDateString("ru-RU", { day: "numeric", month: "short" });
+}
+
+/** Сообщения по дням — заголовки «Сегодня», «Вчера», «12 ноября». */
+export function dayLabel(iso: string, now: Date): string {
+  const d = new Date(iso);
+  const start = (x: Date) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
+  const diff = Math.round((start(now) - start(d)) / 86_400_000);
+  if (diff === 0) return "Сегодня";
+  if (diff === 1) return "Вчера";
+  return d.toLocaleDateString("ru-RU", {
+    day: "numeric",
+    month: "long",
+    ...(d.getFullYear() !== now.getFullYear() ? { year: "numeric" } : {}),
+  });
+}
+
+export function fileSize(bytes: number | null): string {
+  if (!bytes) return "";
+  if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} КБ`;
+  return `${(bytes / 1024 / 1024).toFixed(1).replace(".", ",")} МБ`;
+}

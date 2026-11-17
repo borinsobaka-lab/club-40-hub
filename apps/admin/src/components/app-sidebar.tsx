@@ -8,6 +8,7 @@ import {
   ACADEMY_ITEMS,
   ANALYTICS_DATA_ITEMS,
   ANALYTICS_ITEMS,
+  CRM_INBOX_URL,
   CRM_ITEMS,
   CRM_TASKS_URL,
   CLUB_GROUPS,
@@ -34,7 +35,7 @@ import { useKbSidebarWidth } from "@/components/kb/use-kb-sidebar-width";
 import { sectionIcon } from "@/lib/scripts/icons";
 import { useAdminAccess } from "@/hooks/use-admin-access";
 import { useStaffProfile } from "@/hooks/use-staff-profile";
-import { useMyDueTasksCount } from "@/lib/crm/data";
+import { useMyDueTasksCount, useUnreadConversations } from "@/lib/crm/data";
 import { useActiveStudioId } from "@/hooks/use-active-studio";
 import { useClubRequestsBadge } from "@/hooks/use-client-requests";
 import { usePendingTrainerComments } from "@/hooks/use-trainer-comments";
@@ -245,6 +246,7 @@ export function AppSidebar() {
   // CRM: на «Задачах» — свои задачи на сегодня и просроченные.
   const { data: me } = useStaffProfile();
   const crmDueTasks = useMyDueTasksCount(me?.id ?? null, railKey === "crm");
+  const crmUnread = useUnreadConversations(railKey === "crm");
   const sectionMenu =
     railKey === "scripts"
       ? { title: "Скрипты LS", groups: scriptsMenu.groups }
@@ -302,7 +304,12 @@ export function AppSidebar() {
                           key: "crm",
                           label: "Разделы",
                           items: CRM_ITEMS.filter((i) => canOpenPath(access, studioId, i.url)).map(
-                            (i) => (i.url === CRM_TASKS_URL ? { ...i, badge: crmDueTasks } : i),
+                            (i) =>
+                              i.url === CRM_TASKS_URL
+                                ? { ...i, badge: crmDueTasks }
+                                : i.url === CRM_INBOX_URL
+                                  ? { ...i, badge: crmUnread }
+                                  : i,
                           ),
                         },
                       ]

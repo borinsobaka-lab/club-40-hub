@@ -53,6 +53,7 @@ import { Route as AuthenticatedCrmIndexRouteImport } from './routes/_authenticat
 import { Route as AuthenticatedAnalyticsIndexRouteImport } from './routes/_authenticated/analytics/index'
 import { Route as AuthenticatedAccessIndexRouteImport } from './routes/_authenticated/access/index'
 import { Route as AuthenticatedAcademyIndexRouteImport } from './routes/_authenticated/academy/index'
+import { Route as ApiCrmSendRouteImport } from './routes/api/crm/send'
 import { Route as AuthenticatedScriptsSettingsRouteImport } from './routes/_authenticated/scripts/settings'
 import { Route as AuthenticatedScriptsSectionIdRouteImport } from './routes/_authenticated/scripts/$sectionId'
 import { Route as AuthenticatedDashboardSalesRouteImport } from './routes/_authenticated/dashboard/sales'
@@ -62,6 +63,7 @@ import { Route as AuthenticatedDashboardClientsRouteImport } from './routes/_aut
 import { Route as AuthenticatedDashboardClassesRouteImport } from './routes/_authenticated/dashboard/classes'
 import { Route as AuthenticatedCrmTasksRouteImport } from './routes/_authenticated/crm/tasks'
 import { Route as AuthenticatedCrmSettingsRouteImport } from './routes/_authenticated/crm/settings'
+import { Route as AuthenticatedCrmInboxRouteImport } from './routes/_authenticated/crm/inbox'
 import { Route as AuthenticatedAnalyticsZeroRouteImport } from './routes/_authenticated/analytics/zero'
 import { Route as AuthenticatedAnalyticsUploadRouteImport } from './routes/_authenticated/analytics/upload'
 import { Route as AuthenticatedAnalyticsTrialsRouteImport } from './routes/_authenticated/analytics/trials'
@@ -81,6 +83,7 @@ import { Route as AuthenticatedKbBaseIdIndexRouteImport } from './routes/_authen
 import { Route as AuthenticatedAccessRolesIndexRouteImport } from './routes/_authenticated/access/roles/index'
 import { Route as AuthenticatedAcademyReviewIndexRouteImport } from './routes/_authenticated/academy/review/index'
 import { Route as AuthenticatedAcademyCoursesIndexRouteImport } from './routes/_authenticated/academy/courses/index'
+import { Route as ApiCrmTelegramAccountIdRouteImport } from './routes/api/crm/telegram.$accountId'
 import { Route as AuthenticatedKbBaseIdTrashRouteImport } from './routes/_authenticated/kb/$baseId/trash'
 import { Route as AuthenticatedKbBaseIdTemplatesRouteImport } from './routes/_authenticated/kb/$baseId/templates'
 import { Route as AuthenticatedKbBaseIdAnalyticsRouteImport } from './routes/_authenticated/kb/$baseId/analytics'
@@ -325,6 +328,11 @@ const AuthenticatedAcademyIndexRoute =
     path: '/academy/',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const ApiCrmSendRoute = ApiCrmSendRouteImport.update({
+  id: '/api/crm/send',
+  path: '/api/crm/send',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthenticatedScriptsSettingsRoute =
   AuthenticatedScriptsSettingsRouteImport.update({
     id: '/scripts/settings',
@@ -378,6 +386,11 @@ const AuthenticatedCrmSettingsRoute =
     path: '/crm/settings',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedCrmInboxRoute = AuthenticatedCrmInboxRouteImport.update({
+  id: '/crm/inbox',
+  path: '/crm/inbox',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedAnalyticsZeroRoute =
   AuthenticatedAnalyticsZeroRouteImport.update({
     id: '/analytics/zero',
@@ -491,6 +504,11 @@ const AuthenticatedAcademyCoursesIndexRoute =
     path: '/academy/courses/',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const ApiCrmTelegramAccountIdRoute = ApiCrmTelegramAccountIdRouteImport.update({
+  id: '/api/crm/telegram/$accountId',
+  path: '/api/crm/telegram/$accountId',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthenticatedKbBaseIdTrashRoute =
   AuthenticatedKbBaseIdTrashRouteImport.update({
     id: '/kb/$baseId/trash',
@@ -616,6 +634,7 @@ export interface FileRoutesByFullPath {
   '/analytics/trials': typeof AuthenticatedAnalyticsTrialsRoute
   '/analytics/upload': typeof AuthenticatedAnalyticsUploadRoute
   '/analytics/zero': typeof AuthenticatedAnalyticsZeroRoute
+  '/crm/inbox': typeof AuthenticatedCrmInboxRoute
   '/crm/settings': typeof AuthenticatedCrmSettingsRoute
   '/crm/tasks': typeof AuthenticatedCrmTasksRoute
   '/dashboard/classes': typeof AuthenticatedDashboardClassesRoute
@@ -625,6 +644,7 @@ export interface FileRoutesByFullPath {
   '/dashboard/sales': typeof AuthenticatedDashboardSalesRoute
   '/scripts/$sectionId': typeof AuthenticatedScriptsSectionIdRoute
   '/scripts/settings': typeof AuthenticatedScriptsSettingsRoute
+  '/api/crm/send': typeof ApiCrmSendRoute
   '/academy/': typeof AuthenticatedAcademyIndexRoute
   '/access/': typeof AuthenticatedAccessIndexRoute
   '/analytics/': typeof AuthenticatedAnalyticsIndexRoute
@@ -641,6 +661,7 @@ export interface FileRoutesByFullPath {
   '/kb/$baseId/analytics': typeof AuthenticatedKbBaseIdAnalyticsRoute
   '/kb/$baseId/templates': typeof AuthenticatedKbBaseIdTemplatesRoute
   '/kb/$baseId/trash': typeof AuthenticatedKbBaseIdTrashRoute
+  '/api/crm/telegram/$accountId': typeof ApiCrmTelegramAccountIdRoute
   '/academy/courses/': typeof AuthenticatedAcademyCoursesIndexRoute
   '/academy/review/': typeof AuthenticatedAcademyReviewIndexRoute
   '/access/roles/': typeof AuthenticatedAccessRolesIndexRoute
@@ -701,6 +722,7 @@ export interface FileRoutesByTo {
   '/analytics/trials': typeof AuthenticatedAnalyticsTrialsRoute
   '/analytics/upload': typeof AuthenticatedAnalyticsUploadRoute
   '/analytics/zero': typeof AuthenticatedAnalyticsZeroRoute
+  '/crm/inbox': typeof AuthenticatedCrmInboxRoute
   '/crm/settings': typeof AuthenticatedCrmSettingsRoute
   '/crm/tasks': typeof AuthenticatedCrmTasksRoute
   '/dashboard/classes': typeof AuthenticatedDashboardClassesRoute
@@ -710,6 +732,7 @@ export interface FileRoutesByTo {
   '/dashboard/sales': typeof AuthenticatedDashboardSalesRoute
   '/scripts/$sectionId': typeof AuthenticatedScriptsSectionIdRoute
   '/scripts/settings': typeof AuthenticatedScriptsSettingsRoute
+  '/api/crm/send': typeof ApiCrmSendRoute
   '/academy': typeof AuthenticatedAcademyIndexRoute
   '/access': typeof AuthenticatedAccessIndexRoute
   '/analytics': typeof AuthenticatedAnalyticsIndexRoute
@@ -726,6 +749,7 @@ export interface FileRoutesByTo {
   '/kb/$baseId/analytics': typeof AuthenticatedKbBaseIdAnalyticsRoute
   '/kb/$baseId/templates': typeof AuthenticatedKbBaseIdTemplatesRoute
   '/kb/$baseId/trash': typeof AuthenticatedKbBaseIdTrashRoute
+  '/api/crm/telegram/$accountId': typeof ApiCrmTelegramAccountIdRoute
   '/academy/courses': typeof AuthenticatedAcademyCoursesIndexRoute
   '/academy/review': typeof AuthenticatedAcademyReviewIndexRoute
   '/access/roles': typeof AuthenticatedAccessRolesIndexRoute
@@ -788,6 +812,7 @@ export interface FileRoutesById {
   '/_authenticated/analytics/trials': typeof AuthenticatedAnalyticsTrialsRoute
   '/_authenticated/analytics/upload': typeof AuthenticatedAnalyticsUploadRoute
   '/_authenticated/analytics/zero': typeof AuthenticatedAnalyticsZeroRoute
+  '/_authenticated/crm/inbox': typeof AuthenticatedCrmInboxRoute
   '/_authenticated/crm/settings': typeof AuthenticatedCrmSettingsRoute
   '/_authenticated/crm/tasks': typeof AuthenticatedCrmTasksRoute
   '/_authenticated/dashboard/classes': typeof AuthenticatedDashboardClassesRoute
@@ -797,6 +822,7 @@ export interface FileRoutesById {
   '/_authenticated/dashboard/sales': typeof AuthenticatedDashboardSalesRoute
   '/_authenticated/scripts/$sectionId': typeof AuthenticatedScriptsSectionIdRoute
   '/_authenticated/scripts/settings': typeof AuthenticatedScriptsSettingsRoute
+  '/api/crm/send': typeof ApiCrmSendRoute
   '/_authenticated/academy/': typeof AuthenticatedAcademyIndexRoute
   '/_authenticated/access/': typeof AuthenticatedAccessIndexRoute
   '/_authenticated/analytics/': typeof AuthenticatedAnalyticsIndexRoute
@@ -813,6 +839,7 @@ export interface FileRoutesById {
   '/_authenticated/kb/$baseId/analytics': typeof AuthenticatedKbBaseIdAnalyticsRoute
   '/_authenticated/kb/$baseId/templates': typeof AuthenticatedKbBaseIdTemplatesRoute
   '/_authenticated/kb/$baseId/trash': typeof AuthenticatedKbBaseIdTrashRoute
+  '/api/crm/telegram/$accountId': typeof ApiCrmTelegramAccountIdRoute
   '/_authenticated/academy/courses/': typeof AuthenticatedAcademyCoursesIndexRoute
   '/_authenticated/academy/review/': typeof AuthenticatedAcademyReviewIndexRoute
   '/_authenticated/access/roles/': typeof AuthenticatedAccessRolesIndexRoute
@@ -875,6 +902,7 @@ export interface FileRouteTypes {
     | '/analytics/trials'
     | '/analytics/upload'
     | '/analytics/zero'
+    | '/crm/inbox'
     | '/crm/settings'
     | '/crm/tasks'
     | '/dashboard/classes'
@@ -884,6 +912,7 @@ export interface FileRouteTypes {
     | '/dashboard/sales'
     | '/scripts/$sectionId'
     | '/scripts/settings'
+    | '/api/crm/send'
     | '/academy/'
     | '/access/'
     | '/analytics/'
@@ -900,6 +929,7 @@ export interface FileRouteTypes {
     | '/kb/$baseId/analytics'
     | '/kb/$baseId/templates'
     | '/kb/$baseId/trash'
+    | '/api/crm/telegram/$accountId'
     | '/academy/courses/'
     | '/academy/review/'
     | '/access/roles/'
@@ -960,6 +990,7 @@ export interface FileRouteTypes {
     | '/analytics/trials'
     | '/analytics/upload'
     | '/analytics/zero'
+    | '/crm/inbox'
     | '/crm/settings'
     | '/crm/tasks'
     | '/dashboard/classes'
@@ -969,6 +1000,7 @@ export interface FileRouteTypes {
     | '/dashboard/sales'
     | '/scripts/$sectionId'
     | '/scripts/settings'
+    | '/api/crm/send'
     | '/academy'
     | '/access'
     | '/analytics'
@@ -985,6 +1017,7 @@ export interface FileRouteTypes {
     | '/kb/$baseId/analytics'
     | '/kb/$baseId/templates'
     | '/kb/$baseId/trash'
+    | '/api/crm/telegram/$accountId'
     | '/academy/courses'
     | '/academy/review'
     | '/access/roles'
@@ -1046,6 +1079,7 @@ export interface FileRouteTypes {
     | '/_authenticated/analytics/trials'
     | '/_authenticated/analytics/upload'
     | '/_authenticated/analytics/zero'
+    | '/_authenticated/crm/inbox'
     | '/_authenticated/crm/settings'
     | '/_authenticated/crm/tasks'
     | '/_authenticated/dashboard/classes'
@@ -1055,6 +1089,7 @@ export interface FileRouteTypes {
     | '/_authenticated/dashboard/sales'
     | '/_authenticated/scripts/$sectionId'
     | '/_authenticated/scripts/settings'
+    | '/api/crm/send'
     | '/_authenticated/academy/'
     | '/_authenticated/access/'
     | '/_authenticated/analytics/'
@@ -1071,6 +1106,7 @@ export interface FileRouteTypes {
     | '/_authenticated/kb/$baseId/analytics'
     | '/_authenticated/kb/$baseId/templates'
     | '/_authenticated/kb/$baseId/trash'
+    | '/api/crm/telegram/$accountId'
     | '/_authenticated/academy/courses/'
     | '/_authenticated/academy/review/'
     | '/_authenticated/access/roles/'
@@ -1087,6 +1123,8 @@ export interface RootRouteChildren {
   ApiChatRoute: typeof ApiChatRoute
   ApiPhoneLoginRoute: typeof ApiPhoneLoginRoute
   ApiTranscribeRoute: typeof ApiTranscribeRoute
+  ApiCrmSendRoute: typeof ApiCrmSendRoute
+  ApiCrmTelegramAccountIdRoute: typeof ApiCrmTelegramAccountIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -1399,6 +1437,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAcademyIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/api/crm/send': {
+      id: '/api/crm/send'
+      path: '/api/crm/send'
+      fullPath: '/api/crm/send'
+      preLoaderRoute: typeof ApiCrmSendRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_authenticated/scripts/settings': {
       id: '/_authenticated/scripts/settings'
       path: '/scripts/settings'
@@ -1460,6 +1505,13 @@ declare module '@tanstack/react-router' {
       path: '/crm/settings'
       fullPath: '/crm/settings'
       preLoaderRoute: typeof AuthenticatedCrmSettingsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/crm/inbox': {
+      id: '/_authenticated/crm/inbox'
+      path: '/crm/inbox'
+      fullPath: '/crm/inbox'
+      preLoaderRoute: typeof AuthenticatedCrmInboxRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/analytics/zero': {
@@ -1595,6 +1647,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAcademyCoursesIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/api/crm/telegram/$accountId': {
+      id: '/api/crm/telegram/$accountId'
+      path: '/api/crm/telegram/$accountId'
+      fullPath: '/api/crm/telegram/$accountId'
+      preLoaderRoute: typeof ApiCrmTelegramAccountIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_authenticated/kb/$baseId/trash': {
       id: '/_authenticated/kb/$baseId/trash'
       path: '/kb/$baseId/trash'
@@ -1729,6 +1788,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedAnalyticsTrialsRoute: typeof AuthenticatedAnalyticsTrialsRoute
   AuthenticatedAnalyticsUploadRoute: typeof AuthenticatedAnalyticsUploadRoute
   AuthenticatedAnalyticsZeroRoute: typeof AuthenticatedAnalyticsZeroRoute
+  AuthenticatedCrmInboxRoute: typeof AuthenticatedCrmInboxRoute
   AuthenticatedCrmSettingsRoute: typeof AuthenticatedCrmSettingsRoute
   AuthenticatedCrmTasksRoute: typeof AuthenticatedCrmTasksRoute
   AuthenticatedDashboardClassesRoute: typeof AuthenticatedDashboardClassesRoute
@@ -1811,6 +1871,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAnalyticsTrialsRoute: AuthenticatedAnalyticsTrialsRoute,
   AuthenticatedAnalyticsUploadRoute: AuthenticatedAnalyticsUploadRoute,
   AuthenticatedAnalyticsZeroRoute: AuthenticatedAnalyticsZeroRoute,
+  AuthenticatedCrmInboxRoute: AuthenticatedCrmInboxRoute,
   AuthenticatedCrmSettingsRoute: AuthenticatedCrmSettingsRoute,
   AuthenticatedCrmTasksRoute: AuthenticatedCrmTasksRoute,
   AuthenticatedDashboardClassesRoute: AuthenticatedDashboardClassesRoute,
@@ -1860,6 +1921,8 @@ const rootRouteChildren: RootRouteChildren = {
   ApiChatRoute: ApiChatRoute,
   ApiPhoneLoginRoute: ApiPhoneLoginRoute,
   ApiTranscribeRoute: ApiTranscribeRoute,
+  ApiCrmSendRoute: ApiCrmSendRoute,
+  ApiCrmTelegramAccountIdRoute: ApiCrmTelegramAccountIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

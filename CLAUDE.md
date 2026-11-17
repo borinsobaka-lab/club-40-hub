@@ -1231,7 +1231,22 @@ AUTH_SETUP.md.
   definer. RPC: `crm_people` (кого назначить ответственным),
   `crm_pipelines_reorder`, `crm_stages_reorder`, `crm_stage_delete` (этап со
   сделками — только с переносом). Стартовая воронка «Продажи» и роль
-  «Менеджер CRM». Каналов и автоматизаций ещё нет. Тесты — `db/crm.test.ts`.
+  «Менеджер CRM». Тесты — `db/crm.test.ts`.
+  Переписка (этап 2): `db/migrations/2026-11-17_zzzz_crm_messaging.sql` —
+  аккаунты каналов `crm_channel_accounts` (вид, клуб — от него клуб новых
+  сделок и кто видит диалоги; воронка новых обращений; правит `crm.manage`),
+  токены `crm_channel_secrets` (**только service_role**, сотрудникам и в
+  браузер не отдаются), личности контакта `crm_contact_identities` (Telegram
+  и WhatsApp — id общий для наших аккаунтов, `account_id` пуст; Instagram и
+  Facebook — свой у аккаунта), диалоги `crm_conversations` (контакт ×
+  аккаунт, непрочитанные, `last_inbound_at` — под окно 24 ч), сообщения
+  `crm_messages` (**пишет только сервер**; сотрудник читает диалоги
+  аккаунтов своих клубов и без клуба), шаблоны `crm_reply_templates`,
+  закрытый бакет `crm-media` (папка — id диалога). Входящее —
+  `crm_ingest_message` (service_role): контакт по id в канале, Instagram —
+  ещё по нику в другом нашем аккаунте, по телефону; повтор вебхука не
+  задваивает; нет открытой сделки — новая в первом этапе воронки аккаунта.
+  «Прочитано» — `crm_conversation_read`. Первый канал — Telegram-бот.
   Рейтинг тренеров и чаевые: `db/migrations/2026-10-11_zzzzzzzzzzzzz_trainer_ratings.sql`
   — `trainer_reviews` (оценка 1–5, одна от учётной записи на тренера; клиент
   читает и правит свою, ставит — тренеру, которого видит в приложении,

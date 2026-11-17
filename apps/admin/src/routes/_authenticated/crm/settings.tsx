@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { AdminShell } from "@/components/admin-shell";
 import { useConfirm } from "@/components/confirm-dialog";
 import { StageDot, StageSelect } from "@/components/crm/parts";
+import { ChannelsPanel, TemplatesPanel } from "@/components/crm/channels-settings";
 import { NONE } from "@/lib/crm/logic";
 import { DropIndicator } from "@/components/kb/drop-indicator";
 import { CrmSettingsPageSkeleton } from "@/components/page-skeletons";
@@ -269,6 +270,8 @@ function CrmSettingsPage() {
           </div>
         )}
 
+        {setup && <ChannelsPanel />}
+        {setup && <TemplatesPanel />}
         {setup && (
           <Panel
             title="Причины отказа"

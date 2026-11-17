@@ -10,7 +10,8 @@ import {
   railSectionKey,
   type RailSection,
 } from "@/lib/nav-sections";
-import { canOpenRail } from "@/lib/admin-access";
+import { canOpenRail, hasRight } from "@/lib/admin-access";
+import { useUnreadConversations } from "@/lib/crm/data";
 import { cn } from "@/lib/utils";
 import { RailSkeleton } from "@/components/skeletons";
 import { RailAccount } from "@/components/rail-account";
@@ -84,7 +85,7 @@ function RailItem({
       // Счётчик внутри ссылки aria-label глушит — число добавляем сюда.
       aria-label={
         badge
-          ? `${section.fullTitle}, ${section.key === "academy" ? "ждут внимания" : "новых заявок"}: ${badge}`
+          ? `${section.fullTitle}, ${section.key === "academy" ? "ждут внимания" : section.key === "crm" ? "непрочитанных диалогов" : "новых заявок"}: ${badge}`
           : section.fullTitle
       }
       aria-current={active ? "page" : undefined}
@@ -109,6 +110,10 @@ export function AppRail({ onNavigate }: { onNavigate?: () => void }) {
   const access = useAdminAccess();
   const studioId = useActiveStudioId();
   const openRequests = useClubRequestsBadge();
+  // CRM: диалоги с непрочитанными сообщениями.
+  const crmUnread = useUnreadConversations(
+    hasRight(access, "crm.view") || hasRight(access, "crm.manage"),
+  );
 
   // Разделы, закрытые сотруднику в «Доступах», не показываем; заготовки без
   // url — как есть. «Клуб» виден, если открыт раздел рейки, — даже когда
@@ -151,7 +156,9 @@ export function AppRail({ onNavigate }: { onNavigate?: () => void }) {
                 ? openRequests
                 : section.key === "academy"
                   ? (access.academy?.my_open ?? 0) + (access.academy?.to_review ?? 0)
-                  : undefined
+                  : section.key === "crm"
+                    ? crmUnread
+                    : undefined
             }
             onNavigate={onNavigate}
           />

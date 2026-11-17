@@ -2881,3 +2881,23 @@ export function CrmSettingsPageSkeleton() {
     </ShellSkeleton>
   );
 }
+
+export function CrmInboxPageSkeleton() {
+  return (
+    <ShellSkeleton title="Диалоги" network>
+      <div className="flex h-full min-h-0 overflow-hidden rounded-lg border bg-background">
+        <div className="w-full space-y-2 p-3 md:w-80 md:shrink-0 md:border-r">
+          <Skeleton className="h-10 w-full" />
+          {Array.from({ length: 7 }, (_, i) => (
+            <Skeleton key={i} className="h-12 w-full" />
+          ))}
+        </div>
+        <div className="hidden flex-1 flex-col gap-2 p-4 md:flex">
+          <Skeleton className="h-10 w-2/3" />
+          <Skeleton className="ml-auto h-10 w-1/2" />
+          <Skeleton className="h-16 w-3/5" />
+        </div>
+      </div>
+    </ShellSkeleton>
+  );
+}

@@ -6,7 +6,9 @@ import { toast } from "sonner";
 import { ClientCombobox } from "@/components/client-combobox";
 import { ClientNameLink } from "@/components/client-name-link";
 import { useConfirm } from "@/components/confirm-dialog";
+import { ChatThread } from "@/components/crm/chat";
 import { Button } from "@/components/ui/button";
+import { SegmentedControl } from "@/components/ui/segmented-control";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -26,6 +28,8 @@ import { hasRight } from "@/lib/admin-access";
 import {
   addNote,
   addTask,
+  crmAccountsQuery,
+  useContactConversations,
   crmErrorText,
   crmSetupQuery,
   deleteDeal,
@@ -39,7 +43,7 @@ import {
   useDeal,
   type DealPatch,
 } from "@/lib/crm/data";
-import { defaultTaskDue, eventText, parseBudget, parseTags } from "@/lib/crm/logic";
+import { accountLabel, defaultTaskDue, eventText, parseBudget, parseTags } from "@/lib/crm/logic";
 import type { CrmContact, CrmDeal, CrmEvent, CrmTask } from "@/lib/crm/types";
 import { formatDateTime, formatPhone, toDateTimeLocalValue } from "@/lib/format";
 import { cn } from "@/lib/utils";
@@ -258,17 +262,85 @@ function DealCard({ dealId, onClose }: { dealId: string; onClose: () => void }) 
           )}
         </div>
 
-        {/* Справа: задачи и лента */}
-        <div className="flex min-h-0 flex-col">
-          <div className="flex-1 space-y-4 p-4 md:overflow-y-auto sm:p-5">
-            <Tasks dealId={dealId} tasks={data?.tasks ?? []} responsibleId={deal.responsible_id} />
-            <Timeline events={data?.events ?? []} />
-          </div>
-          <NoteInput dealId={dealId} />
-        </div>
+        {/* Справа: задачи и лента или переписка */}
+        <RightPane
+          deal={deal}
+          studioName={studios.find((s) => s.id === deal.studio_id)?.name}
+          feed={
+            <>
+              <div className="flex-1 space-y-4 p-4 md:overflow-y-auto sm:p-5">
+                <Tasks
+                  dealId={dealId}
+                  tasks={data?.tasks ?? []}
+                  responsibleId={deal.responsible_id}
+                />
+                <Timeline events={data?.events ?? []} />
+              </div>
+              <NoteInput dealId={dealId} />
+            </>
+          }
+        />
       </div>
       {confirmDialog}
     </>
+  );
+}
+
+/**
+ * Правая часть карточки: «Лента» (задачи, комментарии, события) и переписка
+ * с контактом — вкладка на каждый его диалог, подписанная аккаунтом, в
+ * который он пишет. Пришло непрочитанное — карточка открывается на нём.
+ */
+function RightPane({
+  deal,
+  studioName,
+  feed,
+}: {
+  deal: CrmDeal;
+  studioName: string | undefined;
+  feed: ReactNode;
+}) {
+  const { data: conversations = [] } = useContactConversations(deal.contact_id);
+  const { data: accounts = [] } = useQuery(crmAccountsQuery);
+  const [picked, setPicked] = useState<string | null>(null);
+  const unread = conversations.find((c) => c.unread_count > 0)?.id;
+  const tab = picked ?? unread ?? "feed";
+  const conversation = conversations.find((c) => c.id === tab);
+  const account = accounts.find((a) => a.id === conversation?.account_id);
+
+  return (
+    <div className="flex min-h-0 flex-col max-md:min-h-[70dvh]">
+      {conversations.length > 0 && (
+        <div className="overflow-x-auto border-b px-4 py-2 sm:px-5">
+          <SegmentedControl
+            aria-label="Лента или переписка"
+            value={conversation ? tab : "feed"}
+            onChange={setPicked}
+            options={[
+              { value: "feed", label: "Лента" },
+              ...conversations.map((c) => ({
+                value: c.id,
+                label: accountLabel(accounts.find((a) => a.id === c.account_id)),
+                dot: c.unread_count > 0 ? "есть непрочитанные" : undefined,
+              })),
+            ]}
+          />
+        </div>
+      )}
+      {conversation ? (
+        <ChatThread
+          key={conversation.id}
+          conversationId={conversation.id}
+          contactName={deal.contact?.name}
+          studioName={studioName}
+          disabledReason={
+            account?.status === "disabled" ? "Аккаунт канала отключён — ответить нельзя." : null
+          }
+        />
+      ) : (
+        feed
+      )}
+    </div>
   );
 }
 

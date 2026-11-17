@@ -10,6 +10,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { unwrap } from "@/lib/query";
 import { sortStages } from "./logic";
 import type {
+  CrmChannelAccount,
+  CrmConversation,
+  CrmMessage,
+  CrmReplyTemplate,
   CrmDeal,
   CrmEvent,
   CrmLossReason,
@@ -296,4 +300,160 @@ export function useCrmStudios() {
     staleTime: 5 * 60_000,
     meta: { errorMessage: "Не удалось загрузить клубы" },
   });
+}
+
+// Переписка --------------------------------------------------------------------
+
+export const crmAccountsQuery = queryOptions({
+  queryKey: [CRM_KEY, "accounts"],
+  queryFn: () =>
+    unwrap<CrmChannelAccount[]>(
+      supabase
+        .from("crm_channel_accounts")
+        .select(
+          "id, kind, name, studio_id, pipeline_id, external_id, username, status, status_note, last_event_at",
+        )
+        .order("created_at"),
+    ),
+  staleTime: 60_000,
+  meta: { errorMessage: "Не удалось загрузить каналы" },
+});
+
+export const crmTemplatesQuery = queryOptions({
+  queryKey: [CRM_KEY, "templates"],
+  queryFn: () =>
+    unwrap<CrmReplyTemplate[]>(
+      supabase
+        .from("crm_reply_templates")
+        .select("id, title, body, sort_order")
+        .order("sort_order"),
+    ),
+  staleTime: 5 * 60_000,
+  meta: { errorMessage: "Не удалось загрузить шаблоны ответов" },
+});
+
+const CONVERSATION_COLUMNS =
+  "id, contact_id, account_id, studio_id, last_message_at, last_message_text, last_direction, last_inbound_at, unread_count, contact:crm_contacts(id, name, phone, client_id), identity:crm_contact_identities(username, display_name)";
+
+/** Как часто перезапрашивать переписку, пока вкладка открыта (Realtime нет). */
+const CHAT_POLL_MS = 4_000;
+const INBOX_POLL_MS = 8_000;
+
+/** Диалоги: последние сверху; unreadOnly — только с непрочитанным. */
+export function useConversations(opts: { accountId: string; unreadOnly: boolean }) {
+  return useQuery({
+    queryKey: [CRM_KEY, "conversations", opts.accountId, opts.unreadOnly],
+    queryFn: () => {
+      let q = supabase
+        .from("crm_conversations")
+        .select(CONVERSATION_COLUMNS)
+        .not("last_message_at", "is", null)
+        .order("last_message_at", { ascending: false })
+        .limit(200);
+      if (opts.accountId) q = q.eq("account_id", opts.accountId);
+      if (opts.unreadOnly) q = q.gt("unread_count", 0);
+      return unwrap<CrmConversation[]>(q);
+    },
+    refetchInterval: INBOX_POLL_MS,
+    meta: { errorMessage: "Не удалось загрузить диалоги" },
+  });
+}
+
+/** Диалоги контакта (карточка сделки): во всех каналах и аккаунтах. */
+export function useContactConversations(contactId: string | null) {
+  return useQuery({
+    queryKey: [CRM_KEY, "conversations", "contact", contactId],
+    queryFn: () =>
+      unwrap<CrmConversation[]>(
+        supabase
+          .from("crm_conversations")
+          .select(CONVERSATION_COLUMNS)
+          .eq("contact_id", contactId!)
+          .order("last_message_at", { ascending: false }),
+      ),
+    enabled: !!contactId,
+    refetchInterval: INBOX_POLL_MS,
+    meta: { errorMessage: "Не удалось загрузить переписку" },
+  });
+}
+
+/** Последние 300 сообщений диалога, старые сверху. */
+export function useMessages(conversationId: string | null) {
+  return useQuery({
+    queryKey: [CRM_KEY, "messages", conversationId],
+    queryFn: async () => {
+      const rows = await unwrap<CrmMessage[]>(
+        supabase
+          .from("crm_messages")
+          .select(
+            "id, conversation_id, direction, body, attachments, status, error, sent_by_name, auto, created_at",
+          )
+          .eq("conversation_id", conversationId!)
+          .order("created_at", { ascending: false })
+          .limit(300),
+      );
+      return rows.reverse();
+    },
+    enabled: !!conversationId,
+    refetchInterval: CHAT_POLL_MS,
+    meta: { errorMessage: "Не удалось загрузить сообщения" },
+  });
+}
+
+/** Сколько диалогов с непрочитанным — счётчик в меню и рейке. */
+export function useUnreadConversations(enabled: boolean) {
+  const { data } = useQuery({
+    queryKey: [CRM_KEY, "conversations", "unread-count"],
+    queryFn: async () => {
+      const { count, error } = await supabase
+        .from("crm_conversations")
+        .select("id", { count: "exact", head: true })
+        .gt("unread_count", 0);
+      if (error) throw new Error(error.message);
+      return count ?? 0;
+    },
+    enabled,
+    refetchInterval: 20_000,
+    staleTime: 10_000,
+  });
+  return data ?? 0;
+}
+
+export const markConversationRead = (id: string) =>
+  crmRpc<void>("crm_conversation_read", { p_conversation: id });
+
+/** Открытая сделка контакта (последняя) — «Открыть сделку» из диалога. */
+export async function findContactDeal(contactId: string): Promise<string | null> {
+  const rows = await unwrap<{ id: string }[]>(
+    supabase
+      .from("crm_deals")
+      .select("id")
+      .eq("contact_id", contactId)
+      .order("closed_at", { ascending: false, nullsFirst: true })
+      .order("created_at", { ascending: false })
+      .limit(1),
+  );
+  return rows[0]?.id ?? null;
+}
+
+/** Ответ в диалог — через сервер админки (токен канала есть только там). */
+export async function sendCrmMessage(conversationId: string, body: string, file: File | null) {
+  const { data } = await supabase.auth.getSession();
+  const form = new FormData();
+  form.set("conversation_id", conversationId);
+  form.set("body", body);
+  if (file) form.set("file", file);
+  const res = await fetch("/api/crm/send", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${data.session?.access_token ?? ""}` },
+    body: form,
+  });
+  const json = (await res.json().catch(() => null)) as { error?: string } | null;
+  if (!res.ok) throw new Error(json?.error ?? "Не удалось отправить сообщение");
+}
+
+/** Подписанная ссылка на файл переписки (бакет crm-media), на час. */
+export async function crmFileUrl(path: string): Promise<string | null> {
+  const { data } = await supabase.storage.from("crm-media").createSignedUrl(path, 3600);
+  return data?.signedUrl ?? null;
 }
