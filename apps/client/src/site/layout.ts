@@ -83,12 +83,17 @@ export function renderSitePage(key: string): string | null {
 <meta name="theme-color" content="#2A2B2F">
 <title>${esc(page.title)}</title>
 <meta name="description" content="${esc(page.description)}">
+<meta property="og:type" content="website">
+<meta property="og:title" content="${esc(page.title)}">
+<meta property="og:description" content="${esc(page.description)}">
+<meta property="og:image" content="https://app.lady-stretch.one/site/img/hero-aero.webp">
 <link rel="icon" href="/favicon.ico">
 <link rel="preload" href="/site/fonts/roboto-cyrillic-600-normal.woff2" as="font" type="font/woff2" crossorigin>
 ${page.preload ? `<link rel="preload" href="${page.preload}" as="image">` : ""}
 <style>${styles}</style>
 </head>
 <body>
+<a class="skip" href="#top">К содержанию</a>
 <header class="nav" id="nav">
   <div class="wrap">
     <div class="nav-in">
@@ -105,7 +110,7 @@ ${page.preload ? `<link rel="preload" href="${page.preload}" as="image">` : ""}
         </div>
       </div>
       <a class="btn btn-brand" href="/site#trial">Пробное занятие</a>
-      <button class="burger" id="burger" aria-label="Меню"><span></span></button>
+      <button class="burger" id="burger" aria-label="Меню" aria-expanded="false" aria-controls="mmenu"><span></span></button>
     </div>
   </div>
 </header>
@@ -113,7 +118,7 @@ ${page.preload ? `<link rel="preload" href="${page.preload}" as="image">` : ""}
   ${links("m")}
   <a class="btn btn-brand btn-lg" href="/site#trial">Записаться на пробное</a>
 </div>
-<main id="top">
+<main id="top" tabindex="-1">
 ${page.body.replace("<!--FINAL-->", finalHtml)}
 </main>
 <div class="mbar" id="mbar"><a class="btn btn-brand" href="/site#trial">Записаться на пробное — 14 ₾</a></div>

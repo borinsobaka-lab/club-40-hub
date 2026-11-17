@@ -116,9 +116,13 @@
 
   // Меню и язык
   var burger=d.getElementById('burger');
-  burger.addEventListener('click',function(){d.body.classList.toggle('menu-open')});
-  d.querySelectorAll('#mmenu a').forEach(function(a){a.addEventListener('click',function(){d.body.classList.remove('menu-open')})});
+  function setMenu(o){d.body.classList.toggle('menu-open',o);burger.setAttribute('aria-expanded',o?'true':'false')}
+  burger.addEventListener('click',function(){setMenu(!d.body.classList.contains('menu-open'))});
+  d.addEventListener('keydown',function(e){if(e.key==='Escape'){setMenu(false);setLang(false)}});
+  d.querySelectorAll('#mmenu a').forEach(function(a){a.addEventListener('click',function(){setMenu(false)})});
   var lang=d.getElementById('lang');
-  lang.querySelector('.lang-btn').addEventListener('click',function(e){e.stopPropagation();lang.classList.toggle('open')});
-  d.addEventListener('click',function(){lang.classList.remove('open')});
+  var langBtn=lang.querySelector('.lang-btn');
+  function setLang(o){lang.classList.toggle('open',o);langBtn.setAttribute('aria-expanded',o?'true':'false')}
+  langBtn.addEventListener('click',function(e){e.stopPropagation();setLang(!lang.classList.contains('open'))});
+  d.addEventListener('click',function(){setLang(false)});
 })();
