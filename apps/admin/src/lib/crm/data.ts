@@ -706,3 +706,30 @@ export async function sendWaTemplate(input: {
     throw new Error(json?.error ?? "Не удалось отправить шаблон");
   return json.conversation_id;
 }
+
+/** Написать первым с личного аккаунта Telegram — по номеру или @нику. */
+export async function startTelegramChat(input: {
+  accountId: string;
+  phone: string | null;
+  username: string | null;
+  name: string;
+  clientId: string | null;
+  body: string;
+}): Promise<string> {
+  const { data } = await supabase.auth.getSession();
+  const res = await fetch("/api/crm/tg-start", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${data.session?.access_token ?? ""}`,
+    },
+    body: JSON.stringify(input),
+  });
+  const json = (await res.json().catch(() => null)) as {
+    error?: string;
+    conversation_id?: string;
+  } | null;
+  if (!res.ok || !json?.conversation_id)
+    throw new Error(json?.error ?? "Не удалось отправить сообщение");
+  return json.conversation_id;
+}

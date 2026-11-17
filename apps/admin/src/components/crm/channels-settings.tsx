@@ -35,6 +35,8 @@ import {
   connectTelegramBotFn,
   deleteChannelFn,
   setChannelEnabledFn,
+  tgUserConfirmFn,
+  tgUserLoginFn,
 } from "@/lib/crm/channels.functions";
 import {
   crmAccountsQuery,
@@ -87,8 +89,10 @@ export function ChannelsPanel() {
   const { data: studios = [] } = useCrmStudios();
   const { confirm, confirmDialog } = useConfirm();
   const [adding, setAdding] = useState<
-    "telegram_bot" | "whatsapp" | "instagram" | "facebook" | null
+    "telegram_bot" | "telegram_user" | "whatsapp" | "instagram" | "facebook" | null
   >(null);
+  // Повторный вход в личный аккаунт Telegram (сессия сброшена).
+  const [relogin, setRelogin] = useState<CrmChannelAccount | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
 
   const toggle = async (a: CrmChannelAccount, enabled: boolean) => {
@@ -129,12 +133,14 @@ export function ChannelsPanel() {
       title="Каналы"
       action={
         <div className="flex flex-wrap justify-end gap-1.5">
-          {(["telegram_bot", "whatsapp", "instagram", "facebook"] as const).map((k) => (
-            <Button key={k} variant="outline" size="xs" onClick={() => setAdding(k)}>
-              <Plus />
-              {CHANNEL_LABEL[k]}
-            </Button>
-          ))}
+          {(["telegram_bot", "telegram_user", "whatsapp", "instagram", "facebook"] as const).map(
+            (k) => (
+              <Button key={k} variant="outline" size="xs" onClick={() => setAdding(k)}>
+                <Plus />
+                {k === "telegram_user" ? "Telegram (личный)" : CHANNEL_LABEL[k]}
+              </Button>
+            ),
+          )}
         </div>
       }
     >
@@ -168,16 +174,21 @@ export function ChannelsPanel() {
                   </StatusChip>
                 </div>
                 <div className="truncate text-xs text-muted-foreground">
-                  {CHANNEL_LABEL[a.kind]}
+                  {a.kind === "telegram_user" ? "Telegram (личный)" : CHANNEL_LABEL[a.kind]}
                   {a.username ? ` · ${a.kind === "whatsapp" ? "" : "@"}${a.username}` : ""}
                   {` · ${studios.find((s) => s.id === a.studio_id)?.name ?? "без клуба"}`}
                   {a.status_note ? ` · ${a.status_note}` : ""}
                 </div>
               </div>
               {busy === a.id && <Loader2 className="size-4 animate-spin text-muted-foreground" />}
+              {a.kind === "telegram_user" && a.status !== "active" && (
+                <Button variant="outline" size="xs" onClick={() => setRelogin(a)}>
+                  Войти
+                </Button>
+              )}
               <Switch
                 checked={a.status !== "disabled"}
-                disabled={busy === a.id}
+                disabled={busy === a.id || (a.kind === "telegram_user" && !a.external_id)}
                 aria-label={`Принимать сообщения: ${a.name}`}
                 onCheckedChange={(v) => void toggle(a, v)}
               />
@@ -198,13 +209,201 @@ export function ChannelsPanel() {
       <Dialog open={!!adding} onOpenChange={(open) => !open && setAdding(null)}>
         <DialogContent className="sm:max-w-md">
           {adding === "telegram_bot" && <BotForm onDone={() => setAdding(null)} />}
-          {adding && adding !== "telegram_bot" && (
+          {adding === "telegram_user" && <TgUserForm onDone={() => setAdding(null)} />}
+          {adding && adding !== "telegram_bot" && adding !== "telegram_user" && (
             <MetaForm key={adding} kind={adding} onDone={() => setAdding(null)} />
+          )}
+        </DialogContent>
+      </Dialog>
+      <Dialog open={!!relogin} onOpenChange={(open) => !open && setRelogin(null)}>
+        <DialogContent className="sm:max-w-md">
+          {relogin && (
+            <TgUserForm key={relogin.id} account={relogin} onDone={() => setRelogin(null)} />
           )}
         </DialogContent>
       </Dialog>
       {confirmDialog}
     </Panel>
+  );
+}
+
+/**
+ * Вход в личный аккаунт Telegram: номер → код из Telegram → облачный пароль
+ * (если включён). Код и пароль уходят на наш сервер и дальше в Telegram, у
+ * нас не сохраняются; сохраняется сессия — на сервисе личного Telegram.
+ */
+function TgUserForm({ account, onDone }: { account?: CrmChannelAccount; onDone: () => void }) {
+  const qc = useQueryClient();
+  const { data: setup } = useQuery(crmSetupQuery);
+  const { data: studios = [] } = useCrmStudios();
+  const [step, setStep] = useState<"phone" | "code" | "password">("phone");
+  const [accountId, setAccountId] = useState<string | null>(account?.id ?? null);
+  const [viaApp, setViaApp] = useState(true);
+  const [phone, setPhone] = useState("");
+  const [name, setName] = useState(account?.name ?? "");
+  const [studio, setStudio] = useState<string | null>(account?.studio_id ?? null);
+  const [pipeline, setPipeline] = useState(NONE);
+  const [code, setCode] = useState("");
+  const [password, setPassword] = useState("");
+  const [saving, setSaving] = useState(false);
+  const pipelines = (setup?.pipelines ?? []).filter((p) => !p.is_archived);
+
+  const submit = async () => {
+    setSaving(true);
+    try {
+      if (step === "phone") {
+        if (!phone.trim()) {
+          toast.error("Укажите номер телефона аккаунта");
+          return;
+        }
+        const res = await tgUserLoginFn({
+          data: {
+            accountId,
+            name: name.trim(),
+            phone: phone.trim(),
+            studioId: studio,
+            pipelineId: pipeline === NONE ? null : pipeline,
+          },
+        });
+        setAccountId(res.accountId);
+        setViaApp(res.viaApp);
+        setStep("code");
+        await invalidateCrm(qc);
+        return;
+      }
+      if (!accountId) return;
+      const res = await tgUserConfirmFn({
+        data: step === "code" ? { accountId, code: code.trim() } : { accountId, password },
+      });
+      if (res.state === "awaiting_password") {
+        setStep("password");
+        return;
+      }
+      await invalidateCrm(qc);
+      if (res.state === "online") {
+        toast.success("Аккаунт Telegram подключён");
+        onDone();
+      } else toast.error("Войти не удалось — начните заново");
+    } catch (e) {
+      toast.error(crmErrorText(e, "Не удалось войти в Telegram"));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <>
+      <DialogHeader>
+        <DialogTitle>
+          {account ? "Войти в Telegram заново" : "Подключить личный Telegram"}
+        </DialogTitle>
+        <DialogDescription>
+          Личные сообщения этому аккаунту будут приходить в «Диалоги», ответы уходят от его имени. С
+          него можно писать клиентам первыми.
+        </DialogDescription>
+      </DialogHeader>
+      <DialogForm onSubmit={() => void submit()}>
+        <DialogBody>
+          <div className="space-y-4">
+            {step === "phone" && (
+              <>
+                <FormField
+                  label="Номер телефона аккаунта"
+                  required
+                  hint="С кодом страны. На него (в приложение Telegram) придёт код входа."
+                >
+                  <Input
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    placeholder="+995 555 12 34 56"
+                    inputMode="tel"
+                    autoComplete="off"
+                    autoFocus
+                  />
+                </FormField>
+                {!account && (
+                  <>
+                    <FormField label="Название" hint="Как аккаунт подписан в диалогах.">
+                      <Input
+                        value={name}
+                        onChange={(e) => setName(e.target.value)}
+                        placeholder="Telegram Ваке"
+                        maxLength={80}
+                      />
+                    </FormField>
+                    <FormField label="Клуб" tip={TIPS.studio}>
+                      <StudioPick value={studio} onChange={setStudio} studios={studios} />
+                    </FormField>
+                    <FormField label="Воронка новых обращений" tip={TIPS.pipeline}>
+                      <Select value={pipeline} onValueChange={setPipeline}>
+                        <SelectTrigger aria-label="Воронка новых обращений">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value={NONE}>Первая воронка</SelectItem>
+                          {pipelines.map((p) => (
+                            <SelectItem key={p.id} value={p.id}>
+                              {p.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </FormField>
+                  </>
+                )}
+                <InfoNote>
+                  Нужен отдельный рабочий аккаунт: в CRM попадут все его личные переписки, и их
+                  увидят сотрудники клуба. Группы, каналы и боты не загружаются. В Telegram появится
+                  новое устройство в «Настройки» → «Устройства» — не завершайте его сеанс.
+                </InfoNote>
+              </>
+            )}
+            {step === "code" && (
+              <FormField
+                label="Код из Telegram"
+                required
+                hint={
+                  viaApp
+                    ? "Код пришёл сообщением от Telegram в приложении на этом номере."
+                    : "Код пришёл по SMS на этот номер."
+                }
+              >
+                <Input
+                  value={code}
+                  onChange={(e) => setCode(e.target.value)}
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  maxLength={12}
+                  className="font-mono"
+                  autoFocus
+                />
+              </FormField>
+            )}
+            {step === "password" && (
+              <FormField
+                label="Облачный пароль"
+                required
+                hint="У аккаунта включена двухэтапная проверка. Пароль не сохраняется."
+              >
+                <Input
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  autoComplete="off"
+                  autoFocus
+                />
+              </FormField>
+            )}
+          </div>
+        </DialogBody>
+        <DialogFooter>
+          <Button type="submit" disabled={saving}>
+            {saving && <Loader2 className="animate-spin" />}
+            {step === "phone" ? "Получить код" : "Войти"}
+          </Button>
+        </DialogFooter>
+      </DialogForm>
+    </>
   );
 }
 

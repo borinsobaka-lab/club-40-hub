@@ -9,6 +9,7 @@ import { useConfirm } from "@/components/confirm-dialog";
 import { ChatThread } from "@/components/crm/chat";
 import { WaReopenButton } from "@/components/crm/client-chat-panel";
 import { ClientSummary } from "@/components/crm/client-summary";
+import { TgStartDialog } from "@/components/crm/tg-start";
 import { WaTemplateDialog } from "@/components/crm/wa-template-send";
 import { TaskForm, TaskItem } from "@/components/crm/tasks";
 import { Button } from "@/components/ui/button";
@@ -329,9 +330,17 @@ function RightPane({
     accounts.some((a) => a.kind === "whatsapp" && a.status === "active") &&
     !conversations.some((c) => accounts.find((a) => a.id === c.account_id)?.kind === "whatsapp");
 
+  // Личный Telegram: по номеру или @нику, пока переписки с него нет.
+  const [tgOpen, setTgOpen] = useState(false);
+  const canStartTg =
+    accounts.some((a) => a.kind === "telegram_user" && a.status === "active") &&
+    !conversations.some(
+      (c) => accounts.find((a) => a.id === c.account_id)?.kind === "telegram_user",
+    );
+
   return (
     <div className="flex min-h-0 flex-col max-md:min-h-[70dvh]">
-      {(conversations.length > 0 || canStartWa) && (
+      {(conversations.length > 0 || canStartWa || canStartTg) && (
         <div className="flex items-center gap-2 overflow-x-auto border-b px-4 py-2 sm:px-5">
           <SegmentedControl
             aria-label="Лента или переписка"
@@ -346,11 +355,21 @@ function RightPane({
               })),
             ]}
           />
-          {canStartWa && (
+          {canStartTg && (
             <Button
               variant="outline"
               size="xs"
               className="ml-auto shrink-0"
+              onClick={() => setTgOpen(true)}
+            >
+              Написать в Telegram
+            </Button>
+          )}
+          {canStartWa && (
+            <Button
+              variant="outline"
+              size="xs"
+              className={canStartTg ? "shrink-0" : "ml-auto shrink-0"}
               onClick={() => setWaOpen(true)}
             >
               Написать в WhatsApp
@@ -358,6 +377,14 @@ function RightPane({
           )}
         </div>
       )}
+      <TgStartDialog
+        open={tgOpen}
+        onOpenChange={setTgOpen}
+        phones={deal.contact?.phone ? [deal.contact.phone] : []}
+        clientId={deal.contact?.client_id ?? null}
+        contactName={deal.contact?.name ?? null}
+        onSent={setPicked}
+      />
       <WaTemplateDialog
         open={waOpen}
         onOpenChange={setWaOpen}

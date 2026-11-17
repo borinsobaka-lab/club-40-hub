@@ -5,6 +5,7 @@ import { toast } from "sonner";
 
 import { ChatThread } from "@/components/crm/chat";
 import { StageDot } from "@/components/crm/parts";
+import { TgStartDialog } from "@/components/crm/tg-start";
 import { WaTemplateDialog } from "@/components/crm/wa-template-send";
 import { Button } from "@/components/ui/button";
 import { SegmentedControl } from "@/components/ui/segmented-control";
@@ -86,6 +87,7 @@ export function ClientChatPanel({
   const { data: deals = [] } = useClientDeals(client.id);
   const [picked, setPicked] = useState<string | null>(null);
   const [waOpen, setWaOpen] = useState(false);
+  const [tgOpen, setTgOpen] = useState(false);
   const [creating, setCreating] = useState(false);
 
   const list = conversations ?? [];
@@ -99,6 +101,11 @@ export function ClientChatPanel({
   const hasWhatsApp = accounts.some((a) => a.kind === "whatsapp" && a.status === "active");
   const waConversation = list.some(
     (c) => accounts.find((a) => a.id === c.account_id)?.kind === "whatsapp",
+  );
+  // Личный Telegram: написать первым, пока переписки с него нет.
+  const hasTelegram = accounts.some((a) => a.kind === "telegram_user" && a.status === "active");
+  const tgConversation = list.some(
+    (c) => accounts.find((a) => a.id === c.account_id)?.kind === "telegram_user",
   );
   const stageOf = (id: string) => setup?.stages.find((s) => s.id === id);
 
@@ -202,11 +209,21 @@ export function ClientChatPanel({
                 {conversation.identity?.username ? ` · @${conversation.identity.username}` : ""}
               </span>
             )}
-            {hasWhatsApp && !waConversation && phones.length > 0 && (
+            {hasTelegram && !tgConversation && (
               <Button
                 variant="outline"
                 size="xs"
                 className="ml-auto shrink-0"
+                onClick={() => setTgOpen(true)}
+              >
+                Telegram
+              </Button>
+            )}
+            {hasWhatsApp && !waConversation && phones.length > 0 && (
+              <Button
+                variant="outline"
+                size="xs"
+                className={hasTelegram && !tgConversation ? "shrink-0" : "ml-auto shrink-0"}
                 onClick={() => setWaOpen(true)}
               >
                 WhatsApp
@@ -234,11 +251,16 @@ export function ClientChatPanel({
           <MessageCircle className="mx-auto size-8 text-muted-foreground" />
           <p className="text-sm text-muted-foreground">
             Переписки с клиентом пока нет. Она появится здесь, когда клиент напишет в подключённый
-            мессенджер{hasWhatsApp ? " — или напишите первым в WhatsApp." : "."}
+            мессенджер{hasWhatsApp || hasTelegram ? " — или напишите первым." : "."}
           </p>
           {hasWhatsApp && (
             <Button size="sm" disabled={phones.length === 0} onClick={() => setWaOpen(true)}>
               Написать в WhatsApp
+            </Button>
+          )}
+          {hasTelegram && (
+            <Button size="sm" variant="outline" onClick={() => setTgOpen(true)}>
+              Написать в Telegram
             </Button>
           )}
           {hasWhatsApp && phones.length === 0 && (
@@ -246,6 +268,14 @@ export function ClientChatPanel({
           )}
         </div>
       )}
+      <TgStartDialog
+        open={tgOpen}
+        onOpenChange={setTgOpen}
+        phones={phones}
+        clientId={client.id}
+        contactName={client.name}
+        onSent={setPicked}
+      />
       <WaTemplateDialog
         open={waOpen}
         onOpenChange={setWaOpen}

@@ -18,6 +18,12 @@ Start (SSR) + React 19 + Tailwind 4 + shadcn/radix, пакетный менед�
   https://rr.base40.fit). С админкой и клиентом не связано; свой
   **README.md** (устройство, установка в amoCRM и Coolify). Тесты —
   `cd integrations/amocrm-round-robin/server && bun test`.
+- `integrations/crm-telegram/` — сервис личных аккаунтов Telegram для CRM
+  (MTProto, GramJS; Bun): держит вход и соединение, пересылает личные
+  сообщения в админку (`/api/crm/tg-user`) и отправляет по её запросу; общий
+  секрет `CRM_TG_SECRET`, сессии — на томе `/data`, строго один экземпляр.
+  Свой **README.md**; тесты — `cd integrations/crm-telegram && bun test`.
+  Схемы базы не меняет (канал `telegram_user` — в `crm_channel_accounts`).
 - Документы проекта — в корне (см. «Документы»).
 
 До 2026-10-10 это были два репозитория: `club-40-hub` (админка) и
@@ -140,6 +146,10 @@ Coolify на Hetzner, все приложения — из этого репоз
 Watch Paths `integrations/amocrm-round-robin/server/**` и `…/widget/**`, том
 `/data`) — https://rr.base40.fit, шаги установки — его README и
 AGENT_TASKS.md, Задача 15.
+
+Сервис личного Telegram для CRM (`integrations/crm-telegram/Dockerfile`,
+Watch Paths `integrations/crm-telegram/**`, том `/data`, один экземпляр) —
+https://tg.base40.fit; установка — его README и AGENT_TASKS.md, Задача 18, B8.
 
 Watch Paths — чтобы правка одного приложения не пересобирала другие.
 Переменные окружения каждого приложения — в его CLAUDE.md; переключение

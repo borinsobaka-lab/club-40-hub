@@ -11,6 +11,8 @@ import {
   deleteWaTemplate,
   syncWaTemplates,
   setChannelEnabled,
+  tgUserConfirm,
+  tgUserLogin,
 } from "@/lib/crm/channels.server";
 import { isBotToken } from "@/lib/crm/telegram";
 
@@ -146,4 +148,47 @@ export const deleteWaTemplateFn = createServerFn({ method: "POST" })
     await requireManage(context.supabase);
     await deleteWaTemplate(data.id);
     return { ok: true };
+  });
+
+// Личный Telegram («Настройки» → «Каналы» → «Telegram (личный)») -------------------
+
+/** Шаг 1: номер телефона аккаунта — Telegram присылает код. */
+export const tgUserLoginFn = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data) =>
+    parse(
+      z.object({
+        accountId: z.string().uuid().nullable(),
+        name: z.string().trim().max(80),
+        phone: z
+          .string()
+          .trim()
+          .regex(/^\+?[\d\s()-]{8,25}$/, "Номер — с кодом страны, например +995 555 12 34 56"),
+        studioId: uuidOrNull,
+        pipelineId: uuidOrNull,
+      }),
+      data,
+    ),
+  )
+  .handler(async ({ context, data }) => {
+    await requireManage(context.supabase);
+    return tgUserLogin({ ...data, userId: context.userId });
+  });
+
+/** Шаги 2 и 3: код из Telegram и, если включён, облачный пароль. */
+export const tgUserConfirmFn = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data) =>
+    parse(
+      z.object({
+        accountId: z.string().uuid(),
+        code: z.string().trim().max(12).optional(),
+        password: z.string().max(200).optional(),
+      }),
+      data,
+    ),
+  )
+  .handler(async ({ context, data }) => {
+    await requireManage(context.supabase);
+    return tgUserConfirm(data);
   });

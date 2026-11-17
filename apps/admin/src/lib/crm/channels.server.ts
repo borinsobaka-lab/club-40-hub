@@ -30,6 +30,16 @@ import {
 } from "./meta.server";
 import { attachmentKind, parseTelegramUpdate, safeFileName, type IncomingFile } from "./telegram";
 import {
+  tgUserLoginCode,
+  tgUserLoginPassword,
+  tgUserLoginStart,
+  tgUserLogout,
+  tgUserResolve,
+  tgUserSend,
+  tgUserStatus,
+  type TgUserStatus,
+} from "./tg-user.server";
+import {
   TelegramError,
   tgDeleteWebhook,
   tgDownload,
@@ -178,7 +188,13 @@ export async function setChannelEnabled(accountId: string, enabled: boolean): Pr
   const admin = getSupabaseAdmin();
   const secret = await loadSecret(accountId);
   if (!secret) throw new Error("У аккаунта нет токена — подключите его заново");
-  if ((await accountKind(accountId)) === "telegram_bot") {
+  const kind = await accountKind(accountId);
+  if (kind === "telegram_user" && enabled) {
+    const status = await tgUserStatus(accountId);
+    if (status.state !== "online")
+      throw new Error(status.note ?? "В аккаунт Telegram нужно войти заново");
+  }
+  if (kind === "telegram_bot") {
     try {
       if (enabled) {
         const next = secret.webhook_secret ?? randomBytes(24).toString("hex");
@@ -207,8 +223,10 @@ export async function setChannelEnabled(accountId: string, enabled: boolean): Pr
 export async function deleteChannel(accountId: string): Promise<void> {
   const admin = getSupabaseAdmin();
   const secret = await loadSecret(accountId);
-  if (secret && (await accountKind(accountId)) === "telegram_bot")
-    await tgDeleteWebhook(secret.token).catch(() => {});
+  const deletedKind = await accountKind(accountId);
+  if (secret && deletedKind === "telegram_bot") await tgDeleteWebhook(secret.token).catch(() => {});
+  // Личный Telegram: выйти из аккаунта и стереть сессию на сервисе.
+  if (deletedKind === "telegram_user") await tgUserLogout(accountId).catch(() => {});
   const { data: convs } = await admin
     .from("crm_conversations")
     .select("id")
@@ -534,6 +552,8 @@ async function deliver(
     return out
       ? tgSendFile(secret.token, chatId, out.file, out.file.name, body || null)
       : tgSendText(secret.token, chatId, body);
+  if (account.kind === "telegram_user")
+    return tgUserSend(account.id, chatId, body, out?.file ?? null);
   if (account.kind === "whatsapp") {
     if (!account.external_id) throw new Error("У аккаунта нет номера");
     return out
@@ -970,5 +990,292 @@ export async function sendWaTemplateMessage(input: {
     template_id: tpl.id,
   });
   if (insErr) console.error("[crm] template message:", insErr.message);
+  return { conversationId };
+}
+
+// Личный Telegram (сервис integrations/crm-telegram) ------------------------------
+
+/** Сервис сообщил, что аккаунт вошёл: записать, кто это, и включить. */
+async function tgUserActivate(accountId: string, status: TgUserStatus): Promise<void> {
+  if (status.state !== "online" || !status.user) return;
+  const { error } = await getSupabaseAdmin()
+    .from("crm_channel_accounts")
+    .update({
+      external_id: status.user.id,
+      username: status.user.username,
+      status: "active",
+      status_note: null,
+    })
+    .eq("id", accountId);
+  // Этот же аккаунт Telegram уже подключён другой строкой.
+  if (error)
+    throw new Error(
+      /duplicate|unique/i.test(error.message)
+        ? "Этот аккаунт Telegram уже подключён"
+        : error.message,
+    );
+}
+
+/**
+ * Начать вход в личный аккаунт: строка аккаунта (выключена, пока не войдёт)
+ * и код на номер. `accountId` — повторный вход в уже заведённый аккаунт.
+ */
+export async function tgUserLogin(input: {
+  accountId: string | null;
+  name: string;
+  phone: string;
+  studioId: string | null;
+  pipelineId: string | null;
+  userId: string;
+}): Promise<{ accountId: string; viaApp: boolean }> {
+  const admin = getSupabaseAdmin();
+  let id = input.accountId;
+  if (!id) {
+    const { data, error } = await admin
+      .from("crm_channel_accounts")
+      .insert({
+        kind: "telegram_user",
+        name: input.name.trim() || "Telegram",
+        studio_id: input.studioId,
+        pipeline_id: input.pipelineId,
+        status: "disabled",
+        status_note: "Ждёт входа в аккаунт",
+        created_by: input.userId,
+      })
+      .select("id")
+      .single();
+    if (error) throw new Error(error.message);
+    id = data.id as string;
+    // Вход хранит сервис; строка секрета нужна общему коду отправки.
+    await admin.from("crm_channel_secrets").upsert({ account_id: id, token: "service" });
+  }
+  try {
+    const res = await tgUserLoginStart(id, input.phone);
+    return { accountId: id, viaApp: res.via_app };
+  } catch (e) {
+    // Новый аккаунт без входа не оставляем висеть в списке.
+    if (!input.accountId) await admin.from("crm_channel_accounts").delete().eq("id", id);
+    throw e;
+  }
+}
+
+export async function tgUserConfirm(input: {
+  accountId: string;
+  code?: string;
+  password?: string;
+}): Promise<{ state: TgUserStatus["state"] }> {
+  const status = input.password
+    ? await tgUserLoginPassword(input.accountId, input.password)
+    : await tgUserLoginCode(input.accountId, input.code ?? "");
+  await tgUserActivate(input.accountId, status);
+  return { state: status.state };
+}
+
+type TgUserEvent =
+  | {
+      type: "message";
+      account_id: string;
+      direction: "in" | "out";
+      chat_id: string;
+      peer: {
+        external_id: string;
+        username: string | null;
+        name: string | null;
+        phone: string | null;
+      };
+      message: { external_id: string; body: string | null; sent_at: string };
+      file_skipped: string | null;
+    }
+  | { type: "status"; account_id: string; state: string; note: string | null };
+
+/**
+ * Событие от сервиса личного Telegram: входящее сообщение, сообщение,
+ * отправленное владельцем со своего телефона (оно тоже должно быть в
+ * переписке), или «вход сброшен». false — сбой базы, сервис повторит.
+ */
+export async function handleTgUserEvent(event: TgUserEvent, file: File | null): Promise<boolean> {
+  const admin = getSupabaseAdmin();
+  if (event.type === "status") {
+    if (event.state === "error")
+      await admin
+        .from("crm_channel_accounts")
+        .update({ status: "error", status_note: event.note })
+        .eq("id", event.account_id)
+        .eq("kind", "telegram_user");
+    return true;
+  }
+  const { data: account } = await admin
+    .from("crm_channel_accounts")
+    .select("id, status")
+    .eq("id", event.account_id)
+    .eq("kind", "telegram_user")
+    .maybeSingle();
+  if (!account || account.status === "disabled") return true;
+
+  let conversationId: string;
+  let messageId: string | null = null;
+  if (event.direction === "in") {
+    const { data, error } = await admin.rpc("crm_ingest_message", {
+      p_account: account.id,
+      p_chat: event.chat_id,
+      p_sender: event.peer,
+      p_message: event.message,
+    });
+    if (error) {
+      console.error("[crm] tg-user ingest:", error.message);
+      return false;
+    }
+    const res = data as { duplicate: boolean; conversation_id: string; message_id?: string };
+    conversationId = res.conversation_id;
+    messageId = res.duplicate ? null : (res.message_id ?? null);
+  } else {
+    const { data, error } = await admin.rpc("crm_conversation_start", {
+      p_account: account.id,
+      p_chat: event.chat_id,
+      p_name: event.peer.name ?? event.peer.username ?? "",
+      p_phone: event.peer.phone ?? "",
+      p_client: null,
+    });
+    if (error) {
+      console.error("[crm] tg-user start:", error.message);
+      return false;
+    }
+    conversationId = (data as { conversation_id: string }).conversation_id;
+    // То, что отправили из CRM, уже записано — второй раз не пишем.
+    const { data: known } = await admin
+      .from("crm_messages")
+      .select("id")
+      .eq("conversation_id", conversationId)
+      .eq("external_id", event.message.external_id)
+      .maybeSingle();
+    if (!known) {
+      const { data: row, error: insErr } = await admin
+        .from("crm_messages")
+        .insert({
+          conversation_id: conversationId,
+          direction: "out",
+          body: event.message.body,
+          external_id: event.message.external_id,
+          status: "sent",
+          sent_by_name: "из Telegram",
+          created_at: event.message.sent_at,
+        })
+        .select("id")
+        .maybeSingle();
+      // Гонка с записью из CRM — сообщение уже есть.
+      if (insErr && !/duplicate|unique/i.test(insErr.message)) {
+        console.error("[crm] tg-user out:", insErr.message);
+        return false;
+      }
+      messageId = (row?.id as string | undefined) ?? null;
+    }
+  }
+  if (!messageId) return true;
+
+  const attachments: Attachment[] = [];
+  if (file) {
+    const path = `${conversationId}/${messageId}-${safeFileName(file.name)}`;
+    const { error: upErr } = await admin.storage
+      .from(CRM_MEDIA_BUCKET)
+      .upload(path, await file.arrayBuffer(), {
+        contentType: file.type || undefined,
+        upsert: true,
+      });
+    if (upErr) console.error("[crm] media:", upErr.message);
+    else
+      attachments.push({
+        kind: attachmentKind(file.type),
+        path,
+        name: file.name,
+        mime: file.type || null,
+        size: file.size,
+      });
+  } else if (event.file_skipped) {
+    attachments.push({
+      kind: "file",
+      path: "",
+      name: `${event.file_skipped} (не загружен: больше 20 МБ)`,
+      mime: null,
+      size: null,
+    });
+  }
+  if (attachments.length)
+    await admin.from("crm_messages").update({ attachments }).eq("id", messageId);
+  return true;
+}
+
+/**
+ * Написать первым с личного аккаунта Telegram: человек ищется по номеру или
+ * @нику, диалог заводится, сообщение уходит. `user` — клиент от имени
+ * сотрудника (право CRM и клуб аккаунта проверяются от его имени).
+ */
+export async function startTelegramChat(input: {
+  user: SupabaseClient;
+  userId: string;
+  accountId: string;
+  phone: string | null;
+  username: string | null;
+  name: string;
+  clientId: string | null;
+  body: string;
+}): Promise<{ conversationId: string }> {
+  const body = input.body.trim();
+  if (!body) throw new Error("Напишите сообщение");
+  const admin = getSupabaseAdmin();
+  const { data: account } = await admin
+    .from("crm_channel_accounts")
+    .select("id, kind, status, studio_id")
+    .eq("id", input.accountId)
+    .maybeSingle();
+  if (!account || account.kind !== "telegram_user") throw new Error("Аккаунт Telegram не найден");
+  if (account.status !== "active") throw new Error("В аккаунт Telegram нужно войти заново");
+  const { data: canView } = await input.user.rpc("auth_crm_can_view");
+  const { data: studios, error } = await input.user.rpc("auth_crm_studio_ids");
+  if (error) throw new Error(error.message);
+  if (
+    canView !== true ||
+    (account.studio_id &&
+      !((studios as string[] | null) ?? []).includes(account.studio_id as string))
+  )
+    throw new Error("Недостаточно прав, чтобы писать с этого аккаунта");
+
+  const username = input.username?.trim().replace(/^@/, "") || null;
+  const peer = await tgUserResolve(account.id as string, {
+    ...(username ? { username } : { phone: input.phone ?? undefined }),
+    name: input.name,
+  });
+  const { data, error: startErr } = await admin.rpc("crm_conversation_start", {
+    p_account: account.id,
+    p_chat: peer.chat_id,
+    p_name: input.name || peer.name || peer.username || "",
+    p_phone: input.phone ?? peer.phone ?? "",
+    p_client: input.clientId,
+  });
+  if (startErr) throw new Error(startErr.message);
+  const conversationId = (data as { conversation_id: string }).conversation_id;
+  if (peer.username)
+    await admin
+      .from("crm_contact_identities")
+      .update({ username: peer.username })
+      .eq("channel", "telegram")
+      .eq("external_id", peer.chat_id);
+
+  const externalId = await tgUserSend(account.id as string, peer.chat_id, body, null);
+  const { data: profile } = await admin
+    .from("profiles")
+    .select("full_name")
+    .eq("id", input.userId)
+    .maybeSingle();
+  const { error: insErr } = await admin.from("crm_messages").insert({
+    conversation_id: conversationId,
+    direction: "out",
+    body,
+    external_id: externalId || null,
+    status: "sent",
+    sent_by: input.userId,
+    sent_by_name: (profile?.full_name as string | null)?.trim() || null,
+  });
+  if (insErr && !/duplicate|unique/i.test(insErr.message))
+    console.error("[crm] tg-start:", insErr.message);
   return { conversationId };
 }

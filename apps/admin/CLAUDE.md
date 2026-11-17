@@ -874,6 +874,24 @@ kb`. Доступ — ролями «Пользователей и ролей» 
   `replyWindowOpen` (WhatsApp — 24 часа, Instagram и Facebook — 7 дней):
   вместо поля ответа — пояснение и, у WhatsApp, «Отправить шаблон».
   Версия Graph API по умолчанию — v26.0.
+  **Личный Telegram (2026-11-18; на настоящем аккаунте не проверен)** —
+  канал `telegram_user` через сервис `integrations/crm-telegram` (его
+  README): клиент сервиса — `lib/crm/tg-user.server.ts` (env `CRM_TG_URL`,
+  `CRM_TG_SECRET`; без них — понятная ошибка). Вход — «Каналы» → «Telegram
+  (личный)» (`TgUserForm`: номер → код → облачный пароль; `tgUserLoginFn` /
+  `tgUserConfirmFn` → `tgUserLogin` / `tgUserConfirm`: строка аккаунта
+  выключена, пока не вошёл; после входа — `external_id` = id пользователя
+  Telegram), повторный вход — «Войти» у аккаунта с ошибкой. События сервиса
+  — `/api/crm/tg-user` (Bearer `CRM_TG_SECRET`, multipart) →
+  `handleTgUserEvent`: входящее — `crm_ingest_message`; отправленное с
+  телефона — `crm_conversation_start` + исходящее «из Telegram» (без дублей
+  по `external_id`); «вход сброшен» — статус `error`. Ответ — общий
+  `deliver` (ветка `telegram_user` → `/send` сервиса), окна 24 ч нет.
+  Написать первым — `TgStartDialog` (`components/crm/tg-start.tsx`: номер
+  клиента или @ник, свободный текст) в карточке клиента и сделки → `POST
+  /api/crm/tg-start` (`startTelegramChat`: право CRM и клуб аккаунта — от
+  имени сотрудника; человека находит сервис, предел новых чатов в сутки —
+  у него). Удаление аккаунта — выход из Telegram на сервисе.
 - **Контролы (2026-10-11) — только из набора, по инструкции**
   `.interface-design/system.md`, раздел «Контролы»: кнопки — пилюли
   (`Button`, круглые иконки), поля и фильтры — прямоугольники (вид —

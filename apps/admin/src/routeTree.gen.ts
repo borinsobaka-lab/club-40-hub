@@ -53,6 +53,8 @@ import { Route as AuthenticatedCrmIndexRouteImport } from './routes/_authenticat
 import { Route as AuthenticatedAnalyticsIndexRouteImport } from './routes/_authenticated/analytics/index'
 import { Route as AuthenticatedAccessIndexRouteImport } from './routes/_authenticated/access/index'
 import { Route as AuthenticatedAcademyIndexRouteImport } from './routes/_authenticated/academy/index'
+import { Route as ApiCrmTgUserRouteImport } from './routes/api/crm/tg-user'
+import { Route as ApiCrmTgStartRouteImport } from './routes/api/crm/tg-start'
 import { Route as ApiCrmSendTemplateRouteImport } from './routes/api/crm/send-template'
 import { Route as ApiCrmSendRouteImport } from './routes/api/crm/send'
 import { Route as ApiCrmMetaRouteImport } from './routes/api/crm/meta'
@@ -331,6 +333,16 @@ const AuthenticatedAcademyIndexRoute =
     path: '/academy/',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const ApiCrmTgUserRoute = ApiCrmTgUserRouteImport.update({
+  id: '/api/crm/tg-user',
+  path: '/api/crm/tg-user',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiCrmTgStartRoute = ApiCrmTgStartRouteImport.update({
+  id: '/api/crm/tg-start',
+  path: '/api/crm/tg-start',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiCrmSendTemplateRoute = ApiCrmSendTemplateRouteImport.update({
   id: '/api/crm/send-template',
   path: '/api/crm/send-template',
@@ -666,6 +678,8 @@ export interface FileRoutesByFullPath {
   '/api/crm/meta': typeof ApiCrmMetaRoute
   '/api/crm/send': typeof ApiCrmSendRoute
   '/api/crm/send-template': typeof ApiCrmSendTemplateRoute
+  '/api/crm/tg-start': typeof ApiCrmTgStartRoute
+  '/api/crm/tg-user': typeof ApiCrmTgUserRoute
   '/academy/': typeof AuthenticatedAcademyIndexRoute
   '/access/': typeof AuthenticatedAccessIndexRoute
   '/analytics/': typeof AuthenticatedAnalyticsIndexRoute
@@ -757,6 +771,8 @@ export interface FileRoutesByTo {
   '/api/crm/meta': typeof ApiCrmMetaRoute
   '/api/crm/send': typeof ApiCrmSendRoute
   '/api/crm/send-template': typeof ApiCrmSendTemplateRoute
+  '/api/crm/tg-start': typeof ApiCrmTgStartRoute
+  '/api/crm/tg-user': typeof ApiCrmTgUserRoute
   '/academy': typeof AuthenticatedAcademyIndexRoute
   '/access': typeof AuthenticatedAccessIndexRoute
   '/analytics': typeof AuthenticatedAnalyticsIndexRoute
@@ -850,6 +866,8 @@ export interface FileRoutesById {
   '/api/crm/meta': typeof ApiCrmMetaRoute
   '/api/crm/send': typeof ApiCrmSendRoute
   '/api/crm/send-template': typeof ApiCrmSendTemplateRoute
+  '/api/crm/tg-start': typeof ApiCrmTgStartRoute
+  '/api/crm/tg-user': typeof ApiCrmTgUserRoute
   '/_authenticated/academy/': typeof AuthenticatedAcademyIndexRoute
   '/_authenticated/access/': typeof AuthenticatedAccessIndexRoute
   '/_authenticated/analytics/': typeof AuthenticatedAnalyticsIndexRoute
@@ -943,6 +961,8 @@ export interface FileRouteTypes {
     | '/api/crm/meta'
     | '/api/crm/send'
     | '/api/crm/send-template'
+    | '/api/crm/tg-start'
+    | '/api/crm/tg-user'
     | '/academy/'
     | '/access/'
     | '/analytics/'
@@ -1034,6 +1054,8 @@ export interface FileRouteTypes {
     | '/api/crm/meta'
     | '/api/crm/send'
     | '/api/crm/send-template'
+    | '/api/crm/tg-start'
+    | '/api/crm/tg-user'
     | '/academy'
     | '/access'
     | '/analytics'
@@ -1126,6 +1148,8 @@ export interface FileRouteTypes {
     | '/api/crm/meta'
     | '/api/crm/send'
     | '/api/crm/send-template'
+    | '/api/crm/tg-start'
+    | '/api/crm/tg-user'
     | '/_authenticated/academy/'
     | '/_authenticated/access/'
     | '/_authenticated/analytics/'
@@ -1162,6 +1186,8 @@ export interface RootRouteChildren {
   ApiCrmMetaRoute: typeof ApiCrmMetaRoute
   ApiCrmSendRoute: typeof ApiCrmSendRoute
   ApiCrmSendTemplateRoute: typeof ApiCrmSendTemplateRoute
+  ApiCrmTgStartRoute: typeof ApiCrmTgStartRoute
+  ApiCrmTgUserRoute: typeof ApiCrmTgUserRoute
   ApiCrmTelegramAccountIdRoute: typeof ApiCrmTelegramAccountIdRoute
 }
 
@@ -1474,6 +1500,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/academy/'
       preLoaderRoute: typeof AuthenticatedAcademyIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/api/crm/tg-user': {
+      id: '/api/crm/tg-user'
+      path: '/api/crm/tg-user'
+      fullPath: '/api/crm/tg-user'
+      preLoaderRoute: typeof ApiCrmTgUserRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/crm/tg-start': {
+      id: '/api/crm/tg-start'
+      path: '/api/crm/tg-start'
+      fullPath: '/api/crm/tg-start'
+      preLoaderRoute: typeof ApiCrmTgStartRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/api/crm/send-template': {
       id: '/api/crm/send-template'
@@ -1985,6 +2025,8 @@ const rootRouteChildren: RootRouteChildren = {
   ApiCrmMetaRoute: ApiCrmMetaRoute,
   ApiCrmSendRoute: ApiCrmSendRoute,
   ApiCrmSendTemplateRoute: ApiCrmSendTemplateRoute,
+  ApiCrmTgStartRoute: ApiCrmTgStartRoute,
+  ApiCrmTgUserRoute: ApiCrmTgUserRoute,
   ApiCrmTelegramAccountIdRoute: ApiCrmTelegramAccountIdRoute,
 }
 export const routeTree = rootRouteImport
