@@ -9,13 +9,15 @@
  * сотрудника. Здесь — только суммы за выбранный период: бонус 5 %
  * с продаж, корректировки, итог.
  *
- * Выплаты дважды в месяц: 20-го — аванс за 1–19, 1-го числа следующего
- * месяца — основная часть за 20–конец месяца.
+ * Выплаты дважды в месяц. Классическая ставка: 20-го — аванс за 1–19, 1-го
+ * числа следующего месяца — основная часть за 20–конец месяца.
+ * Прогрессивная (PayFormat): 11-го — за 26–10, 26-го — за 11–25.
  */
 
 /**
  * trial_bonus — тренеру пробного за абонемент, купленный после пробного
- * (клуб с бонусом в «Ставках», 2026-11-11_studio_per_person_pay.sql).
+ * (тренер на прогрессивной ставке с бонусом в «Ставках»,
+ * 2026-11-24_trainer_progressive_pay.sql).
  */
 export type PayrollLineKind = "shift" | "group" | "personal" | "other" | "sale" | "trial_bonus";
 
@@ -127,53 +129,143 @@ export function monthLabel(month: MonthKey): string {
   return `${monthName(month)} ${month.slice(0, 4)}`;
 }
 
-/** advance — аванс 1–19, main — основная 20–конец, month — весь месяц. */
+/**
+ * Формат оплаты тренера (trainer_pay_rates.pay_format, решение владельца
+ * 2026-11-24): classic — «Классическая» (ставка за тренировку и бонус с
+ * продажи), progressive — «Прогрессивная» (групповые по числу пришедших по
+ * своим схемам тренера). У форматов разные дни выплат — см. PeriodKey.
+ */
+export type PayFormat = "classic" | "progressive";
+
+export const PAY_FORMATS: Record<PayFormat, { label: string; tip: string }> = {
+  classic: {
+    label: "Классическая",
+    tip: "Ставка за тренировку и бонус 5 % с продажи. Выплаты: 20-го — аванс за 1–19, 1-го — основная часть за 20–конец месяца.",
+  },
+  progressive: {
+    label: "Прогрессивная",
+    tip: "Групповые — по числу пришедших: минимум за малую группу, дальше — за каждого человека, плюс бонус за наполняемость. Выплаты: 11-го — за 26–10, 26-го — за 11–25.",
+  },
+};
+
+/**
+ * Период выплаты. Классическая ставка: advance — аванс 1–19, main —
+ * основная 20–конец, month — весь месяц. Прогрессивная: advance — с 26-го
+ * прошлого месяца по 10-е (выплата 11-го), main — 11–25 (выплата 26-го),
+ * month — оба периода (26-е прошлого — 25-е).
+ */
 export type PeriodKey = "advance" | "main" | "month";
 
 export const ADVANCE_LAST_DAY = 19;
+/** Прогрессивная ставка: дни выплат; период заканчивается накануне. */
+export const PROGRESSIVE_PAY_DAYS = [11, 26] as const;
 
-export function periodRange(month: MonthKey, period: PeriodKey): { from: string; to: string } {
+const [P_FIRST, P_SECOND] = PROGRESSIVE_PAY_DAYS;
+
+export function periodRange(
+  month: MonthKey,
+  period: PeriodKey,
+  format: PayFormat = "classic",
+): { from: string; to: string } {
+  if (format === "progressive") {
+    const start = `${addMonths(month, -1)}-${pad(P_SECOND)}`;
+    const mid = `${month}-${pad(P_FIRST - 1)}`;
+    if (period === "advance") return { from: start, to: mid };
+    const end = `${month}-${pad(P_SECOND - 1)}`;
+    if (period === "main") return { from: `${month}-${pad(P_FIRST)}`, to: end };
+    return { from: start, to: end };
+  }
   const { from, to } = monthBounds(month);
   if (period === "advance") return { from, to: `${month}-${pad(ADVANCE_LAST_DAY)}` };
   if (period === "main") return { from: `${month}-${pad(ADVANCE_LAST_DAY + 1)}`, to };
   return { from, to };
 }
 
-export function periodLabel(month: MonthKey, period: PeriodKey): string {
+/** Даты, за которые нужны строки расчёта, чтобы показать любой период месяца. */
+export function payrollBounds(month: MonthKey, format: PayFormat = "classic") {
+  return periodRange(month, "month", format);
+}
+
+const DAY_MONTH = new Intl.DateTimeFormat("ru-RU", { day: "numeric", month: "short" });
+const DAY_MONTH_LONG = new Intl.DateTimeFormat("ru-RU", { day: "numeric", month: "long" });
+const asDate = (iso: string) => new Date(`${iso}T00:00:00`);
+const shortDay = (iso: string) => DAY_MONTH.format(asDate(iso)).replace(".", "");
+
+/** «26 окт – 10 ноя», в пределах месяца — «11–25 ноя». */
+export function rangeLabel(r: { from: string; to: string }): string {
+  if (monthOf(r.from) === monthOf(r.to)) return `${Number(r.from.slice(8))}–${shortDay(r.to)}`;
+  return `${shortDay(r.from)} – ${shortDay(r.to)}`;
+}
+
+export function periodLabel(
+  month: MonthKey,
+  period: PeriodKey,
+  format: PayFormat = "classic",
+): string {
+  if (format === "progressive")
+    return period === "month" ? "Оба периода" : rangeLabel(periodRange(month, period, format));
   if (period === "advance") return `Аванс 1–${ADVANCE_LAST_DAY}`;
   if (period === "main") return `Основная ${ADVANCE_LAST_DAY + 1}–${daysInMonth(month)}`;
   return "Весь месяц";
 }
 
-/** «Октябрь 1–19, 2026» — как в шапке карточки сотрудника. */
-export function periodTitle(month: MonthKey, period: PeriodKey): string {
-  const { from, to } = periodRange(month, period);
+/** «Октябрь 1–19, 2026» — как в шапке карточки сотрудника; через месяц — «26 октября – 10 ноября 2026». */
+export function periodTitle(
+  month: MonthKey,
+  period: PeriodKey,
+  format: PayFormat = "classic",
+): string {
+  const { from, to } = periodRange(month, period, format);
+  if (monthOf(from) !== monthOf(to))
+    return `${DAY_MONTH_LONG.format(asDate(from))} – ${DAY_MONTH_LONG.format(asDate(to))} ${to.slice(0, 4)}`;
   return `${monthName(month)} ${Number(from.slice(8))}–${Number(to.slice(8))}, ${month.slice(0, 4)}`;
 }
 
-/** День выплаты: аванс — 20-го этого месяца, основная — 1-го следующего. */
-export function payDate(month: MonthKey, period: PeriodKey): string | null {
+/**
+ * День выплаты. Классическая: аванс — 20-го этого месяца, основная — 1-го
+ * следующего. Прогрессивная: 11-го и 26-го.
+ */
+export function payDate(
+  month: MonthKey,
+  period: PeriodKey,
+  format: PayFormat = "classic",
+): string | null {
+  if (period === "month") return null;
+  if (format === "progressive") return `${month}-${pad(period === "advance" ? P_FIRST : P_SECOND)}`;
   if (period === "advance") return `${month}-${pad(ADVANCE_LAST_DAY + 1)}`;
-  if (period === "main") return `${addMonths(month, 1)}-01`;
-  return null;
+  return `${addMonths(month, 1)}-01`;
 }
 
 /**
- * Период, который открывать по умолчанию, — ближайшая выплата: 1-го числа —
- * основная за прошлый месяц, со 2-го по 20-е — аванс, дальше — основная.
+ * Период, который открывать по умолчанию, — ближайшая выплата. Классическая:
+ * 1-го числа — основная за прошлый месяц, со 2-го по 20-е — аванс, дальше —
+ * основная. Прогрессивная: по 11-е — период до 10-го, по 26-е — 11–25,
+ * дальше — первый период следующего месяца (он уже идёт).
  */
-export function defaultPeriod(todayISO: string): { month: MonthKey; period: PeriodKey } {
+export function defaultPeriod(
+  todayISO: string,
+  format: PayFormat = "classic",
+): { month: MonthKey; period: PeriodKey } {
   const month = monthOf(todayISO);
   const day = Number(todayISO.slice(8, 10));
+  if (format === "progressive") {
+    if (day <= P_FIRST) return { month, period: "advance" };
+    if (day <= P_SECOND) return { month, period: "main" };
+    return { month: addMonths(month, 1), period: "advance" };
+  }
   if (day === 1) return { month: addMonths(month, -1), period: "main" };
   return { month, period: day <= ADVANCE_LAST_DAY + 1 ? "advance" : "main" };
 }
 
-/** Половины месяца, из которых складывается период (выплаты отмечаются по ним). */
-export function payoutPeriods(month: MonthKey, period: PeriodKey): { from: string; to: string }[] {
+/** Части, из которых складывается период (выплаты отмечаются по ним). */
+export function payoutPeriods(
+  month: MonthKey,
+  period: PeriodKey,
+  format: PayFormat = "classic",
+): { from: string; to: string }[] {
   return period === "month"
-    ? [periodRange(month, "advance"), periodRange(month, "main")]
-    : [periodRange(month, period)];
+    ? [periodRange(month, "advance", format), periodRange(month, "main", format)]
+    : [periodRange(month, period, format)];
 }
 
 // --- Сводка ---------------------------------------------------------------------

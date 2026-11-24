@@ -1,17 +1,18 @@
 /**
- * Оплата групповых по числу людей (пакетные клубы, решение владельца
- * 2026-11-11; схема — db/migrations/2026-11-11_studio_per_person_pay.sql).
- * Здесь — то же правило, что в базе (pay_scheme_amount), для примеров в
- * «Ставках», и стартовые схемы купленной студии. Без React — тест рядом.
+ * Прогрессивная ставка тренера — оплата групповых по числу людей (решение
+ * владельца 2026-11-11; с 2026-11-24 — по тренеру, суммы у каждого свои:
+ * db/migrations/2026-11-24_trainer_progressive_pay.sql). Здесь — то же
+ * правило, что в базе (pay_scheme_amount), для примеров в «Ставках», и
+ * стартовые схемы купленной студии. Без React — тест рядом.
  */
 
 export type PayBonus = { from: number; amount: number };
 
 export type PayScheme = {
   id: string;
-  studio_id: string;
+  trainer_id: string;
   name: string;
-  /** Схема для тренировок без своей схемы (одна на клуб). */
+  /** Схема для тренировок без своей схемы (одна у тренера). */
   is_default: boolean;
   /** Оплата при малой группе. */
   min_amount: number;
@@ -24,12 +25,17 @@ export type PayScheme = {
   sort_order: number;
 };
 
-export type StudioPaySettings = {
-  studio_id: string;
-  per_person: boolean;
-  /** ₾ тренеру пробного за абонемент после пробного; null — 5 % тренеру при продаже. */
-  trial_sale_bonus: number | null;
-};
+/** Тренировка → схема тренера (trainer_pay_scheme_workouts). */
+export type SchemeWorkout = { trainer_id: string; scheme_id: string; workout_id: string };
+
+/** «До 3 чел. — 15 ₾, больше — 4 ₾ за человека; от 7 чел. +5 ₾». */
+export function schemeSummary(s: SchemeTerms, money: (n: number) => string): string {
+  const bonuses = s.bonuses.map((b) => `от ${b.from} чел. +${money(Number(b.amount))}`).join(", ");
+  return (
+    `До ${s.min_up_to} чел. — ${money(Number(s.min_amount))}, больше — ${money(Number(s.per_person))} за человека` +
+    (bonuses ? `; ${bonuses}` : "")
+  );
+}
 
 export type SchemeTerms = Pick<PayScheme, "min_amount" | "min_up_to" | "per_person" | "bonuses">;
 

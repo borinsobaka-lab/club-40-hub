@@ -1,6 +1,12 @@
 import { describe, expect, test } from "bun:test";
 
-import { PRESET_SCHEMES, cleanBonuses, schemeAmount, schemeExamples } from "./pay-schemes";
+import {
+  PRESET_SCHEMES,
+  cleanBonuses,
+  schemeAmount,
+  schemeExamples,
+  schemeSummary,
+} from "./pay-schemes";
 
 const [mat, trx] = PRESET_SCHEMES;
 
@@ -39,5 +45,11 @@ describe("оплата по числу людей", () => {
       { people: "10", amount: 50 },
       { people: "12", amount: 58 },
     ]);
+  });
+
+  test("описание схемы строкой", () => {
+    expect(schemeSummary(mat, (n) => `${n} ₾`)).toBe(
+      "До 3 чел. — 15 ₾, больше — 4 ₾ за человека; от 7 чел. +5 ₾, от 10 чел. +10 ₾",
+    );
   });
 });

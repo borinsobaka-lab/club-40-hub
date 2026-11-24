@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 
 import { useStudios } from "@/hooks/use-studios";
 import { supabase } from "@/integrations/supabase/client";
-import type { PayrollAdjustment, MonthKey } from "@/lib/payroll";
+import type { PayFormat, PayrollAdjustment, MonthKey } from "@/lib/payroll";
 import { monthBounds } from "@/lib/payroll";
 import type { ContentTranslations } from "@/lib/content-i18n";
 import { unwrap } from "@/lib/query";
@@ -120,7 +120,21 @@ export type PayRates = {
   group_training_rate: number | null;
   personal_training_enabled: boolean;
   personal_training_rate: number | null;
+  /** Формат оплаты тренера; у строки, заведённой до 2026-11-24, — classic. */
+  pay_format: PayFormat;
+  /** Прогрессивная ставка: ₾ тренеру пробного за купленный абонемент; null — 5 % при продаже. */
+  trial_sale_bonus: number | null;
 };
+
+/** Формат оплаты сотрудника: прогрессивная — только у тренеров. */
+export function payFormatOf(
+  employee: Pick<Employee, "role">,
+  rates: Pick<PayRates, "pay_format"> | null | undefined,
+): PayFormat {
+  return employee.role === "trainer" && rates?.pay_format === "progressive"
+    ? "progressive"
+    : "classic";
+}
 
 export function usePayRates() {
   return useQuery({
@@ -131,10 +145,10 @@ export function usePayRates() {
 }
 
 /** Корректировки оклада за месяц — общий кэш «Графика администраторов» и «Зарплат». */
-export function usePayrollAdjustments(month: MonthKey) {
-  const { from, to } = monthBounds(month);
+export function usePayrollAdjustments(month: MonthKey, range?: { from: string; to: string }) {
+  const { from, to } = range ?? monthBounds(month);
   return useQuery({
-    queryKey: ["payroll_adjustments", month],
+    queryKey: ["payroll_adjustments", month, from, to],
     queryFn: () =>
       unwrap<PayrollAdjustment[]>(
         supabase

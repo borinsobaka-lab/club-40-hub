@@ -10,6 +10,8 @@ import { FormattedTextarea } from "@/components/formatted-textarea";
 import { ContentLangLabel, ContentLangNote, ContentLangSwitch } from "@/components/content-lang";
 import { useContentTranslations } from "@/hooks/use-content-translations";
 import { useStudios } from "@/hooks/use-studios";
+import { SegmentedControl } from "@/components/ui/segmented-control";
+import { PAY_FORMATS, type PayFormat } from "@/lib/payroll";
 import { supabase } from "@/integrations/supabase/client";
 import { unwrap } from "@/lib/query";
 import { isHttpUrl } from "@/lib/format";
@@ -21,7 +23,9 @@ import {
   bankOf,
   formatIban,
   hasRating,
+  payFormatOf,
   useEmployees,
+  usePayRates,
   type Employee,
   type TrainerRole,
 } from "@/lib/staff-directory";
@@ -68,6 +72,8 @@ import { TrainersPageSkeleton } from "@/components/page-skeletons";
 const TIPS = {
   name: "Имя тренера клиенты видят в расписании приложения.",
   role: "Кем работает сотрудник. Доступ в админку выдаётся отдельно — в «Доступах».",
+  payFormat:
+    "Как тренеру считается зарплата: «Классическая» — ставка за тренировку и бонус с продажи, «Прогрессивная» — групповые по числу пришедших. Суммы — во вкладке «Ставки»; от формата зависит вкладка в «Зарплатах» и дни выплат.",
   studios: "Где работает сотрудник. Только в этих клубах его можно поставить на занятие.",
   bio: "Описание — клиенты читают его в приложении: «Студия» → «Тренеры», «Администраторы» или «Массажисты». Можно выделять жирным, делать списки и ссылки.",
   rating:
@@ -378,6 +384,15 @@ function EmployeeForm({
     employee?.rating_base_count ? String(employee.rating_base_count) : "",
   );
   const [studioIds, setStudioIds] = useState<string[]>(initialStudioIds);
+  // Формат оплаты тренера — в «Ставках» (trainer_pay_rates); здесь тот же выбор.
+  const queryClient = useQueryClient();
+  const { data: payRates } = usePayRates();
+  const savedFormat = payFormatOf(
+    { role: "trainer" },
+    payRates?.find((r) => r.trainer_id === employee?.id),
+  );
+  const [pickedFormat, setPickedFormat] = useState<PayFormat | null>(null);
+  const payFormat = pickedFormat ?? savedFormat;
   const [bankCode, setBankCode] = useState<string>(bank?.bank ?? "");
   const [accountNumber, setAccountNumber] = useState(
     bank?.account_number ? formatIban(bank.account_number) : "",
@@ -509,6 +524,18 @@ function EmployeeForm({
       if (error) return "клубы не отвязаны: " + error.message;
     }
 
+    // Формат оплаты — только тренеру; у остальных ролей он классический.
+    const format: PayFormat = role === "trainer" ? payFormat : "classic";
+    const stored = payRates?.find((r) => r.trainer_id === id)?.pay_format ?? "classic";
+    if (payRates && format !== stored) {
+      const { error } = await supabase
+        .from("trainer_pay_rates")
+        .upsert({ trainer_id: id, pay_format: format, updated_at: new Date().toISOString() });
+      if (error) return "формат оплаты не сохранён: " + error.message;
+      queryClient.invalidateQueries({ queryKey: ["trainer_pay_rates"] });
+      queryClient.invalidateQueries({ queryKey: ["payroll_lines"] });
+    }
+
     // Реквизиты: все поля пустые — строку удаляем, иначе upsert.
     const iban = normalizeIban(accountNumber);
     const holder = accountHolder.trim();
@@ -574,6 +601,26 @@ function EmployeeForm({
                 </Select>
               </FormField>
             </div>
+
+            {role === "trainer" && (
+              <FormField
+                label="Формат оплаты"
+                tip={TIPS.payFormat}
+                hint={PAY_FORMATS[payFormat].tip}
+                htmlFor={null}
+                required
+              >
+                <SegmentedControl
+                  aria-label="Формат оплаты"
+                  value={payFormat}
+                  onChange={setPickedFormat}
+                  options={(Object.keys(PAY_FORMATS) as PayFormat[]).map((f) => ({
+                    value: f,
+                    label: PAY_FORMATS[f].label,
+                  }))}
+                />
+              </FormField>
+            )}
 
             <FormField label="Telegram" optional>
               <Input

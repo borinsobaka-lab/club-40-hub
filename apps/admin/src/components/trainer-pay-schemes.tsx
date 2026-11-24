@@ -5,10 +5,11 @@ import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
 import { unwrap } from "@/lib/query";
-import { useStudios } from "@/hooks/use-studios";
 import { useActiveStudioId } from "@/hooks/use-active-studio";
 import { useCatalogStudioIds } from "@/hooks/use-catalog-studios";
+import { SCHEMES_KEY, useTrainerPaySchemes } from "@/hooks/use-trainer-pay-schemes";
 import { useConfirm } from "@/components/confirm-dialog";
+import { StaffOption } from "@/components/employee-photo";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -21,9 +22,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  Dialog,
   DialogBody,
-  DialogContent,
   DialogDescription,
   DialogFooter,
   DialogForm,
@@ -35,26 +34,27 @@ import {
   PRESET_TRIAL_SALE_BONUS,
   cleanBonuses,
   schemeExamples,
+  schemeSummary,
   type PayBonus,
   type PayScheme,
-  type StudioPaySettings,
+  type SchemeWorkout,
 } from "@/lib/pay-schemes";
 import { formatPay } from "@/lib/payroll";
+import type { Employee, PayRates } from "@/lib/staff-directory";
 
 /**
- * «Ставки» → «Групповые по числу людей» (решение владельца
- * 2026-11-11; схема — db/migrations/2026-11-11_studio_per_person_pay.sql):
- * в выбранном клубе групповые оплачиваются по числу «Посетил» по схемам
- * клуба (обычная группа, TRX, гамаки — тренировки выбираются в схеме), плюс
- * бонус тренеру пробного за абонемент после пробного. Правило расчёта —
+ * «Ставки» → суммы прогрессивной ставки тренера (решение владельца
+ * 2026-11-24; схема — db/migrations/2026-11-24_trainer_progressive_pay.sql):
+ * у каждого тренера свои схемы оплаты групповых по числу «Посетил»
+ * (обычная группа, TRX, гамаки — тренировки выбираются в схеме) и бонус
+ * тренеру пробного за абонемент после пробного. Заполняются у всех,
+ * действуют у тренеров с форматом «Прогрессивная». Правило расчёта —
  * lib/pay-schemes.ts и pay_scheme_amount в базе; считает «Зарплаты».
  */
 
 const TIPS = {
-  perPerson:
-    "Включено — групповые в этом клубе оплачиваются по схемам ниже по числу клиентов с отметкой «Посетил». Выключено — ставкой «Групповая тренировка» сотрудника.",
   trialBonus:
-    "Сколько тренер пробного занятия получает, когда клиент купил абонемент после пробного (в день пробного или позже, один раз на клиента). Задано — 5 % от продаж тренеру при продаже в этом клубе не идут. Пусто — как раньше, 5 %.",
+    "Сколько тренер получает, когда клиент купил абонемент после своего первого пробного занятия у этого тренера (в день пробного или позже, один раз на клиента). Задано — 5 % от продаж тренеру при продаже не идут. Пусто — 5 %, как на классической ставке.",
   minAmount: "Оплата за занятие, когда людей мало.",
   minUpTo: "До скольких человек включительно платится минимальная оплата.",
   perPersonRate:
@@ -62,66 +62,41 @@ const TIPS = {
   bonuses:
     "Бонус за наполняемость: «от 7 человек +5 ₾», «от 10 человек +10 ₾» — берётся самый крупный порог, до которого дошли.",
   workouts:
-    "Тренировки, которые оплачиваются по этой схеме. У тренировки в клубе одна схема: выбранная здесь уйдёт из другой схемы.",
-  isDefault: "Тренировки без своей схемы оплачиваются по этой. Такая схема в клубе одна.",
+    "Тренировки, которые оплачиваются по этой схеме. У тренировки одна схема: выбранная здесь уйдёт из другой схемы тренера.",
+  isDefault: "Тренировки без своей схемы оплачиваются по этой. Такая схема у тренера одна.",
+  copy: "Перенести суммы другого тренера: его схемы с тренировками и бонус за абонемент после пробного. Нынешние схемы этого тренера заменятся.",
 };
 
-const SETTINGS_KEY = "studio_pay_settings";
-const SCHEMES_KEY = "studio_pay_schemes";
-
-type SchemeWorkout = { scheme_id: string; workout_id: string };
 type Workout = { id: string; name: string };
 
 const num = (v: string) => Number(v.trim().replace(",", "."));
 
-export function StudioPaySchemes() {
+/** Содержимое окна «Прогрессивная ставка» сотрудника (внутри DialogContent). */
+export function TrainerPaySchemes({
+  employee,
+  rates,
+  employees,
+  allRates,
+  onSaveRates,
+  onClose,
+}: {
+  employee: Employee;
+  rates: PayRates | null;
+  /** Сотрудники — источники для «Скопировать у…». */
+  employees: Employee[];
+  allRates: PayRates[];
+  onSaveRates: (patch: { trial_sale_bonus: number | null }) => Promise<boolean>;
+  onClose: () => void;
+}) {
   const queryClient = useQueryClient();
   const { confirm, confirmDialog } = useConfirm();
   const activeId = useActiveStudioId();
-  const { data: studios = [] } = useStudios();
-  const clubs = studios;
-  const [picked, setPicked] = useState<string | null>(null);
-  const studioId =
-    picked ?? (clubs.some((s) => s.id === activeId) ? activeId : (clubs[0]?.id ?? null));
   const [editing, setEditing] = useState<PayScheme | "new" | null>(null);
   const [busy, setBusy] = useState(false);
+  const [copyFrom, setCopyFrom] = useState("");
 
-  const settings = useQuery({
-    queryKey: [SETTINGS_KEY, studioId],
-    queryFn: async () =>
-      (
-        await unwrap<StudioPaySettings[]>(
-          supabase.from("studio_pay_settings").select("*").eq("studio_id", studioId!),
-        )
-      )[0] ?? null,
-    enabled: !!studioId,
-    meta: { errorMessage: "Не удалось загрузить настройки оплаты клуба" },
-  });
-  const schemes = useQuery({
-    queryKey: [SCHEMES_KEY, studioId],
-    queryFn: async () => {
-      const [list, links] = await Promise.all([
-        unwrap<PayScheme[]>(
-          supabase
-            .from("studio_pay_schemes")
-            .select("*")
-            .eq("studio_id", studioId!)
-            .order("sort_order")
-            .order("created_at"),
-        ),
-        unwrap<SchemeWorkout[]>(
-          supabase
-            .from("studio_pay_scheme_workouts")
-            .select("scheme_id, workout_id")
-            .eq("studio_id", studioId!),
-        ),
-      ]);
-      return { list, links };
-    },
-    enabled: !!studioId,
-    meta: { errorMessage: "Не удалось загрузить схемы оплаты" },
-  });
-  const catalogIds = useCatalogStudioIds(studioId);
+  const schemes = useTrainerPaySchemes();
+  const catalogIds = useCatalogStudioIds(activeId);
   const workouts = useQuery({
     queryKey: ["workouts", "pay-schemes", catalogIds?.join(",")],
     queryFn: () =>
@@ -133,44 +108,95 @@ export function StudioPaySchemes() {
   });
 
   const reload = () => {
-    queryClient.invalidateQueries({ queryKey: [SETTINGS_KEY] });
     queryClient.invalidateQueries({ queryKey: [SCHEMES_KEY] });
     queryClient.invalidateQueries({ queryKey: ["payroll_lines"] });
   };
 
-  const saveSettings = async (patch: Partial<Omit<StudioPaySettings, "studio_id">>) => {
-    if (!studioId) return false;
-    const current = settings.data;
-    const { error } = await supabase.from("studio_pay_settings").upsert({
-      studio_id: studioId,
-      per_person: current?.per_person ?? false,
-      trial_sale_bonus: current?.trial_sale_bonus ?? null,
-      ...patch,
-      updated_at: new Date().toISOString(),
-    });
-    if (error) {
-      toast.error("Не сохранено: " + error.message);
-      return false;
+  const all = schemes.data?.list ?? [];
+  const allLinks = schemes.data?.links ?? [];
+  const list = all.filter((s) => s.trainer_id === employee.id);
+  const links = allLinks.filter((l) => l.trainer_id === employee.id);
+  const workoutName = new Map((workouts.data ?? []).map((w) => [w.id, w.name]));
+  const withSchemes = new Set(all.map((s) => s.trainer_id));
+  const sources = employees.filter((e) => e.id !== employee.id && withSchemes.has(e.id));
+  const trialBonus = rates?.trial_sale_bonus ?? null;
+
+  const insertSchemes = async (
+    items: (Omit<PayScheme, "id" | "trainer_id" | "sort_order"> & { workouts?: string[] })[],
+  ) => {
+    for (const [i, { workouts: own, ...terms }] of items.entries()) {
+      const { data, error } = await supabase
+        .from("trainer_pay_schemes")
+        .insert({ ...terms, trainer_id: employee.id, sort_order: i })
+        .select("id")
+        .single<{ id: string }>();
+      if (error) throw error;
+      if (own?.length) {
+        const { error: linkErr } = await supabase
+          .from("trainer_pay_scheme_workouts")
+          .insert(own.map((w) => ({ trainer_id: employee.id, workout_id: w, scheme_id: data.id })));
+        if (linkErr) throw linkErr;
+      }
     }
-    reload();
-    return true;
   };
 
   const fillPreset = async () => {
-    if (!studioId) return;
     setBusy(true);
     try {
-      const { error } = await supabase
-        .from("studio_pay_schemes")
-        .insert(PRESET_SCHEMES.map((s, i) => ({ ...s, studio_id: studioId, sort_order: i })));
-      if (error) throw error;
-      if (settings.data?.trial_sale_bonus == null)
-        await saveSettings({ trial_sale_bonus: PRESET_TRIAL_SALE_BONUS });
+      await insertSchemes(PRESET_SCHEMES);
+      if (trialBonus == null) await onSaveRates({ trial_sale_bonus: PRESET_TRIAL_SALE_BONUS });
       toast.success("Схемы добавлены — выберите тренировки для TRX и гамаков");
-      reload();
     } catch (e) {
       toast.error("Не удалось добавить схемы: " + (e as Error).message);
     } finally {
+      reload();
+      setBusy(false);
+    }
+  };
+
+  const copySchemes = async () => {
+    const source = employees.find((e) => e.id === copyFrom);
+    if (!source) return;
+    if (
+      list.length > 0 &&
+      !(await confirm({
+        title: `Заменить суммы на суммы сотрудника «${source.full_name}»?`,
+        description: `Нынешние схемы сотрудника «${employee.full_name}» будут удалены.`,
+        confirmLabel: "Заменить",
+      }))
+    )
+      return;
+    setBusy(true);
+    try {
+      if (list.length > 0) {
+        const { error } = await supabase
+          .from("trainer_pay_schemes")
+          .delete()
+          .eq("trainer_id", employee.id);
+        if (error) throw error;
+      }
+      await insertSchemes(
+        all
+          .filter((s) => s.trainer_id === source.id)
+          .map((s) => ({
+            name: s.name,
+            is_default: s.is_default,
+            min_amount: s.min_amount,
+            min_up_to: s.min_up_to,
+            per_person: s.per_person,
+            bonuses: s.bonuses,
+            workouts: allLinks.filter((l) => l.scheme_id === s.id).map((l) => l.workout_id),
+          })),
+      );
+      const sourceBonus =
+        allRates.find((r) => r.trainer_id === source.id)?.trial_sale_bonus ?? null;
+      if (sourceBonus !== trialBonus) await onSaveRates({ trial_sale_bonus: sourceBonus });
+      setCopyFrom("");
+      toast.success("Суммы скопированы");
+    } catch (e) {
+      toast.error("Не удалось скопировать: " + (e as Error).message);
+    } finally {
+      reload();
       setBusy(false);
     }
   };
@@ -179,12 +205,12 @@ export function StudioPaySchemes() {
     const ok = await confirm({
       title: `Удалить схему «${s.name}»?`,
       description: s.is_default
-        ? "Тренировки без своей схемы будут оплачиваться ставкой сотрудника, пока не назначите другую схему «для остальных»."
+        ? "Тренировки без своей схемы будут оплачиваться ставкой «Групповая тренировка», пока не назначите другую схему «для остальных»."
         : "Её тренировки будут оплачиваться по схеме для остальных тренировок.",
       confirmLabel: "Удалить",
     });
     if (!ok) return;
-    const { error } = await supabase.from("studio_pay_schemes").delete().eq("id", s.id);
+    const { error } = await supabase.from("trainer_pay_schemes").delete().eq("id", s.id);
     if (error) {
       toast.error("Не удалось удалить: " + error.message);
       return;
@@ -192,159 +218,153 @@ export function StudioPaySchemes() {
     reload();
   };
 
-  if (clubs.length === 0) return null;
-  const list = schemes.data?.list ?? [];
-  const links = schemes.data?.links ?? [];
-  const workoutName = new Map((workouts.data ?? []).map((w) => [w.id, w.name]));
+  if (editing !== null)
+    return (
+      <SchemeForm
+        key={editing === "new" ? "new" : editing.id}
+        trainerId={employee.id}
+        scheme={editing === "new" ? null : editing}
+        schemes={list}
+        links={links}
+        workouts={workouts.data ?? []}
+        nextSortOrder={list.reduce((m, s) => Math.max(m, s.sort_order), -1) + 1}
+        onClose={() => setEditing(null)}
+        onSaved={reload}
+      />
+    );
+
+  const copyControl = sources.length > 0 && (
+    <FormField label="Скопировать у сотрудника" tip={TIPS.copy} htmlFor={null} optional>
+      <div className="flex flex-wrap items-center gap-2">
+        <Select value={copyFrom} onValueChange={setCopyFrom}>
+          <SelectTrigger className="w-64 max-w-full">
+            <SelectValue placeholder="Выберите сотрудника" />
+          </SelectTrigger>
+          <SelectContent>
+            {sources.map((e) => (
+              <SelectItem key={e.id} value={e.id}>
+                <StaffOption name={e.full_name} photo={e.photo_url} />
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Button variant="outline" disabled={!copyFrom || busy} onClick={copySchemes}>
+          {busy && <Loader2 className="animate-spin" />} Скопировать
+        </Button>
+      </div>
+    </FormField>
+  );
 
   return (
-    <section className="space-y-4 rounded-lg border bg-background p-4 sm:p-6">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="min-w-0">
-          <h2 className="text-lg font-semibold">Групповые по числу людей</h2>
-          <p className="text-sm text-muted-foreground">
-            Оплата групповой тренировки зависит от того, сколько клиентов пришло («Посетил»).
-            Настраивается для клуба.
-          </p>
-        </div>
-        {clubs.length > 1 && (
-          <Select value={studioId ?? ""} onValueChange={setPicked}>
-            <SelectTrigger className="w-56">
-              <SelectValue placeholder="Клуб" />
-            </SelectTrigger>
-            <SelectContent>
-              {clubs.map((c) => (
-                <SelectItem key={c.id} value={c.id}>
-                  {c.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        )}
-      </div>
-
-      <div className="grid gap-4 md:grid-cols-[1fr_260px]">
-        <SwitchRow
-          title="Считать групповые по числу людей"
-          tip={TIPS.perPerson}
-          checked={settings.data?.per_person ?? false}
-          disabled={settings.isLoading}
-          onCheckedChange={(v) => saveSettings({ per_person: v })}
-        />
-        <TrialBonusField
-          key={`${studioId}:${settings.data?.trial_sale_bonus ?? ""}`}
-          value={settings.data?.trial_sale_bonus ?? null}
-          onSave={(v) => saveSettings({ trial_sale_bonus: v })}
-        />
-      </div>
-
-      {schemes.isLoading ? (
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Loader2 className="size-4 animate-spin" /> Загрузка схем…
-        </div>
-      ) : list.length === 0 ? (
-        <InfoNote>
-          <div className="space-y-3">
-            <p>
-              Схем ещё нет. Можно заполнить условиями купленной студии: до 3 человек — 15 ₾, больше
-              — 4 ₾ за человека на коврике и 6 ₾ на TRX и гамаках; от 7 человек +5 ₾, от 10 — +10 ₾;
-              +10 ₾ тренеру пробного за абонемент после пробного. Суммы потом можно поменять.
-            </p>
-            <div className="flex flex-wrap gap-2">
-              <Button size="sm" onClick={fillPreset} disabled={busy}>
-                {busy && <Loader2 className="animate-spin" />} Заполнить условиями студии
-              </Button>
-              <Button size="sm" variant="outline" onClick={() => setEditing("new")}>
-                <Plus /> Своя схема
-              </Button>
-            </div>
-          </div>
-        </InfoNote>
-      ) : (
-        <>
-          <ul className="grid gap-3 lg:grid-cols-3">
-            {list.map((s) => {
-              const own = links.filter((l) => l.scheme_id === s.id);
-              return (
-                <li key={s.id} className="flex flex-col gap-2 rounded-lg border p-4">
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="min-w-0">
-                      <div className="truncate font-semibold">{s.name}</div>
-                      {s.is_default && (
-                        <Badge variant="outline" className="mt-1">
-                          Остальные тренировки
-                        </Badge>
-                      )}
-                    </div>
-                    <div className="flex shrink-0 gap-1">
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        aria-label={`Изменить «${s.name}»`}
-                        onClick={() => setEditing(s)}
-                      >
-                        <Pencil />
-                      </Button>
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        aria-label={`Удалить «${s.name}»`}
-                        onClick={() => remove(s)}
-                      >
-                        <Trash2 />
-                      </Button>
-                    </div>
-                  </div>
-                  <p className="text-sm">
-                    До {s.min_up_to} чел. — {formatPay(Number(s.min_amount))}, больше —{" "}
-                    {formatPay(Number(s.per_person))} за человека
-                    {s.bonuses.length > 0 &&
-                      "; " +
-                        s.bonuses
-                          .map((b) => `от ${b.from} чел. +${formatPay(Number(b.amount))}`)
-                          .join(", ")}
-                  </p>
-                  <p className="text-xs text-muted-foreground tabular-nums">
-                    {schemeExamples(s)
-                      .map((e) => `${e.people} чел. — ${formatPay(e.amount)}`)
-                      .join(" · ")}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    {own.length > 0
-                      ? own.map((l) => workoutName.get(l.workout_id) ?? "—").join(", ")
-                      : s.is_default
-                        ? "Все тренировки без своей схемы"
-                        : "Тренировки не выбраны"}
-                  </p>
-                </li>
-              );
-            })}
-          </ul>
-          <Button size="sm" variant="outline" onClick={() => setEditing("new")}>
-            <Plus /> Добавить схему
-          </Button>
-        </>
-      )}
-
-      <Dialog open={editing !== null} onOpenChange={(v) => !v && setEditing(null)}>
-        <DialogContent className="max-w-xl">
-          {editing !== null && studioId && (
-            <SchemeForm
-              key={editing === "new" ? "new" : editing.id}
-              studioId={studioId}
-              scheme={editing === "new" ? null : editing}
-              schemes={list}
-              links={links}
-              workouts={workouts.data ?? []}
-              nextSortOrder={list.reduce((m, s) => Math.max(m, s.sort_order), -1) + 1}
-              onClose={() => setEditing(null)}
-              onSaved={reload}
-            />
+    <>
+      <DialogHeader>
+        <DialogTitle>Прогрессивная ставка — {employee.full_name}</DialogTitle>
+        <DialogDescription>
+          Оплата групповой тренировки по числу пришедших клиентов («Посетил»), в любом клубе.
+        </DialogDescription>
+      </DialogHeader>
+      <DialogBody>
+        <div className="space-y-4">
+          {rates?.pay_format !== "progressive" && (
+            <InfoNote>
+              Сейчас у сотрудника классическая ставка. Суммы сохранятся и начнут действовать, когда
+              переключите формат оплаты на «Прогрессивная».
+            </InfoNote>
           )}
-        </DialogContent>
-      </Dialog>
+          <TrialBonusField
+            key={trialBonus ?? ""}
+            value={trialBonus}
+            onSave={(v) => onSaveRates({ trial_sale_bonus: v })}
+          />
+
+          {schemes.isLoading ? (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Loader2 className="size-4 animate-spin" /> Загрузка схем…
+            </div>
+          ) : list.length === 0 ? (
+            <InfoNote>
+              <div className="space-y-3">
+                <p>
+                  Схем ещё нет. Можно заполнить условиями купленной студии: до 3 человек — 15 ₾,
+                  больше — 4 ₾ за человека на коврике и 6 ₾ на TRX и гамаках; от 7 человек +5 ₾, от
+                  10 — +10 ₾; +10 ₾ тренеру пробного за абонемент после пробного. Суммы потом можно
+                  поменять.
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  <Button size="sm" onClick={fillPreset} disabled={busy}>
+                    {busy && <Loader2 className="animate-spin" />} Заполнить условиями студии
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={() => setEditing("new")}>
+                    <Plus /> Своя схема
+                  </Button>
+                </div>
+              </div>
+            </InfoNote>
+          ) : (
+            <>
+              <ul className="grid gap-3 sm:grid-cols-2">
+                {list.map((s) => {
+                  const own = links.filter((l) => l.scheme_id === s.id);
+                  return (
+                    <li key={s.id} className="flex flex-col gap-2 rounded-lg border p-4">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <div className="truncate font-semibold">{s.name}</div>
+                          {s.is_default && (
+                            <Badge variant="outline" className="mt-1">
+                              Остальные тренировки
+                            </Badge>
+                          )}
+                        </div>
+                        <div className="flex shrink-0 gap-1">
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            aria-label={`Изменить «${s.name}»`}
+                            onClick={() => setEditing(s)}
+                          >
+                            <Pencil />
+                          </Button>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            aria-label={`Удалить «${s.name}»`}
+                            onClick={() => remove(s)}
+                          >
+                            <Trash2 />
+                          </Button>
+                        </div>
+                      </div>
+                      <p className="text-sm">{schemeSummary(s, formatPay)}</p>
+                      <p className="text-xs text-muted-foreground tabular-nums">
+                        {schemeExamples(s)
+                          .map((e) => `${e.people} чел. — ${formatPay(e.amount)}`)
+                          .join(" · ")}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {own.length > 0
+                          ? own.map((l) => workoutName.get(l.workout_id) ?? "—").join(", ")
+                          : s.is_default
+                            ? "Все тренировки без своей схемы"
+                            : "Тренировки не выбраны"}
+                      </p>
+                    </li>
+                  );
+                })}
+              </ul>
+              <Button size="sm" variant="outline" onClick={() => setEditing("new")}>
+                <Plus /> Добавить схему
+              </Button>
+            </>
+          )}
+          {copyControl}
+        </div>
+      </DialogBody>
+      <DialogFooter>
+        <Button onClick={onClose}>Готово</Button>
+      </DialogFooter>
       {confirmDialog}
-    </section>
+    </>
   );
 }
 
@@ -372,7 +392,8 @@ function TrialBonusField({
       <Input
         inputMode="decimal"
         value={text}
-        placeholder="5 % как раньше"
+        placeholder="5 % с продажи"
+        className="sm:w-64"
         onChange={(e) => setText(e.target.value)}
         onBlur={commit}
         onKeyDown={(e) => {
@@ -384,7 +405,7 @@ function TrialBonusField({
 }
 
 function SchemeForm({
-  studioId,
+  trainerId,
   scheme,
   schemes,
   links,
@@ -393,12 +414,13 @@ function SchemeForm({
   onClose,
   onSaved,
 }: {
-  studioId: string;
+  trainerId: string;
   scheme: PayScheme | null;
   schemes: PayScheme[];
   links: SchemeWorkout[];
   workouts: Workout[];
   nextSortOrder: number;
+  /** Назад к списку схем сотрудника. */
   onClose: () => void;
   onSaved: () => void;
 }) {
@@ -441,7 +463,7 @@ function SchemeForm({
       const otherDefault = schemes.find((s) => s.is_default && s.id !== scheme?.id);
       if (isDefault && otherDefault) {
         const { error } = await supabase
-          .from("studio_pay_schemes")
+          .from("trainer_pay_schemes")
           .update({ is_default: false })
           .eq("id", otherDefault.id);
         if (error) throw error;
@@ -456,28 +478,28 @@ function SchemeForm({
       };
       let id = scheme?.id;
       if (id) {
-        const { error } = await supabase.from("studio_pay_schemes").update(payload).eq("id", id);
+        const { error } = await supabase.from("trainer_pay_schemes").update(payload).eq("id", id);
         if (error) throw error;
       } else {
         const { data, error } = await supabase
-          .from("studio_pay_schemes")
-          .insert({ ...payload, studio_id: studioId, sort_order: nextSortOrder })
+          .from("trainer_pay_schemes")
+          .insert({ ...payload, trainer_id: trainerId, sort_order: nextSortOrder })
           .select("id")
           .single<{ id: string }>();
         if (error) throw error;
         id = data.id;
       }
       // Тренировки схемы: снятые — удаляем, выбранные — к этой схеме (из
-      // другой схемы тренировка переезжает: ключ — клуб + тренировка).
+      // другой схемы тренировка переезжает: ключ — тренер + тренировка).
       const { error: delErr } = await supabase
-        .from("studio_pay_scheme_workouts")
+        .from("trainer_pay_scheme_workouts")
         .delete()
         .eq("scheme_id", id);
       if (delErr) throw delErr;
       if (picked.size > 0) {
-        const { error: insErr } = await supabase.from("studio_pay_scheme_workouts").upsert(
-          [...picked].map((w) => ({ studio_id: studioId, workout_id: w, scheme_id: id })),
-          { onConflict: "studio_id,workout_id" },
+        const { error: insErr } = await supabase.from("trainer_pay_scheme_workouts").upsert(
+          [...picked].map((w) => ({ trainer_id: trainerId, workout_id: w, scheme_id: id })),
+          { onConflict: "trainer_id,workout_id" },
         );
         if (insErr) throw insErr;
       }
@@ -630,7 +652,7 @@ function SchemeForm({
         </DialogBody>
         <DialogFooter>
           <Button variant="outline" onClick={onClose} disabled={saving}>
-            Отмена
+            Назад
           </Button>
           <Button type="submit" disabled={saving}>
             {saving && <Loader2 className="animate-spin" />}

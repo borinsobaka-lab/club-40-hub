@@ -6,6 +6,8 @@ import {
   monthDays,
   monthLabel,
   payDate,
+  payoutPeriods,
+  payrollBounds,
   periodLabel,
   periodRange,
   periodTitle,
@@ -39,6 +41,68 @@ const adj = (p: Partial<PayrollAdjustment>): PayrollAdjustment => ({
   created_by_name: null,
   created_at: "2026-10-05T10:00:00Z",
   ...p,
+});
+
+describe("периоды прогрессивной ставки: выплаты 11-го и 26-го", () => {
+  test("26–10 и 11–25", () => {
+    expect(periodRange("2026-11", "advance", "progressive")).toEqual({
+      from: "2026-10-26",
+      to: "2026-11-10",
+    });
+    expect(periodRange("2026-11", "main", "progressive")).toEqual({
+      from: "2026-11-11",
+      to: "2026-11-25",
+    });
+    // Январь: первый период начинается в декабре прошлого года.
+    expect(periodRange("2027-01", "advance", "progressive").from).toBe("2026-12-26");
+    expect(payrollBounds("2026-11", "progressive")).toEqual({
+      from: "2026-10-26",
+      to: "2026-11-25",
+    });
+    expect(payoutPeriods("2026-11", "month", "progressive")).toEqual([
+      { from: "2026-10-26", to: "2026-11-10" },
+      { from: "2026-11-11", to: "2026-11-25" },
+    ]);
+  });
+
+  test("периоды идут подряд без пропусков и наложений", () => {
+    expect(periodRange("2026-12", "advance", "progressive").from).toBe("2026-11-26");
+    expect(periodRange("2026-11", "main", "progressive").to).toBe("2026-11-25");
+  });
+
+  test("день выплаты и подписи", () => {
+    expect(payDate("2026-11", "advance", "progressive")).toBe("2026-11-11");
+    expect(payDate("2026-11", "main", "progressive")).toBe("2026-11-26");
+    expect(payDate("2026-11", "month", "progressive")).toBeNull();
+    expect(periodLabel("2026-11", "advance", "progressive")).toBe("26 окт – 10 нояб");
+    expect(periodLabel("2026-11", "main", "progressive")).toBe("11–25 нояб");
+    expect(periodLabel("2026-11", "month", "progressive")).toBe("Оба периода");
+    expect(periodTitle("2026-11", "advance", "progressive")).toBe("26 октября – 10 ноября 2026");
+    expect(periodTitle("2026-11", "main", "progressive")).toBe("Ноябрь 11–25, 2026");
+  });
+
+  test("период по умолчанию — ближайшая выплата", () => {
+    expect(defaultPeriod("2026-11-05", "progressive")).toEqual({
+      month: "2026-11",
+      period: "advance",
+    });
+    expect(defaultPeriod("2026-11-11", "progressive")).toEqual({
+      month: "2026-11",
+      period: "advance",
+    });
+    expect(defaultPeriod("2026-11-12", "progressive")).toEqual({
+      month: "2026-11",
+      period: "main",
+    });
+    expect(defaultPeriod("2026-11-26", "progressive")).toEqual({
+      month: "2026-11",
+      period: "main",
+    });
+    expect(defaultPeriod("2026-12-27", "progressive")).toEqual({
+      month: "2027-01",
+      period: "advance",
+    });
+  });
 });
 
 describe("периоды", () => {

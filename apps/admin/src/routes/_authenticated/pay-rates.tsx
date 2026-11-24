@@ -9,7 +9,10 @@ import { DataPagination, usePagination } from "@/components/data-pagination";
 import { useTableSort } from "@/hooks/use-table-sort";
 import { EmployeePhoto } from "@/components/employee-photo";
 import { TableSkeletonRows } from "@/components/skeletons";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { InfoNote } from "@/components/ui/form-field";
+import { SegmentedControl } from "@/components/ui/segmented-control";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import {
@@ -21,15 +24,18 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { supabase } from "@/integrations/supabase/client";
+import { PAY_FORMATS, formatPay, plural, type PayFormat } from "@/lib/payroll";
 import {
   TRAINER_ROLES,
+  payFormatOf,
   useEmployees,
   usePayRates,
   type Employee,
   type PayRates,
 } from "@/lib/staff-directory";
 import { PayRatesPageSkeleton } from "@/components/page-skeletons";
-import { StudioPaySchemes } from "@/components/studio-pay-schemes";
+import { TrainerPaySchemes } from "@/components/trainer-pay-schemes";
+import { useTrainerPaySchemes } from "@/hooks/use-trainer-pay-schemes";
 
 export const Route = createFileRoute("/_authenticated/pay-rates")({
   head: () => ({ meta: [{ title: "Зарплатные ставки — Base40 Admin" }] }),
@@ -42,7 +48,20 @@ export const Route = createFileRoute("/_authenticated/pay-rates")({
  * lib/staff-directory.ts): ставки каждого сотрудника справочника
  * (trainer_pay_rates). Читать и править их может только сотрудник с
  * разделом «Сотрудники» (RLS, has_admin_section).
+ *
+ * У тренера — формат оплаты (решение владельца 2026-11-24): «Классическая»
+ * (ставка за тренировку и бонус с продажи) или «Прогрессивная» (групповые по
+ * числу пришедших). Суммы прогрессивной ставки у каждого тренера свои
+ * (components/trainer-pay-schemes.tsx), заполняются у всех, действуют только
+ * при формате «Прогрессивная».
  */
+
+const TIPS = {
+  format:
+    "Как тренеру считается зарплата. «Классическая» — ставка за тренировку и бонус 5 % с продажи; выплаты 20-го и 1-го. «Прогрессивная» — групповые по числу пришедших по суммам из колонки «Прогрессивная ставка»; выплаты 11-го и 26-го. От формата зависит, на какой вкладке «Зарплат» сотрудник.",
+  progressive:
+    "Суммы прогрессивной ставки тренера: минимум за малую группу, ₾ за человека, бонус за наполняемость, бонус за абонемент после пробного. Заполняются у каждого тренера, действуют, когда формат оплаты — «Прогрессивная».",
+};
 
 /** Ставки: флаг «получает ли сейчас» + сумма в лари за единицу. */
 const RATE_KINDS = [
@@ -81,7 +100,13 @@ function PayRatesPage() {
     admin_shift: (e) => rateOf(e, "admin_shift"),
     group_training: (e) => rateOf(e, "group_training"),
     personal_training: (e) => rateOf(e, "personal_training"),
+    format: (e) => PAY_FORMATS[payFormatOf(e, byEmployee.get(e.id))].label,
   });
+  const { data: schemes } = useTrainerPaySchemes();
+  const [schemesFor, setSchemesFor] = useState<string | null>(null);
+  const schemesEmployee = employees.find((e) => e.id === schemesFor) ?? null;
+  const schemeCount = (id: string) =>
+    (schemes?.list ?? []).filter((s) => s.trainer_id === id).length;
   const pg = usePagination(sort.apply(employees), undefined, sort.key);
 
   /** Сохраняет одно изменённое поле; строку ставок заводит при первой правке. */
@@ -112,26 +137,33 @@ function PayRatesPage() {
         <StaffTabs />
         <InfoNote>
           Ставки — в лари за смену или тренировку. Переключатель — получает ли сотрудник эту ставку
-          сейчас; сумма сохраняется, когда поле теряет фокус.
+          сейчас; сумма сохраняется, когда поле теряет фокус. У тренера выбирается формат оплаты:
+          «Классическая» — ставка за тренировку и бонус с продажи, «Прогрессивная» — групповые по
+          числу пришедших. Суммы прогрессивной ставки заполняются у каждого тренера и действуют
+          только при этом формате.
         </InfoNote>
         <div className="rounded-lg border bg-background">
           <Table>
             <TableHeader>
               <TableRow>
                 <TableHead {...sort.head("name")}>Сотрудник</TableHead>
+                <TableHead tip={TIPS.format} {...sort.head("format")}>
+                  Формат оплаты
+                </TableHead>
                 {RATE_KINDS.map((k) => (
                   <TableHead key={k.key} tip={k.tip} {...sort.head(k.key)}>
                     {k.label}
                   </TableHead>
                 ))}
+                <TableHead tip={TIPS.progressive}>Прогрессивная ставка</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {busy ? (
-                <TableSkeletonRows columns={4} />
+                <TableSkeletonRows columns={6} />
               ) : employees.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={4} className="py-8 text-center text-sm text-muted-foreground">
+                  <TableCell colSpan={6} className="py-8 text-center text-sm text-muted-foreground">
                     Сначала добавьте сотрудников в разделе «Сотрудники».
                   </TableCell>
                 </TableRow>
@@ -149,6 +181,17 @@ function PayRatesPage() {
                         </div>
                       </div>
                     </TableCell>
+                    <TableCell>
+                      {e.role === "trainer" ? (
+                        <FormatCell
+                          label={`Формат оплаты: ${e.full_name}`}
+                          value={payFormatOf(e, byEmployee.get(e.id))}
+                          onSave={(pay_format) => save(e.id, { pay_format })}
+                        />
+                      ) : (
+                        <span className="text-sm text-muted-foreground">—</span>
+                      )}
+                    </TableCell>
                     {RATE_KINDS.map((k) => (
                       <TableCell key={k.key}>
                         <RateCell
@@ -159,6 +202,23 @@ function PayRatesPage() {
                         />
                       </TableCell>
                     ))}
+                    <TableCell>
+                      {e.role === "trainer" ? (
+                        <div className="flex items-center gap-3">
+                          <Button size="sm" variant="outline" onClick={() => setSchemesFor(e.id)}>
+                            Настроить
+                          </Button>
+                          <span className="text-xs whitespace-nowrap text-muted-foreground">
+                            {progressiveSummary(
+                              schemeCount(e.id),
+                              byEmployee.get(e.id)?.trial_sale_bonus ?? null,
+                            )}
+                          </span>
+                        </div>
+                      ) : (
+                        <span className="text-sm text-muted-foreground">—</span>
+                      )}
+                    </TableCell>
                   </TableRow>
                 ))
               )}
@@ -166,9 +226,66 @@ function PayRatesPage() {
           </Table>
           <DataPagination {...pg} loading={busy} />
         </div>
-        <StudioPaySchemes />
       </div>
+      <Dialog open={!!schemesEmployee} onOpenChange={(v) => !v && setSchemesFor(null)}>
+        <DialogContent className="max-w-2xl">
+          {schemesEmployee && (
+            <TrainerPaySchemes
+              key={schemesEmployee.id}
+              employee={schemesEmployee}
+              rates={byEmployee.get(schemesEmployee.id) ?? null}
+              employees={employees}
+              allRates={rates}
+              onSaveRates={(patch) => save(schemesEmployee.id, patch)}
+              onClose={() => setSchemesFor(null)}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </AdminShell>
+  );
+}
+
+/** «3 схемы · +10 ₾ за пробное» — что заполнено у тренера. */
+function progressiveSummary(schemes: number, trialBonus: number | null) {
+  if (schemes === 0 && trialBonus == null) return "Не заполнено";
+  const parts = [
+    schemes > 0 ? `${schemes} ${plural(schemes, ["схема", "схемы", "схем"])}` : "нет схем",
+  ];
+  if (trialBonus != null) parts.push(`+${formatPay(Number(trialBonus))} за пробное`);
+  return parts.join(" · ");
+}
+
+/** Формат оплаты тренера — применяется сразу. */
+function FormatCell({
+  label,
+  value,
+  onSave,
+}: {
+  label: string;
+  value: PayFormat;
+  onSave: (value: PayFormat) => Promise<boolean>;
+}) {
+  const [pending, setPending] = useState<PayFormat | null>(null);
+  return (
+    <SegmentedControl
+      aria-label={label}
+      value={pending ?? value}
+      onChange={async (next) => {
+        if (next === value || pending) return;
+        setPending(next);
+        try {
+          await onSave(next);
+        } finally {
+          setPending(null);
+        }
+      }}
+      options={(Object.keys(PAY_FORMATS) as PayFormat[]).map((f) => ({
+        value: f,
+        label: PAY_FORMATS[f].label,
+        title: PAY_FORMATS[f].tip,
+      }))}
+    />
   );
 }
 

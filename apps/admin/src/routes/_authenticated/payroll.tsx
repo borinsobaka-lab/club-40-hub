@@ -50,20 +50,23 @@ import {
   formatPay,
   BONUS_RATE,
   EMPTY_SUMMARY,
+  PAY_FORMATS,
   addMonths,
   defaultPeriod,
-  monthBounds,
   monthLabel,
   payDate,
   payoutPeriods,
+  payrollBounds,
   periodLabel,
   periodRange,
   periodTitle,
   plural,
+  rangeLabel,
   studioAbbrs,
   summarize,
   workSummary,
   type MonthKey,
+  type PayFormat,
   type PayrollAdjustment,
   type PayrollLine,
   type PayrollPayout,
@@ -77,6 +80,8 @@ import {
   bankOf,
   formatIban,
   isAdminRole,
+  payFormatOf,
+  usePayRates,
   usePayrollAdjustments,
   usePayrollScope,
   type Employee,
@@ -86,6 +91,7 @@ import { cn } from "@/lib/utils";
 import { useTableSort } from "@/hooks/use-table-sort";
 import { PeriodStepper } from "@/components/period-stepper";
 import { SegmentedControl } from "@/components/ui/segmented-control";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PayrollPageSkeleton } from "@/components/page-skeletons";
 
 export const Route = createFileRoute("/_authenticated/payroll")({
@@ -101,20 +107,25 @@ export const Route = createFileRoute("/_authenticated/payroll")({
  * персональные и прочие занятия («Расписание») по «Зарплатным ставкам»;
  * продажи (внёс в «Продажи» или был тренером при продаже) и бонус 5 %;
  * корректировки; итог. Строки считает RPC payroll_lines, суммы за период —
- * lib/payroll.ts. Выплата отмечается за половину месяца (payroll_payouts):
- * аванс 1–19 — 20-го, основная 20–конец — 1-го следующего месяца.
+ * lib/payroll.ts. Выплата отмечается за период (payroll_payouts).
+ *
+ * Две вкладки по формату оплаты сотрудника (решение владельца 2026-11-24,
+ * формат — в «Ставках»): «Классическая» — аванс 1–19 (выплата 20-го) и
+ * основная 20–конец (1-го следующего месяца); «Прогрессивная» — тренеры с
+ * оплатой групповых по числу пришедших: 26–10 (выплата 11-го) и 11–25
+ * (выплата 26-го). На вкладке — только сотрудники этого формата.
  */
 
 const TIPS = {
-  base: "Смены администратора и проведённые занятия по «Зарплатным ставкам»: групповые (в клубе с оплатой по числу людей — по схеме клуба из «Ставок»), персональные, прочие активности (по ставке занятия). Будущие смены и занятия не считаются.",
+  base: "Смены администратора и проведённые занятия по «Зарплатным ставкам»: групповые (у тренера на прогрессивной ставке — по числу пришедших, по его суммам из «Ставок»), персональные, прочие активности (по ставке занятия). Будущие смены и занятия не считаются.",
   sales:
     "Деньги по абонементам, поступившие за период: первые платежи и доплаты по рассрочкам, в том числе по абонементам, проданным раньше. Администратору — по продажам, где он выбран администратором, тренеру — где он тренер при продаже. Пробные и разовые посещения не считаются; пакет персональных — администратору всегда, кроме пакета на 1 тренировку, тренеру — только первая покупка клиентом. Список платежей — в карточке сотрудника.",
   bonus:
-    "5 % от поступивших платежей. В клубе, где в «Ставках» задан бонус за абонемент после пробного, — ещё фиксированная сумма тренеру пробного за каждого клиента, купившего абонемент после пробного (5 % тренеру при продаже там не идут).",
+    "5 % от поступивших платежей. Тренеру на прогрессивной ставке, у которого в «Ставках» задан бонус за абонемент после пробного, — фиксированная сумма за каждого клиента, купившего абонемент после пробного у этого тренера (5 % тренеру при продаже ему не идут).",
   adjustments: "Вычеты и надбавки из «Графика администраторов» с датой в этом периоде.",
   total: "Оклад + бонус + корректировки.",
   status:
-    "Нажмите, чтобы отметить выплату. В режиме «Весь месяц» выплаты отмечаются в карточке сотрудника — по половинам месяца.",
+    "Нажмите, чтобы отметить выплату. В режиме «Весь месяц» / «Оба периода» выплаты отмечаются в карточке сотрудника — по каждому периоду.",
 };
 
 const ALL = "all";
@@ -147,7 +158,8 @@ function PayrollPage() {
   const queryClient = useQueryClient();
   const { confirm, confirmDialog } = useConfirm();
   const today = todayISO();
-  const initial = defaultPeriod(today);
+  const [format, setFormat] = useState<PayFormat>("classic");
+  const initial = defaultPeriod(today, format);
   const [month, setMonth] = useState<MonthKey>(initial.month);
   const [period, setPeriod] = useState<PeriodKey>(initial.period);
   const [search, setSearch] = useState("");
@@ -155,11 +167,27 @@ function PayrollPage() {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>(ALL);
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
-  const { studios, employees, loading: scopeLoading } = usePayrollScope();
-  const { from, to } = monthBounds(month);
+  const { studios, employees: scopeEmployees, loading: scopeLoading } = usePayrollScope();
+  const { data: rates = [], isLoading: ratesLoading } = usePayRates();
+  const ratesById = new Map(rates.map((r) => [r.trainer_id, r]));
+  const formatOf = (e: Employee) => payFormatOf(e, ratesById.get(e.id));
+  // На вкладке — только сотрудники этого формата оплаты.
+  const employees = scopeEmployees.filter((e) => formatOf(e) === format);
+  const countOf = (f: PayFormat) => scopeEmployees.filter((e) => formatOf(e) === f).length;
+  const { from, to } = payrollBounds(month, format);
+
+  /** Другая вкладка — свои периоды: открываем её ближайшую выплату. */
+  const switchFormat = (next: PayFormat) => {
+    const d = defaultPeriod(today, next);
+    setFormat(next);
+    setMonth(d.month);
+    setPeriod(d.period);
+    setSelectedId(null);
+    setStatusFilter(ALL);
+  };
 
   const { data: lines = [], isLoading: linesLoading } = useQuery({
-    queryKey: ["payroll_lines", month],
+    queryKey: ["payroll_lines", from, to],
     queryFn: async () =>
       (await unwrap<PayrollLine[]>(supabase.rpc("payroll_lines", { _from: from, _to: to }))).map(
         (l) => ({ ...l, amount: Number(l.amount) || 0 }),
@@ -167,9 +195,12 @@ function PayrollPage() {
     enabled: studios.length > 0,
     meta: { errorMessage: "Не удалось посчитать зарплаты" },
   });
-  const { data: adjustments = [], isLoading: adjustmentsLoading } = usePayrollAdjustments(month);
+  const { data: adjustments = [], isLoading: adjustmentsLoading } = usePayrollAdjustments(month, {
+    from,
+    to,
+  });
   const { data: payouts = [], isLoading: payoutsLoading } = useQuery({
-    queryKey: ["payroll_payouts", month],
+    queryKey: ["payroll_payouts", from, to],
     queryFn: () =>
       unwrap<PayrollPayout[]>(
         supabase
@@ -181,9 +212,9 @@ function PayrollPage() {
     meta: { errorMessage: "Не удалось загрузить выплаты" },
   });
 
-  const range = periodRange(month, period);
+  const range = periodRange(month, period, format);
   const summaries = summarize(lines, adjustments, range);
-  const halves = payoutPeriods(month, period);
+  const halves = payoutPeriods(month, period, format);
   const halfSummaries = halves.map((h) => summarize(lines, adjustments, h));
   const summaryOf = (id: string) => summaries.get(id) ?? EMPTY_SUMMARY;
   const payoutOf = (id: string, half: { from: string; to: string }) =>
@@ -274,9 +305,10 @@ function PayrollPage() {
   };
 
   const selected = employees.find((e) => e.id === selectedId) ?? null;
-  const payOn = payDate(month, period);
+  const payOn = payDate(month, period, format);
   // Статусы и итоги без выплат и корректировок были бы неправдой — ждём всё.
-  const loading = scopeLoading || linesLoading || adjustmentsLoading || payoutsLoading;
+  const loading =
+    scopeLoading || ratesLoading || linesLoading || adjustmentsLoading || payoutsLoading;
   const columns = 8;
 
   return (
@@ -284,6 +316,18 @@ function PayrollPage() {
       <div className="space-y-3">
         <StaffTabs />
         <TableToolbar>
+          <Tabs value={format} onValueChange={(v) => switchFormat(v as PayFormat)}>
+            <TabsList aria-label="Формат оплаты">
+              {(Object.keys(PAY_FORMATS) as PayFormat[]).map((f) => (
+                <TabsTrigger key={f} value={f} title={PAY_FORMATS[f].tip}>
+                  {PAY_FORMATS[f].label}
+                  {!scopeLoading && !ratesLoading && (
+                    <span className="ml-1.5 text-xs tabular-nums opacity-70">{countOf(f)}</span>
+                  )}
+                </TabsTrigger>
+              ))}
+            </TabsList>
+          </Tabs>
           <PeriodStepper
             unit="month"
             label={monthLabel(month)}
@@ -301,7 +345,7 @@ function PayrollPage() {
             onChange={setPeriod}
             options={(["advance", "main", "month"] as PeriodKey[]).map((p) => ({
               value: p,
-              label: periodLabel(month, p),
+              label: periodLabel(month, p, format),
             }))}
             className="toolbar-full max-sm:grid max-sm:w-full max-sm:auto-cols-fr max-sm:grid-flow-col"
           />
@@ -331,9 +375,13 @@ function PayrollPage() {
 
         <p className="flex items-center gap-1.5 px-1 text-xs text-muted-foreground">
           <Info className="size-3.5 shrink-0" />
-          {payOn
-            ? `${period === "advance" ? "Аванс" : "Основная часть"} выплачивается ${formatDate(payOn)} — за ${periodTitle(month, period)}.`
-            : "Аванс за 1–19 выплачивается 20-го, основная часть за 20–конец месяца — 1-го числа следующего месяца."}
+          {format === "progressive"
+            ? payOn
+              ? `Прогрессивная ставка: выплата ${formatDate(payOn)} — за ${periodTitle(month, period, format)}.`
+              : "Прогрессивная ставка: с 26-го по 10-е выплачивается 11-го, с 11-го по 25-е — 26-го."
+            : payOn
+              ? `${period === "advance" ? "Аванс" : "Основная часть"} выплачивается ${formatDate(payOn)} — за ${periodTitle(month, period)}.`
+              : "Аванс за 1–19 выплачивается 20-го, основная часть за 20–конец месяца — 1-го числа следующего месяца."}
         </p>
 
         {!scopeLoading && studios.length === 0 ? (
@@ -425,7 +473,9 @@ function PayrollPage() {
                       >
                         {filtered
                           ? "Ничего не найдено."
-                          : "Нет сотрудников ваших клубов — добавьте их в разделе «Сотрудники»."}
+                          : format === "progressive"
+                            ? "На прогрессивной ставке пока никого нет — формат оплаты тренера выбирается во вкладке «Ставки»."
+                            : "Нет сотрудников ваших клубов — добавьте их в разделе «Сотрудники»."}
                       </TableCell>
                     </TableRow>
                   ) : (
@@ -519,6 +569,7 @@ function PayrollPage() {
               employee={selected}
               month={month}
               period={period}
+              format={format}
               summary={summaryOf(selected.id)}
               lines={lines.filter(
                 (l) =>
@@ -569,7 +620,7 @@ function StatusButton({
       onClick={onClick}
       title={
         disabled
-          ? "Выплаты отмечаются по половинам месяца — в карточке сотрудника"
+          ? "Выплаты отмечаются по периодам — в карточке сотрудника"
           : status === "paid"
             ? "Отменить отметку о выплате"
             : "Отметить как выплачено"
@@ -677,6 +728,7 @@ function EmployeePayroll({
   employee,
   month,
   period,
+  format,
   summary,
   lines,
   adjustments,
@@ -687,6 +739,7 @@ function EmployeePayroll({
   employee: Employee;
   month: MonthKey;
   period: PeriodKey;
+  format: PayFormat;
   summary: PayrollSummary;
   lines: PayrollLine[];
   adjustments: PayrollAdjustment[];
@@ -725,7 +778,9 @@ function EmployeePayroll({
             <SheetTitle className="truncate text-base leading-tight">
               {employee.full_name}
             </SheetTitle>
-            <SheetDescription className="text-xs">{periodTitle(month, period)}</SheetDescription>
+            <SheetDescription className="text-xs">
+              {periodTitle(month, period, format)}
+            </SheetDescription>
           </div>
         </div>
       </SheetHeader>
@@ -811,7 +866,7 @@ function EmployeePayroll({
         <section className="space-y-2 rounded-lg border px-3 py-2.5">
           <SalePayments
             employeeId={employee.id}
-            range={periodRange(month, period)}
+            range={periodRange(month, period, format)}
             summary={summary}
           />
           <div className="flex justify-between text-sm">
@@ -878,7 +933,9 @@ function EmployeePayroll({
           const key = `${h.from}|${h.to}`;
           const label =
             halves.length > 1
-              ? `${h.from.endsWith("-01") ? "Аванс" : "Основная"} ${Number(h.from.slice(8))}–${Number(h.to.slice(8))}`
+              ? format === "progressive"
+                ? rangeLabel(h)
+                : `${h.from.endsWith("-01") ? "Аванс" : "Основная"} ${Number(h.from.slice(8))}–${Number(h.to.slice(8))}`
               : null;
           return (
             <div key={key} className="space-y-1.5">

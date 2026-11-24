@@ -1,7 +1,8 @@
 /**
- * Оплата групповых по числу людей и бонус тренеру пробного
- * (db/migrations/2026-11-11_studio_per_person_pay.sql): схемы клуба,
- * расчёт строк payroll_lines, 5 % тренеру при продаже не идёт.
+ * Прогрессивная ставка тренера — оплата групповых по числу людей и бонус
+ * тренеру пробного (db/migrations/2026-11-24_trainer_progressive_pay.sql;
+ * первая версия, по клубу, — 2026-11-11_studio_per_person_pay.sql): схемы
+ * тренера, расчёт строк payroll_lines, 5 % тренеру при продаже не идёт.
  *
  *   bash db/test/build-schema.sh postgres://postgres@localhost:5432/base40_test
  *   TEST_SCHEMA_DATABASE_URL=postgres://postgres@localhost:5432/base40_test bun test db
@@ -45,8 +46,11 @@ describe.skipIf(!url)("оплата групповых по числу люде�
 
   type Club = { studio: string; coach: string; mat: string; trx: string; other: string };
 
-  /** Клуб с владельцем-вызывающим, тренером, тремя тренировками и схемами «Коврик» (по умолчанию) и TRX. */
-  async function club(tx: Tx, settings = true): Promise<Club> {
+  /**
+   * Клуб с владельцем-вызывающим, тренером, тремя тренировками и схемами
+   * тренера «Коврик» (по умолчанию) и TRX; format — формат оплаты тренера.
+   */
+  async function club(tx: Tx, format: "classic" | "progressive" = "progressive"): Promise<Club> {
     const [{ id: studio }] = await tx`
       insert into studios (name, format) values ('Палиашвили', 'packages') returning id`;
     await tx`set local session_replication_role = replica`;
@@ -60,8 +64,9 @@ describe.skipIf(!url)("оплата групповых по числу люде�
       insert into trainers (full_name, role) values ('Тренер', 'trainer') returning id`;
     await tx`insert into trainer_studios (trainer_id, studio_id) values (${coach}, ${studio})`;
     await tx`
-      insert into trainer_pay_rates (trainer_id, group_training_enabled, group_training_rate)
-      values (${coach}, true, 30)`;
+      insert into trainer_pay_rates
+        (trainer_id, group_training_enabled, group_training_rate, pay_format, trial_sale_bonus)
+      values (${coach}, true, 30, ${format}, 10)`;
     const workout = async (name: string) => {
       const [{ id }] = await tx`
         insert into workouts (studio_id, name) values (${studio}, ${name}) returning id`;
@@ -71,17 +76,14 @@ describe.skipIf(!url)("оплата групповых по числу люде�
     const trx = await workout("TRX");
     const other = await workout("Пилатес");
 
-    if (settings) {
-      await tx`insert into studio_pay_settings (studio_id, per_person, trial_sale_bonus)
-               values (${studio}, true, 10)`;
-      await tx`
-        insert into studio_pay_schemes (studio_id, name, is_default, min_amount, min_up_to, per_person, bonuses)
-        values (${studio}, 'Обычная группа', true, 15, 3, 4, (${BONUSES}::text)::jsonb)`;
-      const [{ id: trxScheme }] = await tx`
-        insert into studio_pay_schemes (studio_id, name, min_amount, min_up_to, per_person, bonuses)
-        values (${studio}, 'TRX', 15, 3, 6, (${BONUSES}::text)::jsonb) returning id`;
-      await tx`insert into studio_pay_scheme_workouts (scheme_id, workout_id) values (${trxScheme}, ${trx})`;
-    }
+    // Суммы заполнены у тренера всегда — действуют только на прогрессивной ставке.
+    await tx`
+      insert into trainer_pay_schemes (trainer_id, name, is_default, min_amount, min_up_to, per_person, bonuses)
+      values (${coach}, 'Обычная группа', true, 15, 3, 4, (${BONUSES}::text)::jsonb)`;
+    const [{ id: trxScheme }] = await tx`
+      insert into trainer_pay_schemes (trainer_id, name, min_amount, min_up_to, per_person, bonuses)
+      values (${coach}, 'TRX', 15, 3, 6, (${BONUSES}::text)::jsonb) returning id`;
+    await tx`insert into trainer_pay_scheme_workouts (scheme_id, workout_id) values (${trxScheme}, ${trx})`;
     return { studio, coach, mat, trx, other };
   }
 
@@ -133,9 +135,34 @@ describe.skipIf(!url)("оплата групповых по числу люде�
     });
   });
 
-  test("клуб без настройки — прежняя ставка сотрудника", async () => {
+  test("классическая ставка — ставка за групповую, хотя суммы прогрессивной заполнены", async () => {
     await scenario(async (tx) => {
-      const c = await club(tx, false);
+      const c = await club(tx, "classic");
+      await lesson(tx, c, c.trx, 7);
+      expect(await lessonsPay(tx, c)).toBe(30);
+    });
+  });
+
+  test("формат — тренера, не клуба: в одном клубе один по числу людей, другой по ставке", async () => {
+    await scenario(async (tx) => {
+      const c = await club(tx);
+      const [{ id: classic }] = await tx`
+        insert into trainers (full_name, role) values ('Классик', 'trainer') returning id`;
+      await tx`insert into trainer_studios (trainer_id, studio_id) values (${classic}, ${c.studio})`;
+      await tx`
+        insert into trainer_pay_rates (trainer_id, group_training_enabled, group_training_rate)
+        values (${classic}, true, 30)`;
+      await lesson(tx, c, c.mat, 10);
+      await lesson(tx, { ...c, coach: classic }, c.mat, 10);
+      expect(await lessonsPay(tx, c)).toBe(50);
+      expect(await lessonsPay(tx, { ...c, coach: classic })).toBe(30);
+    });
+  });
+
+  test("прогрессивная без схем — ставка за групповую", async () => {
+    await scenario(async (tx) => {
+      const c = await club(tx);
+      await tx`delete from trainer_pay_schemes where trainer_id = ${c.coach}`;
       await lesson(tx, c, c.trx, 7);
       expect(await lessonsPay(tx, c)).toBe(30);
     });
@@ -181,6 +208,50 @@ describe.skipIf(!url)("оплата групповых по числу люде�
          where trainer_id = ${c.coach} and kind in ('trial_bonus', 'sale')`;
       expect(rows.map((r: { kind: string; amount: string }) => [r.kind, Number(r.amount)])).toEqual(
         [["trial_bonus", 10]],
+      );
+    });
+  });
+
+  test("классическая ставка: бонуса за пробное нет, 5 % тренеру при продаже идут", async () => {
+    await scenario(async (tx) => {
+      const c = await club(tx, "classic");
+      const [{ id: client }] = await tx`
+        insert into clients (studio_id, first_name, last_name) values (${c.studio}, 'Анна', 'Пробная')
+        returning id`;
+      const [{ id: trial }] = await tx`
+        insert into memberships (studio_id, name, kind, visits_count, duration_days, price)
+        values (${c.studio}, 'Пробное', 'trial', 1, 30, 20) returning id`;
+      const [{ id: pack }] = await tx`
+        insert into memberships (studio_id, name, kind, visits_count, duration_days, price)
+        values (${c.studio}, 'Пакет 8', 'package', 8, 30, 200) returning id`;
+      await tx`
+        insert into sales (studio_id, client_id, membership_id, total_amount, sold_at, sale_kind)
+        values (${c.studio}, ${client}, ${trial}, 20, current_date - 1, 'trial')`;
+      const [{ id: e }] = await tx`
+        insert into schedule_entries (studio_id, workout_id, kind, starts_at, ends_at)
+        values (${c.studio}, ${c.mat}, 'group', now() - interval '26 hours', now() - interval '25 hours')
+        returning id`;
+      await tx`insert into schedule_entry_trainers (entry_id, trainer_id) values (${e}, ${c.coach})`;
+      const [{ id: b }] = await tx`
+        insert into schedule_bookings (studio_id, entry_id, client_id, status)
+        values (${c.studio}, ${e}, ${client}, 'booked') returning id`;
+      await tx`update schedule_bookings set status = 'attended' where id = ${b}`;
+
+      // Купила пакет — тренер при продаже получает свои 5 %.
+      await tx`
+        insert into sales (studio_id, client_id, membership_id, total_amount, sold_at, sale_kind, trainer_id)
+        values (${c.studio}, ${client}, ${pack}, 200, current_date, 'new', ${c.coach})`;
+      // Вторая покупка — бонус один на клиента.
+      await tx`
+        insert into sales (studio_id, client_id, membership_id, total_amount, sold_at, sale_kind)
+        values (${c.studio}, ${client}, ${pack}, 200, current_date, 'renewal')`;
+
+      const rows = await tx`
+        select kind, units, amount::numeric as amount
+          from payroll_lines(current_date - 2, current_date)
+         where trainer_id = ${c.coach} and kind in ('trial_bonus', 'sale')`;
+      expect(rows.map((r: { kind: string; amount: string }) => [r.kind, Number(r.amount)])).toEqual(
+        [["sale", 200]],
       );
     });
   });
