@@ -387,7 +387,10 @@ Borin, Ваке — Milana Shirshikova), совместные операторы
   «Сотрудниках», ссылку собирает `telegramHref`; без Telegram — без
   перехода, смены нет — плашки нет); RPC `trainer_studio_admins_today`.
   **«Выплаты»** (решение владельца 2026-11-24): у блока тренера на главной
-  две вкладки (`UnderlineTabs` в `my-schedule.tsx`) — «Моё расписание» (как
+  две вкладки (переключатель-«пилюля» `components/segmented-switch.tsx` в
+  `my-schedule.tsx`: серая дорожка, белая плашка переезжает с пружинкой,
+  иконки, содержимое въезжает со стороны своей вкладки — решение владельца
+  2026-11-24, здесь намеренно не `UnderlineTabs`) — «Моё расписание» (как
   было) и «Выплаты» (`trainer/payouts.tsx`, запрос — `trainerPayoutsQuery`,
   RPC `trainer_payouts`; подписи — `payoutPeriodLabel` / `payoutMoney` /
   `payoutIn` в `trainer/format.ts` + тест). Сверху — период выплаты со

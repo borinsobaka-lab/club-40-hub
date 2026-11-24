@@ -1,9 +1,10 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { CalendarMinimalistic, WalletMoney } from "@solar-icons/react";
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { UnderlineTabs } from "@/components/underline-tabs";
+import { SegmentedSwitch } from "@/components/segmented-switch";
 import { WorkoutDrawer, type WorkoutDrawerData } from "@/components/workout-drawer";
 import { useAuth } from "@/hooks/use-auth";
 import { useFormatStudios } from "@/hooks/use-viewed-studio";
@@ -28,7 +29,8 @@ function dayTitle(iso: string, t: ReturnType<typeof useT>) {
  * — студия занятия (2026-11-16). Не тренер — блока нет.
  *
  * С 2026-11-24 у блока две вкладки: «Моё расписание» (как было) и «Выплаты»
- * — проведённые занятия и начисления периода (./payouts.tsx).
+ * — проведённые занятия и начисления периода (./payouts.tsx); переключатель —
+ * «пилюля» с переезжающей плашкой (components/segmented-switch.tsx).
  */
 export function TrainerMySchedule() {
   const { user } = useAuth();
@@ -63,73 +65,82 @@ export function TrainerMySchedule() {
   return (
     <>
       <section className="bg-background rounded-b-[14px] pb-5">
-        <UnderlineTabs
-          tabs={[
-            { key: "schedule", label: t("Моё расписание") },
-            { key: "payouts", label: t("Выплаты") },
+        <SegmentedSwitch
+          aria-label={t("Раздел тренера")}
+          options={[
+            { key: "schedule", label: t("Моё расписание"), icon: CalendarMinimalistic },
+            { key: "payouts", label: t("Выплаты"), icon: WalletMoney },
           ]}
           value={tab}
           onChange={setTab}
-          className="mx-4 mb-4 [&_button]:text-xl"
+          className="mx-4 mb-4"
         />
-        {tab === "payouts" ? (
-          <TrainerPayouts trainerId={me.trainer_id} />
-        ) : isError ? (
-          <Card className="mx-4 p-4 text-sm text-destructive">
-            {t("Не удалось загрузить ваше расписание. Обновите страницу.")}
-          </Card>
-        ) : isLoading || !data ? (
-          <div className="px-4 space-y-2">
-            {[0, 1].map((i) => (
-              <div key={i} className="h-24 animate-pulse rounded-lg bg-muted" />
-            ))}
-          </div>
-        ) : data.entries.length === 0 ? (
-          <div className="mx-4 rounded-2xl border border-border bg-card p-5 text-center text-sm text-muted-foreground">
-            {t("Ближайших занятий в расписании нет")}
-          </div>
-        ) : (
-          <div className="px-4 space-y-5">
-            {groups.map((g) => (
-              <div key={g.key} className="space-y-2">
-                <div className="text-xs font-semibold text-muted-foreground">
-                  {dayTitle(g.first, t)}
+        {/* Содержимое въезжает со стороны своей вкладки (key перезапускает анимацию). */}
+        <div
+          key={tab}
+          className={`animate-in fade-in-0 duration-300 ease-out motion-reduce:animate-none ${
+            tab === "payouts" ? "slide-in-from-right-4" : "slide-in-from-left-4"
+          }`}
+        >
+          {tab === "payouts" ? (
+            <TrainerPayouts trainerId={me.trainer_id} />
+          ) : isError ? (
+            <Card className="mx-4 p-4 text-sm text-destructive">
+              {t("Не удалось загрузить ваше расписание. Обновите страницу.")}
+            </Card>
+          ) : isLoading || !data ? (
+            <div className="px-4 space-y-2">
+              {[0, 1].map((i) => (
+                <div key={i} className="h-24 animate-pulse rounded-lg bg-muted" />
+              ))}
+            </div>
+          ) : data.entries.length === 0 ? (
+            <div className="mx-4 rounded-2xl border border-border bg-card p-5 text-center text-sm text-muted-foreground">
+              {t("Ближайших занятий в расписании нет")}
+            </div>
+          ) : (
+            <div className="px-4 space-y-5">
+              {groups.map((g) => (
+                <div key={g.key} className="space-y-2">
+                  <div className="text-xs font-semibold text-muted-foreground">
+                    {dayTitle(g.first, t)}
+                  </div>
+                  {g.items.map((e) => (
+                    <PackWorkoutCard
+                      key={e.id}
+                      entry={e}
+                      isBooked={false}
+                      studioName={studioName(e.studio_id)}
+                      showBooked
+                      hideTrainerId={me.trainer_id}
+                      // В окне тоже «сколько записано», а не свободные места.
+                      onOpen={() =>
+                        setOpen({
+                          ...packEntryToDrawerData(e, t),
+                          spotsLabel: e.clients
+                            ? e.clients.join(", ") || t("Клиент не указан")
+                            : isOtherActivity(e)
+                              ? null
+                              : bookedLabel(e, t),
+                          spotsLeft: null,
+                        })
+                      }
+                    />
+                  ))}
                 </div>
-                {g.items.map((e) => (
-                  <PackWorkoutCard
-                    key={e.id}
-                    entry={e}
-                    isBooked={false}
-                    studioName={studioName(e.studio_id)}
-                    showBooked
-                    hideTrainerId={me.trainer_id}
-                    // В окне тоже «сколько записано», а не свободные места.
-                    onOpen={() =>
-                      setOpen({
-                        ...packEntryToDrawerData(e, t),
-                        spotsLabel: e.clients
-                          ? e.clients.join(", ") || t("Клиент не указан")
-                          : isOtherActivity(e)
-                            ? null
-                            : bookedLabel(e, t),
-                        spotsLeft: null,
-                      })
-                    }
-                  />
-                ))}
-              </div>
-            ))}
-            {data.hasMore && (
-              <Button
-                className="w-full bg-muted text-foreground hover:bg-muted/80"
-                disabled={isFetching}
-                onClick={() => setLimit((n) => n + MY_SCHEDULE_STEP)}
-              >
-                {isFetching ? "..." : t("Показать ещё")}
-              </Button>
-            )}
-          </div>
-        )}
+              ))}
+              {data.hasMore && (
+                <Button
+                  className="w-full bg-muted text-foreground hover:bg-muted/80"
+                  disabled={isFetching}
+                  onClick={() => setLimit((n) => n + MY_SCHEDULE_STEP)}
+                >
+                  {isFetching ? "..." : t("Показать ещё")}
+                </Button>
+              )}
+            </div>
+          )}
+        </div>
       </section>
       <div className="h-3 bg-muted" />
 

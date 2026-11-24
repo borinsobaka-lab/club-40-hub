@@ -75,6 +75,7 @@ const dict: Dictionary = {
   Были: "Attended",
   "Без отметки": "Unmarked",
   "Не пришли": "No-show",
+  "Раздел тренера": "Trainer section",
 };
 
 export default dict;
