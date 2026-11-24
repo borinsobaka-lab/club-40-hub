@@ -188,7 +188,12 @@ describe.skipIf(!url)("тренер в приложении (база)", () => {
     await scenario(async (tx) => {
       const s = await seed(tx);
       await link(tx, s);
-      async function special(kind: string, hours: number, title: string | null, trainer = s.trainer) {
+      async function special(
+        kind: string,
+        hours: number,
+        title: string | null,
+        trainer = s.trainer,
+      ) {
         const [{ id }] = await tx.unsafe(
           `insert into schedule_entries (studio_id, kind, title, starts_at, ends_at)
            values ($1, $2, $3, now() + make_interval(hours => $4::int),
@@ -220,7 +225,11 @@ describe.skipIf(!url)("тренер в приложении (база)", () => {
       const [{ v }] = await tx`select trainer_entries_view(${ids}::uuid[]) as v`;
       expect(v.map((e: { id: string }) => e.id)).toEqual(ids);
       const byId = new Map(v.map((e: { id: string }) => [e.id, e]));
-      const g = byId.get(group) as { workout: { name: string }; clients: unknown; trainers: unknown[] };
+      const g = byId.get(group) as {
+        workout: { name: string };
+        clients: unknown;
+        trainers: unknown[];
+      };
       expect(g.workout.name).toBe("Стретчинг");
       expect(g.clients).toBeNull();
       expect(g.trainers.length).toBe(1);
@@ -277,14 +286,15 @@ describe.skipIf(!url)("тренер в приложении (база)", () => {
       expect(comments[0].body).toBe("Беречь спину");
       expect(comments[0].author_name).toBe("Ольга Тренер");
       expect(comments[0].mine).toBe(true);
-      const [again] = await tx`select * from trainer_entry_clients(${e}) where client_id = ${trial.id}`;
+      const [again] =
+        await tx`select * from trainer_entry_clients(${e}) where client_id = ${trial.id}`;
       expect(again.comments_count).toBe(1);
       expect(again.last_comment_author).toBe("Ольга Тренер");
 
       // Не записан на занятия этого тренера — ни анкеты, ни комментариев.
-      expect(
-        await failure(tx, () => tx`select trainer_client_profile(${stranger.id})`),
-      ).toContain("trainer_only");
+      expect(await failure(tx, () => tx`select trainer_client_profile(${stranger.id})`)).toContain(
+        "trainer_only",
+      );
       expect(
         await failure(tx, () => tx`select trainer_add_comment(${stranger.id}, 'x')`),
       ).toContain("trainer_only");
@@ -292,8 +302,7 @@ describe.skipIf(!url)("тренер в приложении (база)", () => {
       expect(
         await failure(
           tx,
-          () =>
-            tx`insert into trainer_comments (client_id, body) values (${trial.id}, 'x')`,
+          () => tx`insert into trainer_comments (client_id, body) values (${trial.id}, 'x')`,
         ),
       ).not.toBeNull();
       // Связь с тренером клиент сам себе не ставит.
@@ -426,6 +435,111 @@ describe.skipIf(!url)("тренер в приложении (база)", () => {
       await tx`update push_triggers set enabled = false where key = 'trainer_class_cancelled'`;
       await tx`update schedule_entries set cancelled_at = now() where id = ${e}`;
       expect((await pushes(tx, "trainer_class_cancelled")).length).toBe(0);
+    });
+  });
+
+  // «Выплаты» тренера (db/migrations/2026-11-24_zz_trainer_app_payouts.sql).
+  describe("выплаты", () => {
+    /** Отметки без триггеров списания: важен только подсчёт людей. */
+    async function mark(tx: Tx, s: Seed, entryId: string, statuses: string[]) {
+      await tx`set local session_replication_role = replica`;
+      for (const [i, status] of statuses.entries()) {
+        const c = await client(tx, s.studio, `К${i}-${entryId.slice(0, 4)}`, false);
+        await tx`
+          insert into schedule_bookings (studio_id, entry_id, client_id, status)
+          values (${s.studio}, ${entryId}, ${c.id}, ${status})`;
+      }
+      await tx`set local session_replication_role = origin`;
+    }
+
+    async function payouts(tx: Tx, s: Seed, shift = 0) {
+      await as(tx, s.trainerUser);
+      const [{ p }] = await tx`select trainer_payouts(${shift}) as p`;
+      await asServer(tx);
+      return p as Record<string, never> | null;
+    }
+
+    test("не тренеру — пусто", async () => {
+      await scenario(async (tx) => {
+        const s = await seed(tx);
+        expect(await payouts(tx, s)).toBeNull();
+      });
+    });
+
+    test("прогрессивная ставка: люди и сумма по занятию, итог, сколько ещё до выплаты", async () => {
+      await scenario(async (tx) => {
+        const s = await seed(tx);
+        await link(tx, s);
+        await tx`
+          insert into trainer_pay_rates (trainer_id, group_training_enabled, group_training_rate, pay_format)
+          values (${s.trainer}, true, 30, 'progressive')`;
+        await tx`
+          insert into trainer_pay_schemes (trainer_id, name, is_default, min_amount, min_up_to, per_person)
+          values (${s.trainer}, 'Обычная', true, 15, 3, 4)`;
+        const done = await entry(tx, s, -3);
+        await mark(tx, s, done, [
+          "attended",
+          "attended",
+          "attended",
+          "attended",
+          "attended",
+          "no_show",
+          "booked",
+        ]);
+        // Идёт сейчас — ещё не проведено; чужое и отменённое не считаются.
+        const running = await tx.unsafe(
+          `insert into schedule_entries (studio_id, workout_id, kind, starts_at, ends_at)
+           values ($1, $2, 'group', now() - interval '10 minutes', now() + interval '50 minutes')
+           returning id`,
+          [s.studio, s.workout],
+        );
+        await tx`insert into schedule_entry_trainers (entry_id, trainer_id) values (${running[0].id}, ${s.trainer})`;
+        await entry(tx, s, -4, s.other);
+        await tx`
+          insert into payroll_adjustments (trainer_id, kind, amount, adjusted_on, reason)
+          values (${s.trainer}, 'deduction', 5, (now() at time zone 'Asia/Tbilisi')::date, 'Опоздание')`;
+
+        const p = (await payouts(tx, s))!;
+        expect(p.format).toBe("progressive");
+        const lessons = p.lessons as {
+          entry_id: string;
+          people: number;
+          unmarked: number;
+          amount: number;
+        }[];
+        // Занятие трёхчасовой давности могло попасть в прошлый период (граница периода).
+        const all = [...lessons, ...((await payouts(tx, s, -1))!.lessons as typeof lessons)];
+        const row = all.find((l) => l.entry_id === done)!;
+        expect([row.people, row.unmarked, Number(row.amount)]).toEqual([5, 1, 20]);
+        expect(all.some((l) => l.entry_id === running[0].id)).toBe(false);
+        expect(all.length).toBe(1);
+        expect(Number(p.adjustments_total)).toBe(-5);
+        expect(Number(p.total)).toBe(Number(p.lessons_total) - 5);
+        expect(p.upcoming_count).toBeGreaterThanOrEqual(1);
+        expect(p.pay_on > p.period_to).toBe(true);
+
+        // Админка считает той же функцией: сумма строк = сумма занятий.
+        const [{ sum }] = await tx`
+          select coalesce(sum(amount), 0)::numeric as sum
+            from payroll_lines_for(current_date - 2, current_date + 1, array[${s.trainer}]::uuid[])
+           where kind = 'group'`;
+        expect(Number(sum)).toBe(20);
+      });
+    });
+
+    test("классическая ставка: ставка за занятие, периоды 1–19 и 20–конец", async () => {
+      await scenario(async (tx) => {
+        const s = await seed(tx);
+        await link(tx, s);
+        await tx`
+          insert into trainer_pay_rates (trainer_id, group_training_enabled, group_training_rate)
+          values (${s.trainer}, true, 30)`;
+        const p = (await payouts(tx, s))!;
+        expect(p.format).toBe("classic");
+        expect(["01", "20"]).toContain(String(p.period_from).slice(8, 10));
+        const prev = (await payouts(tx, s, -1))!;
+        expect(prev.period_to < p.period_from).toBe(true);
+      });
     });
   });
 });
