@@ -62,20 +62,22 @@ const dict: Dictionary = {
   Выплата: "Payout",
   "Выплачено {amount} · {date}": "Paid {amount} · {date}",
   "До выплаты занятий в расписании больше нет": "No more classes scheduled before the payout",
-  "{n} без отметки": "{n} unmarked",
   "Начислено за занятие": "Earned for the class",
   "На занятие никто не был записан.": "Nobody was booked for this class.",
-  "Не у всех стоит отметка о посещении. Когда администратор её поставит, сумма может измениться.":
-    "Attendance isn't marked for everyone yet. The amount may change once the administrator marks it.",
   "До выплаты ещё {n} занятие|До выплаты ещё {n} занятия|До выплаты ещё {n} занятий":
     "{n} more class before the payout|{n} more classes before the payout",
   "Был {n} человек|Было {n} человека|Было {n} человек": "{n} person attended|{n} people attended",
   завтра: "tomorrow",
   "через {n} день|через {n} дня|через {n} дней": "in {n} day|in {n} days",
   Были: "Attended",
-  "Без отметки": "Unmarked",
   "Не пришли": "No-show",
   "Раздел тренера": "Trainer section",
+  "Не отмечено посещений: {n}": "Attendance not marked: {n}",
+  "Не у всех отмечено посещение. Пока администратор не отметил приход, клиент считается не пришедшим и в оплату занятия не входит.":
+    "Attendance isn't marked for everyone. Until the administrator marks a client as attended, they count as a no-show and aren't included in the pay for the class.",
+  "Администратор не отметил приход клиента":
+    "The administrator hasn't marked this client's attendance",
+  "Не отмечены": "Not marked",
 };
 
 export default dict;

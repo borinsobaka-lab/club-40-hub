@@ -238,13 +238,14 @@ function LessonRow({ lesson: l, onOpen }: { lesson: PayoutLesson; onOpen: () => 
               {l.people}
             </span>
           )}
-          {l.unmarked > 0 && (
-            <span className="shrink-0 text-amber-600 dark:text-amber-400">
-              {t("{n} без отметки", { n: l.unmarked })}
-            </span>
-          )}
           {studio && <span className="truncate">{studio}</span>}
         </div>
+        {/* Неотмеченные в оплату не идут — как будто не пришли (решение владельца 2026-11-24). */}
+        {l.unmarked > 0 && (
+          <div className="text-xs font-medium text-red-600 dark:text-red-400">
+            {t("Не отмечено посещений: {n}", { n: l.unmarked })}
+          </div>
+        )}
       </div>
       <div className="shrink-0 font-semibold tabular-nums">{payoutMoney(l.amount, t)}</div>
       <AltArrowRight className="h-4 w-4 shrink-0 text-muted-foreground" />
@@ -254,7 +255,7 @@ function LessonRow({ lesson: l, onOpen }: { lesson: PayoutLesson; onOpen: () => 
 
 const GROUPS = [
   { status: "attended", label: msg("Были") },
-  { status: "booked", label: msg("Без отметки") },
+  { status: "booked", label: msg("Не отмечены") },
   { status: "no_show", label: msg("Не пришли") },
 ] as const;
 
@@ -309,9 +310,9 @@ function LessonDrawer({ lesson, onClose }: { lesson: PayoutLesson | null; onClos
       ) : (
         <div className="space-y-4">
           {l.unmarked > 0 && (
-            <div className="rounded-2xl bg-amber-50 p-3 text-sm text-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
+            <div className="rounded-2xl bg-red-50 p-3 text-sm text-red-700 dark:bg-red-950/40 dark:text-red-200">
               {t(
-                "Не у всех стоит отметка о посещении. Когда администратор её поставит, сумма может измениться.",
+                "Не у всех отмечено посещение. Пока администратор не отметил приход, клиент считается не пришедшим и в оплату занятия не входит.",
               )}
             </div>
           )}
@@ -342,12 +343,19 @@ function LessonDrawer({ lesson, onClose }: { lesson: PayoutLesson | null; onClos
 function PersonRow({ client: c }: { client: EntryClient }) {
   const t = useT();
   return (
-    <div className="flex items-center gap-2 px-3 py-2.5 text-sm">
-      <span className="min-w-0 truncate font-medium">{clientDisplayName(c)}</span>
-      {c.is_trial && (
-        <span className="shrink-0 rounded-full bg-primary/15 px-2 py-0.5 text-xs font-semibold text-primary">
-          {t("Пробное")}
-        </span>
+    <div className="px-3 py-2.5 text-sm">
+      <div className="flex items-center gap-2">
+        <span className="min-w-0 truncate font-medium">{clientDisplayName(c)}</span>
+        {c.is_trial && (
+          <span className="shrink-0 rounded-full bg-primary/15 px-2 py-0.5 text-xs font-semibold text-primary">
+            {t("Пробное")}
+          </span>
+        )}
+      </div>
+      {c.status === "booked" && (
+        <div className="mt-0.5 text-xs text-red-600 dark:text-red-400">
+          {t("Администратор не отметил приход клиента")}
+        </div>
       )}
     </div>
   );
