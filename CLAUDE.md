@@ -374,6 +374,11 @@ AUTH_SETUP.md.
   занятий ещё до конца периода, отметка `payroll_payouts`. Админка и
   приложение считают одной функцией — суммы совпадают. Кто был на занятии
   — прежняя `trainer_entry_clients`. Тесты — `db/trainer-app.test.ts`.
+  По дням (2026-11-24): `db/migrations/2026-11-24_zzzz_trainer_payouts_days.sql`
+  — `trainer_payouts` (актуальное определение — здесь) отдаёт ещё `extras`:
+  день × `shift` / `sale` (поступило и бонус 5 %) / `trial_bonus`; вместе с
+  `lessons` и `adjustments` (дата, причина) приложение показывает, сколько
+  в какой день и за что начислено, на любой ставке.
   Занятия сотрудника по одному для админки (2026-11-24, карточка тренера в
   «Зарплатах»): `db/migrations/2026-11-24_zzz_payroll_lessons.sql` — RPC
   `payroll_lessons(_trainer_id, _from, _to)` (строки `payroll_lesson_rows` +

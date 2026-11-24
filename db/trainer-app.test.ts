@@ -514,6 +514,12 @@ describe.skipIf(!url)("тренер в приложении (база)", () => {
         expect(all.some((l) => l.entry_id === running[0].id)).toBe(false);
         expect(all.length).toBe(1);
         expect(Number(p.adjustments_total)).toBe(-5);
+        // По дням: вычет с датой и причиной; смен, продаж и пробных у тренера нет.
+        expect((p.adjustments as { kind: string; reason: string }[])[0]).toMatchObject({
+          kind: "deduction",
+          reason: "Опоздание",
+        });
+        expect(p.extras).toEqual([]);
         expect(Number(p.total)).toBe(Number(p.lessons_total) - 5);
         expect(p.upcoming_count).toBeGreaterThanOrEqual(1);
         expect(p.pay_on > p.period_to).toBe(true);
