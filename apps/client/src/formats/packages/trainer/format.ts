@@ -46,3 +46,36 @@ export function telegramHref(value: string | null | undefined): string | null {
   const nick = v.replace(/^@/, "");
   return /^[A-Za-z0-9_]{4,32}$/.test(nick) ? `https://t.me/${nick}` : null;
 }
+
+/** Дата YYYY-MM-DD из базы как местная полночь (new Date(iso) дал бы UTC и сдвиг дня). */
+export function localDay(iso: string) {
+  const [y, m, d] = iso.slice(0, 10).split("-").map(Number);
+  return new Date(y, m - 1, d);
+}
+
+/** Сколько дней от from до to (даты YYYY-MM-DD). */
+export function daysBetween(from: string, to: string) {
+  return Math.round((localDay(to).getTime() - localDay(from).getTime()) / 86_400_000);
+}
+
+/** Период выплаты: «11–25 ноября», через месяц — «26 октября – 10 ноября». */
+export function payoutPeriodLabel(from: string, to: string, t: Translator) {
+  const long = { day: "numeric", month: "long" } as const;
+  if (from.slice(0, 7) === to.slice(0, 7))
+    return `${Number(from.slice(8, 10))}–${t.date(localDay(to), long)}`;
+  return `${t.date(localDay(from), long)} – ${t.date(localDay(to), long)}`;
+}
+
+/** Деньги в лари: «240 ₾», копейки — только когда они есть. */
+export function payoutMoney(amount: number, t: Translator) {
+  return `${t.number(Math.round(amount * 100) / 100, { maximumFractionDigits: 2 })} ₾`;
+}
+
+/** Когда выплата: «сегодня», «завтра», «через 3 дня»; прошла — null. */
+export function payoutIn(today: string, payOn: string, t: Translator) {
+  const days = daysBetween(today, payOn);
+  if (days < 0) return null;
+  if (days === 0) return t("сегодня");
+  if (days === 1) return t("завтра");
+  return t.plural(days, "через {n} день|через {n} дня|через {n} дней");
+}

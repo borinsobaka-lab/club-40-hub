@@ -205,3 +205,93 @@ export function studioAdminsTodayQuery(studioId: string | null, enabled: boolean
     staleTime: 5 * 60_000,
   });
 }
+
+/** Проведённое занятие периода: сколько людей было и сколько за него начислено. */
+export type PayoutLesson = {
+  entry_id: string;
+  starts_at: string;
+  ends_at: string | null;
+  kind: string;
+  /** Название прочей активности. */
+  title: string | null;
+  studio_id: string;
+  workout: {
+    id: string;
+    name: string;
+    color: string | null;
+    translations?: ContentTranslations | null;
+  } | null;
+  /** «Посетил». */
+  people: number;
+  /** Записи без отметки — администратор ещё не отметил посещение. */
+  unmarked: number;
+  amount: number;
+};
+
+export type PayoutAdjustment = {
+  kind: "bonus" | "deduction";
+  amount: number;
+  reason: string;
+  adjusted_on: string;
+};
+
+export type TrainerPayouts = {
+  /** classic — выплаты 20-го и 1-го; progressive — 11-го и 26-го. */
+  format: "classic" | "progressive";
+  shift: number;
+  /** Даты YYYY-MM-DD по Тбилиси. */
+  period_from: string;
+  period_to: string;
+  pay_on: string;
+  today: string;
+  lessons: PayoutLesson[];
+  lessons_count: number;
+  lessons_total: number;
+  shifts_total: number;
+  sales_bonus: number;
+  trial_bonus: number;
+  trial_count: number;
+  adjustments: PayoutAdjustment[];
+  adjustments_total: number;
+  total: number;
+  /** Занятий ещё впереди до конца периода. */
+  upcoming_count: number;
+  paid: { amount: number; paid_at: string } | null;
+};
+
+const num = (v: unknown) => Number(v) || 0;
+
+/**
+ * «Выплаты» тренера: период (shift 0 — текущий, −1 — прошлый…), проведённые
+ * занятия и суммы — считает база той же функцией, что «Зарплаты» админки
+ * (db/migrations/2026-11-24_zz_trainer_app_payouts.sql). Занятие проведено,
+ * когда закончилось по времени.
+ */
+export function trainerPayoutsQuery(trainerId: string | null, shift: number) {
+  return queryOptions({
+    queryKey: ["trainer-payouts", trainerId, shift],
+    queryFn: async (): Promise<TrainerPayouts | null> => {
+      const { data, error } = await untypedDb.rpc("trainer_payouts", { p_shift: shift });
+      if (error) throw error;
+      const p = data as TrainerPayouts | null;
+      if (!p) return null;
+      // numeric из базы может прийти строкой.
+      return {
+        ...p,
+        lessons: (p.lessons ?? []).map((l) => ({ ...l, amount: num(l.amount) })),
+        adjustments: (p.adjustments ?? []).map((a) => ({ ...a, amount: num(a.amount) })),
+        lessons_total: num(p.lessons_total),
+        shifts_total: num(p.shifts_total),
+        sales_bonus: num(p.sales_bonus),
+        trial_bonus: num(p.trial_bonus),
+        adjustments_total: num(p.adjustments_total),
+        total: num(p.total),
+        paid: p.paid ? { ...p.paid, amount: num(p.paid.amount) } : null,
+      };
+    },
+    enabled: !!trainerId,
+    placeholderData: keepPreviousData,
+    // Занятие заканчивается — сумма меняется: не держим старое дольше минуты.
+    staleTime: 60_000,
+  });
+}

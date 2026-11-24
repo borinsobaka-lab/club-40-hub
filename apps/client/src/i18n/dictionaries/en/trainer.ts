@@ -44,6 +44,37 @@ const dict: Dictionary = {
   "Персональная тренировка": "Personal training",
   "Прочая активность": "Other activity",
   "Клиент не указан": "No client yet",
+  // «Выплаты» тренера (2026-11-24).
+  Выплаты: "Payouts",
+  "Не удалось загрузить выплаты. Обновите страницу.": "Couldn't load payouts. Refresh the page.",
+  "Предыдущий период": "Previous period",
+  "Следующий период": "Next period",
+  "Текущий период": "Current period",
+  "Прошлый период": "Past period",
+  "В этом периоде проведённых занятий пока нет": "No completed classes in this period yet",
+  "Проведённые занятия": "Completed classes",
+  "Показать все занятия ({n})": "Show all classes ({n})",
+  "Смены администратора": "Admin shifts",
+  "Бонус с продаж": "Sales bonus",
+  "Абонементы после пробного: {n}": "Memberships after a trial: {n}",
+  "Начислено за период": "Earned this period",
+  Выплачено: "Paid",
+  Выплата: "Payout",
+  "Выплачено {amount} · {date}": "Paid {amount} · {date}",
+  "До выплаты занятий в расписании больше нет": "No more classes scheduled before the payout",
+  "{n} без отметки": "{n} unmarked",
+  "Начислено за занятие": "Earned for the class",
+  "На занятие никто не был записан.": "Nobody was booked for this class.",
+  "Не у всех стоит отметка о посещении. Когда администратор её поставит, сумма может измениться.":
+    "Attendance isn't marked for everyone yet. The amount may change once the administrator marks it.",
+  "До выплаты ещё {n} занятие|До выплаты ещё {n} занятия|До выплаты ещё {n} занятий":
+    "{n} more class before the payout|{n} more classes before the payout",
+  "Был {n} человек|Было {n} человека|Было {n} человек": "{n} person attended|{n} people attended",
+  завтра: "tomorrow",
+  "через {n} день|через {n} дня|через {n} дней": "in {n} day|in {n} days",
+  Были: "Attended",
+  "Без отметки": "Unmarked",
+  "Не пришли": "No-show",
 };
 
 export default dict;

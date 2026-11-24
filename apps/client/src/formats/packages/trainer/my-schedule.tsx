@@ -3,12 +3,14 @@ import { useQuery } from "@tanstack/react-query";
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { UnderlineTabs } from "@/components/underline-tabs";
 import { WorkoutDrawer, type WorkoutDrawerData } from "@/components/workout-drawer";
 import { useAuth } from "@/hooks/use-auth";
 import { useFormatStudios } from "@/hooks/use-viewed-studio";
 import { useLocalize, useT } from "@/i18n";
 import { bookedLabel, isOtherActivity, packEntryToDrawerData, type PackEntry } from "../entries";
 import { PackWorkoutCard } from "../workout-card";
+import { TrainerPayouts } from "./payouts";
 import { MY_SCHEDULE_STEP, trainerEntriesQuery, trainerMeQuery } from "./queries";
 
 /** «Понедельник, 12 октября». */
@@ -24,6 +26,9 @@ function dayTitle(iso: string, t: ReturnType<typeof useT>) {
  * прочая активность. По нажатию — окно занятия тренера: кто записан и
  * «О тренировке» (у прочей активности — только описание). На каждой карточке
  * — студия занятия (2026-11-16). Не тренер — блока нет.
+ *
+ * С 2026-11-24 у блока две вкладки: «Моё расписание» (как было) и «Выплаты»
+ * — проведённые занятия и начисления периода (./payouts.tsx).
  */
 export function TrainerMySchedule() {
   const { user } = useAuth();
@@ -35,6 +40,7 @@ export function TrainerMySchedule() {
     trainerEntriesQuery(me?.trainer_id ?? null, limit),
   );
   const [open, setOpen] = useState<WorkoutDrawerData | null>(null);
+  const [tab, setTab] = useState<"schedule" | "payouts">("schedule");
   const { data: studios = [] } = useFormatStudios();
 
   const groups = useMemo(() => {
@@ -57,8 +63,18 @@ export function TrainerMySchedule() {
   return (
     <>
       <section className="bg-background rounded-b-[14px] pb-5">
-        <h2 className="px-4 text-2xl font-semibold mb-3">{t("Моё расписание")}</h2>
-        {isError ? (
+        <UnderlineTabs
+          tabs={[
+            { key: "schedule", label: t("Моё расписание") },
+            { key: "payouts", label: t("Выплаты") },
+          ]}
+          value={tab}
+          onChange={setTab}
+          className="mx-4 mb-4 [&_button]:text-xl"
+        />
+        {tab === "payouts" ? (
+          <TrainerPayouts trainerId={me.trainer_id} />
+        ) : isError ? (
           <Card className="mx-4 p-4 text-sm text-destructive">
             {t("Не удалось загрузить ваше расписание. Обновите страницу.")}
           </Card>
