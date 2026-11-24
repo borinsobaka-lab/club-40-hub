@@ -93,6 +93,15 @@ import { PeriodStepper } from "@/components/period-stepper";
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PayrollPageSkeleton } from "@/components/page-skeletons";
+import { PayrollLessons } from "@/components/payroll-lessons";
+import {
+  Dialog,
+  DialogBody,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 export const Route = createFileRoute("/_authenticated/payroll")({
   head: () => ({ meta: [{ title: "Зарплаты — Base40 Admin" }] }),
@@ -561,41 +570,71 @@ function PayrollPage() {
         )}
       </div>
 
-      <Sheet open={!!selected} onOpenChange={(o) => !o && setSelectedId(null)}>
-        <SheetContent className="flex w-full flex-col gap-0 p-0 sm:max-w-md">
-          {selected && (
-            <EmployeePayroll
-              key={selected.id}
-              employee={selected}
-              month={month}
-              period={period}
-              format={format}
-              summary={summaryOf(selected.id)}
-              lines={lines.filter(
-                (l) =>
-                  l.trainer_id === selected.id &&
-                  l.work_date >= range.from &&
-                  l.work_date <= range.to,
-              )}
-              adjustments={adjustments.filter(
-                (a) =>
-                  a.trainer_id === selected.id &&
-                  a.adjusted_on >= range.from &&
-                  a.adjusted_on <= range.to,
-              )}
-              halves={halves.map((h, i) => ({
-                ...h,
-                total: halfSummaries[i].get(selected.id)?.total ?? 0,
-                payout: payoutOf(selected.id, h),
-              }))}
-              onMarkPaid={(h, amount) => markPaid(selected, h, amount)}
-              onUnmark={(h) => unmarkPaid(selected, h)}
-            />
-          )}
-        </SheetContent>
-      </Sheet>
+      <SelectedShell
+        wide={format === "progressive"}
+        open={!!selected}
+        onClose={() => setSelectedId(null)}
+      >
+        {selected && (
+          <EmployeePayroll
+            key={selected.id}
+            employee={selected}
+            month={month}
+            period={period}
+            format={format}
+            summary={summaryOf(selected.id)}
+            lines={lines.filter(
+              (l) =>
+                l.trainer_id === selected.id &&
+                l.work_date >= range.from &&
+                l.work_date <= range.to,
+            )}
+            adjustments={adjustments.filter(
+              (a) =>
+                a.trainer_id === selected.id &&
+                a.adjusted_on >= range.from &&
+                a.adjusted_on <= range.to,
+            )}
+            halves={halves.map((h, i) => ({
+              ...h,
+              total: halfSummaries[i].get(selected.id)?.total ?? 0,
+              payout: payoutOf(selected.id, h),
+            }))}
+            onMarkPaid={(h, amount) => markPaid(selected, h, amount)}
+            onUnmark={(h) => unmarkPaid(selected, h)}
+          />
+        )}
+      </SelectedShell>
       {confirmDialog}
     </AdminShell>
+  );
+}
+
+/**
+ * Карточка сотрудника: классическая ставка — шторка справа; прогрессивная —
+ * широкое окно по центру (на телефоне — шторка снизу, как все окна).
+ */
+function SelectedShell({
+  wide,
+  open,
+  onClose,
+  children,
+}: {
+  wide: boolean;
+  open: boolean;
+  onClose: () => void;
+  children: ReactNode;
+}) {
+  if (wide)
+    return (
+      <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
+        <DialogContent className="sm:max-w-5xl">{children}</DialogContent>
+      </Dialog>
+    );
+  return (
+    <Sheet open={open} onOpenChange={(o) => !o && onClose()}>
+      <SheetContent className="flex w-full flex-col gap-0 p-0 sm:max-w-md">{children}</SheetContent>
+    </Sheet>
   );
 }
 
@@ -748,6 +787,7 @@ function EmployeePayroll({
   onUnmark: (half: Half) => Promise<void>;
 }) {
   const [pending, setPending] = useState<string | null>(null);
+  const wide = format === "progressive";
   const shifts = lines.filter((l) => l.kind === "shift");
   const lessons = lines.filter(
     (l) => l.kind === "group" || l.kind === "personal" || l.kind === "other",
@@ -766,6 +806,244 @@ function EmployeePayroll({
       setPending(null);
     }
   };
+
+  const shiftsBlock = shifts.length > 0 && (
+    <section>
+      <h3 className="mb-1.5 text-sm font-semibold">Выходы администратора</h3>
+      <ul className="divide-y rounded-md border">
+        {shifts.map((l) => (
+          <li
+            key={`${l.work_date}|${l.studio_id}`}
+            className="grid grid-cols-[72px_1fr_auto] items-center gap-2 px-3 py-1.5 text-sm"
+          >
+            <span>{dayLabel(l.work_date)}</span>
+            <span className="truncate text-muted-foreground">{l.studio_name}</span>
+            <span className="tabular-nums">{formatPay(l.amount)}</span>
+          </li>
+        ))}
+      </ul>
+      <div className="mt-1.5 flex justify-between px-3 text-sm font-semibold">
+        <span>
+          {shifts.length} {plural(shifts.length, ["смена", "смены", "смен"])}
+        </span>
+        <span className="tabular-nums">{formatPay(shiftsTotal)}</span>
+      </div>
+    </section>
+  );
+  const lessonsBlock = lessons.length > 0 && (
+    <section>
+      <h3 className="mb-1.5 text-sm font-semibold">Тренировки</h3>
+      <ul className="divide-y rounded-md border">
+        {lessonDays.map((day) => {
+          const items = lessons.filter((l) => l.work_date === day);
+          return (
+            <li
+              key={day}
+              className="grid grid-cols-[72px_1fr_auto] items-center gap-2 px-3 py-1.5 text-sm"
+            >
+              <span>{dayLabel(day)}</span>
+              <span className="flex flex-wrap gap-x-2 gap-y-0.5 text-xs text-muted-foreground">
+                {items.map((l) => (
+                  <span key={`${l.studio_id}|${l.kind}|${l.title ?? ""}`} title={l.studio_name}>
+                    {lessonChip(l, abbrs.get(l.studio_name) ?? "")}
+                  </span>
+                ))}
+              </span>
+              <span className="tabular-nums">
+                {formatPay(items.reduce((sum, l) => sum + l.amount, 0))}
+              </span>
+            </li>
+          );
+        })}
+      </ul>
+      <div className="mt-1.5 flex items-baseline justify-between gap-3 px-3 text-sm">
+        <span className="font-semibold">
+          {lessonDays.length} {plural(lessonDays.length, ["день", "дня", "дней"])}
+        </span>
+        <span className="flex items-baseline gap-2">
+          <span className="text-xs text-muted-foreground">
+            {[
+              summary.groups && `групп. ${summary.groups}`,
+              summary.personals && `перс. ${summary.personals}`,
+              summary.others && `проч. ${summary.others}`,
+            ]
+              .filter(Boolean)
+              .join(" · ")}
+          </span>
+          <span className="font-semibold tabular-nums">{formatPay(lessonsTotal)}</span>
+        </span>
+      </div>
+    </section>
+  );
+  const emptyNote = shifts.length === 0 && lessons.length === 0 && (
+    <InfoNote variant="empty">За период нет смен и проведённых занятий.</InfoNote>
+  );
+  const summaryBlock = (
+    <section className="space-y-2 rounded-lg border px-3 py-2.5">
+      <SalePayments
+        employeeId={employee.id}
+        range={periodRange(month, period, format)}
+        summary={summary}
+      />
+      <div className="flex justify-between text-sm">
+        <span className="text-muted-foreground">Бонус {BONUS_RATE * 100}%</span>
+        <span className="tabular-nums">{formatPay(summary.bonus - summary.trialBonus)}</span>
+      </div>
+      {summary.trialSales > 0 && (
+        <div className="flex justify-between text-sm">
+          <span className="text-muted-foreground">
+            Абонементы после пробного: {summary.trialSales}
+          </span>
+          <span className="tabular-nums">{formatPay(summary.trialBonus)}</span>
+        </div>
+      )}
+      <div className="border-t pt-2">
+        {adjustments.length === 0 ? (
+          <div className="flex justify-between text-sm text-muted-foreground">
+            <span>Корректировки</span>
+            <span>—</span>
+          </div>
+        ) : (
+          <>
+            <div className="text-sm text-muted-foreground">Корректировки</div>
+            <ul className="mt-1 space-y-1">
+              {adjustments.map((a) => {
+                const sign = ADJUSTMENT_KINDS[a.kind].sign;
+                return (
+                  <li key={a.id} className="flex items-start justify-between gap-3 text-sm">
+                    <span className="min-w-0">
+                      {a.reason}{" "}
+                      <span className="text-xs text-muted-foreground">
+                        {dayLabel(a.adjusted_on)}
+                      </span>
+                    </span>
+                    <span
+                      className={cn(
+                        "shrink-0 tabular-nums",
+                        sign < 0 ? "text-rose-600" : "text-emerald-700",
+                      )}
+                    >
+                      {signedMoney(sign * Number(a.amount))}
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
+          </>
+        )}
+      </div>
+      <div className="flex items-baseline justify-between border-t pt-2">
+        <span className="font-semibold">Итого к выплате</span>
+        <span className="text-lg font-semibold tabular-nums">{formatPay(summary.total)}</span>
+      </div>
+    </section>
+  );
+  const payoutsBlock = (
+    <div
+      className={cn(
+        wide ? "gap-3" : "shrink-0 gap-3 border-t px-5 py-3",
+        halves.length > 1 ? "grid grid-cols-2" : "flex flex-col",
+      )}
+    >
+      {halves.map((h) => {
+        const key = `${h.from}|${h.to}`;
+        const label =
+          halves.length > 1
+            ? format === "progressive"
+              ? rangeLabel(h)
+              : `${h.from.endsWith("-01") ? "Аванс" : "Основная"} ${Number(h.from.slice(8))}–${Number(h.to.slice(8))}`
+            : null;
+        return (
+          <div key={key} className="space-y-1.5">
+            {label && (
+              <div className="flex justify-between text-xs text-muted-foreground">
+                <span>{label}</span>
+                <span className="tabular-nums">{formatPay(h.total)}</span>
+              </div>
+            )}
+            {h.payout ? (
+              <>
+                {/* «Выплачено» и «Отменить отметку» — рядом, в одну строку. */}
+                <div className="flex items-center gap-2">
+                  <div
+                    className={cn(
+                      "flex h-9 flex-1 items-center justify-center gap-1.5 rounded-lg text-sm font-semibold [&_svg]:size-4",
+                      STATUS_TONE_CLASS.positive,
+                    )}
+                  >
+                    <Check />
+                    Выплачено
+                  </div>
+                  <Button
+                    variant="outline"
+                    className="flex-1"
+                    disabled={pending === key}
+                    onClick={() => run(key, () => onUnmark(h))}
+                  >
+                    {halves.length > 1 ? "Отменить" : "Отменить отметку"}
+                  </Button>
+                </div>
+                <div className="text-center text-xs text-muted-foreground">
+                  {formatDate(h.payout.paid_at)}
+                  {h.payout.paid_by_name && ` — ${h.payout.paid_by_name}`} ·{" "}
+                  {formatPay(Number(h.payout.amount))}
+                </div>
+                {!sameAmount(Number(h.payout.amount), h.total) && (
+                  <InfoNote variant="warning">
+                    После выплаты сумма изменилась: сейчас {formatPay(h.total)}. Доплатите разницу
+                    или отмените отметку и отметьте заново.
+                  </InfoNote>
+                )}
+              </>
+            ) : (
+              <Button
+                variant="success"
+                className="w-full"
+                disabled={pending === key || h.total <= 0}
+                onClick={() => run(key, () => onMarkPaid(h, h.total))}
+              >
+                {pending === key ? <Loader2 className="animate-spin" /> : <Check />}
+                Отметить как выплачено
+              </Button>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+
+  // Прогрессивная ставка — широкое окно: слева занятия по одному (день, люди,
+  // сумма, по нажатию — кто был), справа итог и выплата — для сверки с тренером.
+  if (wide)
+    return (
+      <>
+        <DialogHeader>
+          <div className="flex items-center gap-3">
+            <EmployeePhoto
+              value={employee.photo_url}
+              name={employee.full_name}
+              className="size-10"
+            />
+            <div className="min-w-0">
+              <DialogTitle className="truncate">{employee.full_name}</DialogTitle>
+              <DialogDescription>
+                Прогрессивная ставка · {periodTitle(month, period, format)}
+              </DialogDescription>
+            </div>
+          </div>
+        </DialogHeader>
+        <DialogBody>
+          <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_21rem]">
+            <PayrollLessons trainerId={employee.id} range={periodRange(month, period, format)} />
+            <div className="space-y-4 lg:sticky lg:top-0 lg:self-start">
+              {shiftsBlock}
+              {summaryBlock}
+              {payoutsBlock}
+            </div>
+          </div>
+        </DialogBody>
+      </>
+    );
 
   return (
     <>
@@ -786,214 +1064,13 @@ function EmployeePayroll({
       </SheetHeader>
 
       <div className="flex-1 space-y-4 overflow-y-auto px-5 py-3">
-        {shifts.length > 0 && (
-          <section>
-            <h3 className="mb-1.5 text-sm font-semibold">Выходы администратора</h3>
-            <ul className="divide-y rounded-md border">
-              {shifts.map((l) => (
-                <li
-                  key={`${l.work_date}|${l.studio_id}`}
-                  className="grid grid-cols-[72px_1fr_auto] items-center gap-2 px-3 py-1.5 text-sm"
-                >
-                  <span>{dayLabel(l.work_date)}</span>
-                  <span className="truncate text-muted-foreground">{l.studio_name}</span>
-                  <span className="tabular-nums">{formatPay(l.amount)}</span>
-                </li>
-              ))}
-            </ul>
-            <div className="mt-1.5 flex justify-between px-3 text-sm font-semibold">
-              <span>
-                {shifts.length} {plural(shifts.length, ["смена", "смены", "смен"])}
-              </span>
-              <span className="tabular-nums">{formatPay(shiftsTotal)}</span>
-            </div>
-          </section>
-        )}
-
-        {lessons.length > 0 && (
-          <section>
-            <h3 className="mb-1.5 text-sm font-semibold">Тренировки</h3>
-            <ul className="divide-y rounded-md border">
-              {lessonDays.map((day) => {
-                const items = lessons.filter((l) => l.work_date === day);
-                return (
-                  <li
-                    key={day}
-                    className="grid grid-cols-[72px_1fr_auto] items-center gap-2 px-3 py-1.5 text-sm"
-                  >
-                    <span>{dayLabel(day)}</span>
-                    <span className="flex flex-wrap gap-x-2 gap-y-0.5 text-xs text-muted-foreground">
-                      {items.map((l) => (
-                        <span
-                          key={`${l.studio_id}|${l.kind}|${l.title ?? ""}`}
-                          title={l.studio_name}
-                        >
-                          {lessonChip(l, abbrs.get(l.studio_name) ?? "")}
-                        </span>
-                      ))}
-                    </span>
-                    <span className="tabular-nums">
-                      {formatPay(items.reduce((sum, l) => sum + l.amount, 0))}
-                    </span>
-                  </li>
-                );
-              })}
-            </ul>
-            <div className="mt-1.5 flex items-baseline justify-between gap-3 px-3 text-sm">
-              <span className="font-semibold">
-                {lessonDays.length} {plural(lessonDays.length, ["день", "дня", "дней"])}
-              </span>
-              <span className="flex items-baseline gap-2">
-                <span className="text-xs text-muted-foreground">
-                  {[
-                    summary.groups && `групп. ${summary.groups}`,
-                    summary.personals && `перс. ${summary.personals}`,
-                    summary.others && `проч. ${summary.others}`,
-                  ]
-                    .filter(Boolean)
-                    .join(" · ")}
-                </span>
-                <span className="font-semibold tabular-nums">{formatPay(lessonsTotal)}</span>
-              </span>
-            </div>
-          </section>
-        )}
-
-        {shifts.length === 0 && lessons.length === 0 && (
-          <InfoNote variant="empty">За период нет смен и проведённых занятий.</InfoNote>
-        )}
-
-        <section className="space-y-2 rounded-lg border px-3 py-2.5">
-          <SalePayments
-            employeeId={employee.id}
-            range={periodRange(month, period, format)}
-            summary={summary}
-          />
-          <div className="flex justify-between text-sm">
-            <span className="text-muted-foreground">Бонус {BONUS_RATE * 100}%</span>
-            <span className="tabular-nums">{formatPay(summary.bonus - summary.trialBonus)}</span>
-          </div>
-          {summary.trialSales > 0 && (
-            <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">
-                Абонементы после пробного: {summary.trialSales}
-              </span>
-              <span className="tabular-nums">{formatPay(summary.trialBonus)}</span>
-            </div>
-          )}
-          <div className="border-t pt-2">
-            {adjustments.length === 0 ? (
-              <div className="flex justify-between text-sm text-muted-foreground">
-                <span>Корректировки</span>
-                <span>—</span>
-              </div>
-            ) : (
-              <>
-                <div className="text-sm text-muted-foreground">Корректировки</div>
-                <ul className="mt-1 space-y-1">
-                  {adjustments.map((a) => {
-                    const sign = ADJUSTMENT_KINDS[a.kind].sign;
-                    return (
-                      <li key={a.id} className="flex items-start justify-between gap-3 text-sm">
-                        <span className="min-w-0">
-                          {a.reason}{" "}
-                          <span className="text-xs text-muted-foreground">
-                            {dayLabel(a.adjusted_on)}
-                          </span>
-                        </span>
-                        <span
-                          className={cn(
-                            "shrink-0 tabular-nums",
-                            sign < 0 ? "text-rose-600" : "text-emerald-700",
-                          )}
-                        >
-                          {signedMoney(sign * Number(a.amount))}
-                        </span>
-                      </li>
-                    );
-                  })}
-                </ul>
-              </>
-            )}
-          </div>
-          <div className="flex items-baseline justify-between border-t pt-2">
-            <span className="font-semibold">Итого к выплате</span>
-            <span className="text-lg font-semibold tabular-nums">{formatPay(summary.total)}</span>
-          </div>
-        </section>
+        {shiftsBlock}
+        {lessonsBlock}
+        {emptyNote}
+        {summaryBlock}
       </div>
 
-      <div
-        className={cn(
-          "shrink-0 gap-3 border-t px-5 py-3",
-          halves.length > 1 ? "grid grid-cols-2" : "flex flex-col",
-        )}
-      >
-        {halves.map((h) => {
-          const key = `${h.from}|${h.to}`;
-          const label =
-            halves.length > 1
-              ? format === "progressive"
-                ? rangeLabel(h)
-                : `${h.from.endsWith("-01") ? "Аванс" : "Основная"} ${Number(h.from.slice(8))}–${Number(h.to.slice(8))}`
-              : null;
-          return (
-            <div key={key} className="space-y-1.5">
-              {label && (
-                <div className="flex justify-between text-xs text-muted-foreground">
-                  <span>{label}</span>
-                  <span className="tabular-nums">{formatPay(h.total)}</span>
-                </div>
-              )}
-              {h.payout ? (
-                <>
-                  {/* «Выплачено» и «Отменить отметку» — рядом, в одну строку. */}
-                  <div className="flex items-center gap-2">
-                    <div
-                      className={cn(
-                        "flex h-9 flex-1 items-center justify-center gap-1.5 rounded-lg text-sm font-semibold [&_svg]:size-4",
-                        STATUS_TONE_CLASS.positive,
-                      )}
-                    >
-                      <Check />
-                      Выплачено
-                    </div>
-                    <Button
-                      variant="outline"
-                      className="flex-1"
-                      disabled={pending === key}
-                      onClick={() => run(key, () => onUnmark(h))}
-                    >
-                      {halves.length > 1 ? "Отменить" : "Отменить отметку"}
-                    </Button>
-                  </div>
-                  <div className="text-center text-xs text-muted-foreground">
-                    {formatDate(h.payout.paid_at)}
-                    {h.payout.paid_by_name && ` — ${h.payout.paid_by_name}`} ·{" "}
-                    {formatPay(Number(h.payout.amount))}
-                  </div>
-                  {!sameAmount(Number(h.payout.amount), h.total) && (
-                    <InfoNote variant="warning">
-                      После выплаты сумма изменилась: сейчас {formatPay(h.total)}. Доплатите разницу
-                      или отмените отметку и отметьте заново.
-                    </InfoNote>
-                  )}
-                </>
-              ) : (
-                <Button
-                  variant="success"
-                  className="w-full"
-                  disabled={pending === key || h.total <= 0}
-                  onClick={() => run(key, () => onMarkPaid(h, h.total))}
-                >
-                  {pending === key ? <Loader2 className="animate-spin" /> : <Check />}
-                  Отметить как выплачено
-                </Button>
-              )}
-            </div>
-          );
-        })}
-      </div>
+      {payoutsBlock}
     </>
   );
 }

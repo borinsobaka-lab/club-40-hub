@@ -374,6 +374,13 @@ AUTH_SETUP.md.
   занятий ещё до конца периода, отметка `payroll_payouts`. Админка и
   приложение считают одной функцией — суммы совпадают. Кто был на занятии
   — прежняя `trainer_entry_clients`. Тесты — `db/trainer-app.test.ts`.
+  Занятия сотрудника по одному для админки (2026-11-24, карточка тренера в
+  «Зарплатах»): `db/migrations/2026-11-24_zzz_payroll_lessons.sql` — RPC
+  `payroll_lessons(_trainer_id, _from, _to)` (строки `payroll_lesson_rows` +
+  клуб, тренировка, записи без отметки и «не пришёл») и
+  `payroll_lesson_clients(_trainer_id, _entry_id)` (записанные: имя,
+  отметка, пробное); обе — security definer, только ведущему зарплату
+  сотрудника (`can_manage_employee`). Тесты — `db/studio-pay.test.ts`.
   Удаление продажи абонемента:
   `db/migrations/2026-10-11_zzzzzz_sale_membership_delete.sql` — продажа и
   выданный по ней `client_memberships` удаляются вместе (в обе стороны,

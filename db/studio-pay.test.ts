@@ -31,6 +31,9 @@ describe.skipIf(!url)("оплата групповых по числу люде�
   async function scenario(fn: (tx: Tx) => Promise<void>) {
     try {
       await db.begin(async (tx) => {
+        // Зарплаты считают дни по Тбилиси: current_date в сценариях — тот же день
+        // (иначе вечером по UTC «сегодняшние» занятия уходили в завтра).
+        await tx`set local time zone 'Asia/Tbilisi'`;
         await fn(tx as unknown as Tx);
         throw new Rollback();
       });
@@ -253,6 +256,46 @@ describe.skipIf(!url)("оплата групповых по числу люде�
       expect(rows.map((r: { kind: string; amount: string }) => [r.kind, Number(r.amount)])).toEqual(
         [["sale", 200]],
       );
+    });
+  });
+
+  test("занятия по одному и кто был — как в «Зарплатах»; чужому сотруднику — отказ", async () => {
+    await scenario(async (tx) => {
+      const c = await club(tx);
+      const e = await lesson(tx, c, c.trx, 7, 2);
+      await lesson(tx, c, c.mat, 2);
+      const rows = await tx`
+        select entry_id, workout_name, studio_name, people, no_show, unmarked, amount::numeric as amount
+          from payroll_lessons(${c.coach}, current_date - 1, current_date)`;
+      expect(rows.length).toBe(2);
+      const trx = rows.find((r: { entry_id: string }) => r.entry_id === e)!;
+      expect([trx.workout_name, trx.people, trx.no_show, trx.unmarked, Number(trx.amount)]).toEqual(
+        ["TRX", 7, 2, 0, 47],
+      );
+      const total = rows.reduce((sum: number, r: { amount: string }) => sum + Number(r.amount), 0);
+      expect(total).toBe(await lessonsPay(tx, c));
+
+      const people = await tx`select status from payroll_lesson_clients(${c.coach}, ${e})`;
+      expect(people.map((p: { status: string }) => p.status)).toEqual([
+        ...Array(7).fill("attended"),
+        ...Array(2).fill("no_show"),
+      ]);
+
+      // Сотрудник другого клуба зарплату этого тренера не ведёт.
+      await tx`set local session_replication_role = replica`;
+      const [{ id: stranger }] = await tx`
+        insert into auth.users (email) values ('stranger-pay@example.com') returning id`;
+      await tx`set local session_replication_role = origin`;
+      await tx`select set_config('request.jwt.claim.sub', ${stranger}::text, true)`;
+      await tx`savepoint s`;
+      let denied = false;
+      try {
+        await tx`select * from payroll_lessons(${c.coach}, current_date - 1, current_date)`;
+      } catch {
+        denied = true;
+      }
+      await tx`rollback to savepoint s`;
+      expect(denied).toBe(true);
     });
   });
 });

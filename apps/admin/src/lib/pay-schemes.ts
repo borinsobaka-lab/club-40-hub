@@ -108,3 +108,37 @@ export const PRESET_SCHEMES: (SchemeTerms & { name: string; is_default: boolean 
   },
 ];
 export const PRESET_TRIAL_SALE_BONUS = 10;
+
+/**
+ * Как получилась сумма за занятие: «минимум 15 ₾», «7 чел. × 6 ₾ + 5 ₾ за
+ * наполняемость» — для сверки с тренером в «Зарплатах».
+ */
+export function schemeBreakdown(
+  s: SchemeTerms,
+  people: number,
+  money: (n: number) => string,
+): string {
+  const n = Math.max(0, Math.floor(people));
+  const base =
+    n <= s.min_up_to
+      ? `минимум ${money(Number(s.min_amount))} (до ${s.min_up_to} чел.)`
+      : `${n} чел. × ${money(Number(s.per_person))}`;
+  const bonus = [...s.bonuses].filter((b) => b.from <= n).sort((a, b) => b.from - a.from)[0];
+  return bonus ? `${base} + ${money(Number(bonus.amount))} за наполняемость` : base;
+}
+
+/** Схема тренера для тренировки: своя схема тренировки, иначе — «для остальных». */
+export function schemeFor(
+  schemes: PayScheme[],
+  links: SchemeWorkout[],
+  trainerId: string,
+  workoutId: string | null,
+): PayScheme | null {
+  const own = schemes.filter((s) => s.trainer_id === trainerId);
+  const link = workoutId
+    ? links.find((l) => l.trainer_id === trainerId && l.workout_id === workoutId)
+    : null;
+  return (
+    (link && own.find((s) => s.id === link.scheme_id)) ?? own.find((s) => s.is_default) ?? null
+  );
+}

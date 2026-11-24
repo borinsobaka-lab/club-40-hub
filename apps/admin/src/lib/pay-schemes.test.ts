@@ -4,6 +4,8 @@ import {
   PRESET_SCHEMES,
   cleanBonuses,
   schemeAmount,
+  schemeBreakdown,
+  schemeFor,
   schemeExamples,
   schemeSummary,
 } from "./pay-schemes";
@@ -51,5 +53,21 @@ describe("оплата по числу людей", () => {
     expect(schemeSummary(mat, (n) => `${n} ₾`)).toBe(
       "До 3 чел. — 15 ₾, больше — 4 ₾ за человека; от 7 чел. +5 ₾, от 10 чел. +10 ₾",
     );
+  });
+
+  test("как получилась сумма и какая схема у тренировки", () => {
+    const money = (n: number) => `${n} ₾`;
+    expect(schemeBreakdown(trx, 2, money)).toBe("минимум 15 ₾ (до 3 чел.)");
+    expect(schemeBreakdown(trx, 5, money)).toBe("5 чел. × 6 ₾");
+    expect(schemeBreakdown(trx, 10, money)).toBe("10 чел. × 6 ₾ + 10 ₾ за наполняемость");
+    const schemes = [
+      { ...mat, id: "m", trainer_id: "t", sort_order: 0 },
+      { ...trx, id: "x", trainer_id: "t", sort_order: 1 },
+      { ...trx, id: "o", trainer_id: "other", sort_order: 0, is_default: true },
+    ];
+    const links = [{ trainer_id: "t", scheme_id: "x", workout_id: "w-trx" }];
+    expect(schemeFor(schemes, links, "t", "w-trx")?.id).toBe("x");
+    expect(schemeFor(schemes, links, "t", "w-any")?.id).toBe("m");
+    expect(schemeFor(schemes, links, "nobody", "w-trx")).toBeNull();
   });
 });
