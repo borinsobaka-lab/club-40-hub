@@ -6,6 +6,7 @@ import {
   commentWhen,
   daysBetween,
   goalText,
+  payoutDays,
   payoutIn,
   payoutMoney,
   payoutPeriodLabel,
@@ -74,5 +75,27 @@ describe("тренер: подписи", () => {
     expect(payoutIn("2026-11-25", "2026-11-26", t)).toBe("завтра");
     expect(payoutIn("2026-11-21", "2026-11-26", t)).toBe("через 5 дней");
     expect(payoutIn("2026-11-27", "2026-11-26", t)).toBeNull();
+  });
+
+  test("выплаты по дням: занятия, бонусы, вычеты — свежие сверху, день по Тбилиси", () => {
+    const days = payoutDays(
+      [
+        // 22:30 UTC 23-го — это уже 02:30 24-го по Тбилиси.
+        { starts_at: "2026-11-23T22:30:00Z", amount: 30 },
+        { starts_at: "2026-11-24T06:00:00Z", amount: 47 },
+        { starts_at: "2026-11-22T06:00:00Z", amount: 15 },
+      ],
+      [{ date: "2026-11-24", bonus: 20 }],
+      [
+        { adjusted_on: "2026-11-22", kind: "deduction" as const, amount: 25 },
+        { adjusted_on: "2026-11-20", kind: "bonus" as const, amount: 10 },
+      ],
+    );
+    expect(days.map((d) => [d.date, d.total])).toEqual([
+      ["2026-11-24", 97],
+      ["2026-11-22", -10],
+      ["2026-11-20", 10],
+    ]);
+    expect(days[0].lessons.map((l) => l.amount)).toEqual([30, 47]);
   });
 });

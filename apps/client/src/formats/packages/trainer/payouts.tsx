@@ -8,24 +8,34 @@ import { Card } from "@/components/ui/card";
 import { useFormatStudios } from "@/hooks/use-viewed-studio";
 import { msg, useLocalize, useT } from "@/i18n";
 import { entryName, isOtherActivity } from "../entries";
-import { clientDisplayName, localDay, payoutIn, payoutMoney, payoutPeriodLabel } from "./format";
+import {
+  clientDisplayName,
+  localDay,
+  payoutDays,
+  payoutIn,
+  payoutMoney,
+  payoutPeriodLabel,
+} from "./format";
 import {
   trainerEntryClientsQuery,
   trainerPayoutsQuery,
   type EntryClient,
+  type PayoutExtra,
   type PayoutLesson,
   type TrainerPayouts as Payouts,
 } from "./queries";
 
-/** Сколько проведённых занятий видно сразу — остальные под «Показать все». */
-const LESSONS_SHOWN = 5;
+/** Сколько последних дней с начислениями видно сразу — остальные под «Показать весь период». */
+const DAYS_SHOWN = 3;
 
 /**
  * «Выплаты» на главной тренера (решение владельца 2026-11-24): период
  * выплаты (листается назад), сколько начислено и когда выплата, сколько
- * занятий ещё впереди, проведённые занятия — сколько людей было и сколько за
- * занятие. Список не бесконечный: один период, сразу — последние 5 занятий.
- * По нажатию на занятие — кто был. Суммы считает база теми же правилами,
+ * занятий ещё впереди, и начисления по дням — за что и сколько: занятия
+ * (сколько людей было и сколько за занятие), смены, бонус с продаж,
+ * абонементы после пробного, вычеты и надбавки из «Графика» админки. Для
+ * любой ставки — классической и прогрессивной. Список не бесконечный: один
+ * период, сразу — три последних дня. По нажатию на занятие — кто был. Суммы считает база теми же правилами,
  * что «Зарплаты» админки (RPC trainer_payouts).
  */
 export function TrainerPayouts({ trainerId }: { trainerId: string }) {
@@ -58,8 +68,9 @@ export function TrainerPayouts({ trainerId }: { trainerId: string }) {
     );
   }
 
-  const lessons = showAll ? data.lessons : data.lessons.slice(0, LESSONS_SHOWN);
-  const hidden = data.lessons.length - lessons.length;
+  const allDays = payoutDays(data.lessons, data.extras, data.adjustments);
+  const days = showAll ? allDays : allDays.slice(0, DAYS_SHOWN);
+  const hidden = allDays.length - days.length;
 
   return (
     <div className={`px-4 space-y-3 ${isFetching ? "opacity-70" : ""}`}>
@@ -95,28 +106,57 @@ export function TrainerPayouts({ trainerId }: { trainerId: string }) {
 
       <Summary data={data} />
 
-      {data.lessons.length === 0 ? (
+      {allDays.length === 0 ? (
         <div className="rounded-2xl border border-border bg-card p-5 text-center text-sm text-muted-foreground">
-          {t("В этом периоде проведённых занятий пока нет")}
+          {t("В этом периоде начислений пока нет")}
         </div>
       ) : (
-        <div>
-          <div className="mb-1.5 text-xs font-semibold text-muted-foreground">
-            {t("Проведённые занятия")}
-          </div>
-          <ul className="divide-y divide-border overflow-hidden rounded-2xl border border-border bg-card">
-            {lessons.map((l) => (
-              <li key={l.entry_id}>
-                <LessonRow lesson={l} onOpen={() => setOpen(l)} />
-              </li>
-            ))}
-          </ul>
+        <div className="space-y-3">
+          <div className="text-xs font-semibold text-muted-foreground">{t("По дням")}</div>
+          {days.map((d) => (
+            <section
+              key={d.date}
+              className="overflow-hidden rounded-2xl border border-border bg-card"
+            >
+              <header className="flex items-baseline justify-between gap-3 bg-muted px-3 py-2 text-sm">
+                <span className="min-w-0 truncate font-semibold">
+                  {t.capitalize(
+                    t.date(localDay(d.date), { weekday: "long", day: "numeric", month: "long" }),
+                  )}
+                </span>
+                <span className="shrink-0 font-semibold tabular-nums">
+                  {signedMoney(d.total, t)}
+                </span>
+              </header>
+              <ul className="divide-y divide-border">
+                {d.lessons.map((l) => (
+                  <li key={l.entry_id}>
+                    <LessonRow lesson={l} onOpen={() => setOpen(l)} />
+                  </li>
+                ))}
+                {d.extras.map((x) => (
+                  <li key={x.kind}>
+                    <ExtraRow extra={x} />
+                  </li>
+                ))}
+                {d.adjustments.map((a, i) => (
+                  <li key={`a${i}`}>
+                    <PlainRow
+                      title={a.kind === "deduction" ? t("Вычет") : t("Надбавка")}
+                      note={a.reason}
+                      amount={a.kind === "deduction" ? -a.amount : a.amount}
+                    />
+                  </li>
+                ))}
+              </ul>
+            </section>
+          ))}
           {hidden > 0 && (
             <Button
-              className="mt-2 w-full bg-muted text-foreground hover:bg-muted/80"
+              className="w-full bg-muted text-foreground hover:bg-muted/80"
               onClick={() => setShowAll(true)}
             >
-              {t("Показать все занятия ({n})", { n: data.lessons.length })}
+              {t("Показать весь период (дней: {n})", { n: allDays.length })}
             </Button>
           )}
         </div>
@@ -146,7 +186,10 @@ function Summary({ data }: { data: Payouts }) {
       amount: data.trial_bonus,
     });
   for (const a of data.adjustments)
-    rows.push({ label: a.reason, amount: a.kind === "deduction" ? -a.amount : a.amount });
+    rows.push({
+      label: `${a.kind === "deduction" ? t("Вычет") : t("Надбавка")}: ${a.reason}`,
+      amount: a.kind === "deduction" ? -a.amount : a.amount,
+    });
   // Одна строка «занятия» повторяла бы итог — разбивка нужна, когда слагаемых несколько.
   const breakdown = rows.length > 1 ? rows : [];
 
@@ -210,6 +253,56 @@ function Summary({ data }: { data: Payouts }) {
   );
 }
 
+/** «240 ₾», вычет — «−20 ₾». */
+function signedMoney(amount: number, t: ReturnType<typeof useT>) {
+  return `${amount < 0 ? "−" : ""}${payoutMoney(Math.abs(amount), t)}`;
+}
+
+/** Начисление дня не за занятие: смена, бонус с продаж, абонементы после пробного. */
+function ExtraRow({ extra: x }: { extra: PayoutExtra }) {
+  const t = useT();
+  if (x.kind === "sale")
+    return (
+      <PlainRow
+        title={t("Бонус с продаж")}
+        note={t("5 % от {amount}", { amount: payoutMoney(x.amount, t) })}
+        amount={x.bonus}
+      />
+    );
+  if (x.kind === "trial_bonus")
+    return (
+      <PlainRow title={t("Абонементы после пробного: {n}", { n: x.units })} amount={x.bonus} />
+    );
+  return (
+    <PlainRow
+      title={
+        x.units > 1 ? t("Смены администратора: {n}", { n: x.units }) : t("Смена администратора")
+      }
+      amount={x.bonus}
+    />
+  );
+}
+
+/** Строка начисления без перехода: что, пояснение, сумма (вычет — красным). */
+function PlainRow({ title, note, amount }: { title: string; note?: string; amount: number }) {
+  const t = useT();
+  return (
+    <div className="flex items-center gap-3 px-3 py-2.5">
+      <div className="w-14 shrink-0" />
+      <div className="min-w-0 flex-1">
+        <div className="truncate text-sm font-semibold">{title}</div>
+        {note && <div className="text-xs text-muted-foreground">{note}</div>}
+      </div>
+      <div
+        className={`shrink-0 font-semibold tabular-nums ${amount < 0 ? "text-red-600 dark:text-red-400" : ""}`}
+      >
+        {signedMoney(amount, t)}
+      </div>
+      <div className="w-4 shrink-0" />
+    </div>
+  );
+}
+
 /** Строка занятия: когда, что и где, сколько людей было, сколько начислено. */
 function LessonRow({ lesson: l, onOpen }: { lesson: PayoutLesson; onOpen: () => void }) {
   const t = useT();
@@ -223,11 +316,8 @@ function LessonRow({ lesson: l, onOpen }: { lesson: PayoutLesson; onOpen: () => 
       onClick={onOpen}
       className="flex w-full items-center gap-3 px-3 py-2.5 text-left transition active:bg-muted"
     >
-      <div className="w-14 shrink-0 text-xs leading-tight text-muted-foreground">
-        <div className="font-semibold text-foreground">
-          {t.date(l.starts_at, { day: "numeric", month: "short" })}
-        </div>
-        <div>{t.time(l.starts_at)}</div>
+      <div className="w-14 shrink-0 text-sm tabular-nums text-muted-foreground">
+        {t.time(l.starts_at)}
       </div>
       <div className="min-w-0 flex-1">
         <div className="truncate text-sm font-semibold">{name}</div>

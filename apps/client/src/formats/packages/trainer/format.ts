@@ -79,3 +79,64 @@ export function payoutIn(today: string, payOn: string, t: Translator) {
   if (days === 1) return t("завтра");
   return t.plural(days, "через {n} день|через {n} дня|через {n} дней");
 }
+
+const TBILISI_DAY = new Intl.DateTimeFormat("en-CA", {
+  timeZone: "Asia/Tbilisi",
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+});
+
+/** День занятия по Тбилиси (YYYY-MM-DD) — как база относит его к периоду. */
+export function tbilisiDay(iso: string) {
+  return TBILISI_DAY.format(new Date(iso));
+}
+
+export type PayoutDay<L, X, A> = {
+  date: string;
+  lessons: L[];
+  extras: X[];
+  adjustments: A[];
+  /** Начислено за день: занятия + бонусы + надбавки − вычеты. */
+  total: number;
+};
+
+/**
+ * Начисления периода по дням, свежие сверху: занятия дня (по времени),
+ * смены и бонусы, вычеты и надбавки с этой датой.
+ */
+export function payoutDays<
+  L extends { starts_at: string; amount: number },
+  X extends { date: string; bonus: number },
+  A extends { adjusted_on: string; kind: "bonus" | "deduction"; amount: number },
+>(lessons: L[], extras: X[], adjustments: A[]): PayoutDay<L, X, A>[] {
+  const days = new Map<string, PayoutDay<L, X, A>>();
+  const day = (date: string) => {
+    let d = days.get(date);
+    if (!d) {
+      d = { date, lessons: [], extras: [], adjustments: [], total: 0 };
+      days.set(date, d);
+    }
+    return d;
+  };
+  for (const l of lessons) {
+    const d = day(tbilisiDay(l.starts_at));
+    d.lessons.push(l);
+    d.total += l.amount;
+  }
+  for (const x of extras) {
+    const d = day(x.date.slice(0, 10));
+    d.extras.push(x);
+    d.total += x.bonus;
+  }
+  for (const a of adjustments) {
+    const d = day(a.adjusted_on.slice(0, 10));
+    d.adjustments.push(a);
+    d.total += a.kind === "deduction" ? -a.amount : a.amount;
+  }
+  for (const d of days.values()) {
+    d.lessons.sort((a, b) => a.starts_at.localeCompare(b.starts_at));
+    d.total = Math.round(d.total * 100) / 100;
+  }
+  return [...days.values()].sort((a, b) => b.date.localeCompare(a.date));
+}

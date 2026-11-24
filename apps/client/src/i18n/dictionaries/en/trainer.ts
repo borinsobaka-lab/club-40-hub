@@ -51,9 +51,6 @@ const dict: Dictionary = {
   "Следующий период": "Next period",
   "Текущий период": "Current period",
   "Прошлый период": "Past period",
-  "В этом периоде проведённых занятий пока нет": "No completed classes in this period yet",
-  "Проведённые занятия": "Completed classes",
-  "Показать все занятия ({n})": "Show all classes ({n})",
   "Смены администратора": "Admin shifts",
   "Бонус с продаж": "Sales bonus",
   "Абонементы после пробного: {n}": "Memberships after a trial: {n}",
@@ -78,6 +75,14 @@ const dict: Dictionary = {
   "Администратор не отметил приход клиента":
     "The administrator hasn't marked this client's attendance",
   "Не отмечены": "Not marked",
+  "В этом периоде начислений пока нет": "Nothing earned in this period yet",
+  "По дням": "By day",
+  Вычет: "Deduction",
+  Надбавка: "Bonus",
+  "Показать весь период (дней: {n})": "Show the whole period ({n} days)",
+  "5 % от {amount}": "5% of {amount}",
+  "Смены администратора: {n}": "Admin shifts: {n}",
+  "Смена администратора": "Admin shift",
 };
 
 export default dict;

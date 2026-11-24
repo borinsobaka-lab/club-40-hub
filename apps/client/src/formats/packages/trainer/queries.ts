@@ -235,6 +235,17 @@ export type PayoutAdjustment = {
   adjusted_on: string;
 };
 
+/** Начисление дня не за занятие: смена, бонус с продаж, абонементы после пробного. */
+export type PayoutExtra = {
+  date: string;
+  kind: "shift" | "sale" | "trial_bonus";
+  units: number;
+  /** У продаж — поступившие за день платежи; у остальных — само начисление. */
+  amount: number;
+  /** Сколько начислено тренеру (у продаж — 5 % от amount). */
+  bonus: number;
+};
+
 export type TrainerPayouts = {
   /** classic — выплаты 20-го и 1-го; progressive — 11-го и 26-го. */
   format: "classic" | "progressive";
@@ -252,6 +263,8 @@ export type TrainerPayouts = {
   trial_bonus: number;
   trial_count: number;
   adjustments: PayoutAdjustment[];
+  /** По дням: смены, бонусы с продаж, пробные (нет — база ещё без миграции). */
+  extras: PayoutExtra[];
   adjustments_total: number;
   total: number;
   /** Занятий ещё впереди до конца периода. */
@@ -280,6 +293,12 @@ export function trainerPayoutsQuery(trainerId: string | null, shift: number) {
         ...p,
         lessons: (p.lessons ?? []).map((l) => ({ ...l, amount: num(l.amount) })),
         adjustments: (p.adjustments ?? []).map((a) => ({ ...a, amount: num(a.amount) })),
+        extras: (p.extras ?? []).map((x) => ({
+          ...x,
+          units: num(x.units),
+          amount: num(x.amount),
+          bonus: num(x.bonus),
+        })),
         lessons_total: num(p.lessons_total),
         shifts_total: num(p.shifts_total),
         sales_bonus: num(p.sales_bonus),
