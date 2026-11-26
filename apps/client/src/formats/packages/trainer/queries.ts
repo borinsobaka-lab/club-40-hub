@@ -274,6 +274,14 @@ export type TrainerPayouts = {
   /** Занятий ещё впереди до конца периода. */
   upcoming_count: number;
   paid: { amount: number; paid_at: string } | null;
+  /**
+   * Ставки тренера из «Ставок» (только у тренера; нет — база без миграции
+   * 2026-11-26_zzzz): групповая и персональная (null — не оплачиваются),
+   * бонус за абонемент после пробного (прогрессивная).
+   */
+  rates?: { group: number | null; personal: number | null; trial_sale_bonus: number | null };
+  /** Платежи по продажам периода, с которых идёт бонус. */
+  sale_payments?: PayoutSalePayment[];
 };
 
 const num = (v: unknown) => Number(v) || 0;
@@ -384,6 +392,9 @@ export type PayoutSalePayment = {
   membership: { name: string; translations?: ContentTranslations | null } | null;
   amount: number;
   bonus: number;
+  /** Продавец / тренер при продаже (нет — ответ до миграции 2026-11-26_zzzz). */
+  as_seller?: boolean;
+  as_trainer?: boolean;
   installment_no: number | null;
   installments_total: number | null;
   refunded: boolean;
@@ -398,6 +409,8 @@ export type AdminPayouts = TrainerPayouts & {
   forecast: number;
   sale_payments: PayoutSalePayment[];
 };
+
+const numOrNull = (v: unknown) => (v == null ? null : num(v));
 
 /** Поля «Выплат», общие у тренера и администратора: numeric из базы может прийти строкой. */
 function normalizePayouts<P extends TrainerPayouts>(p: P): P {
@@ -420,6 +433,18 @@ function normalizePayouts<P extends TrainerPayouts>(p: P): P {
     adjustments_total: num(p.adjustments_total),
     total: num(p.total),
     paid: p.paid ? { ...p.paid, amount: num(p.paid.amount) } : null,
+    rates: p.rates
+      ? {
+          group: numOrNull(p.rates.group),
+          personal: numOrNull(p.rates.personal),
+          trial_sale_bonus: numOrNull(p.rates.trial_sale_bonus),
+        }
+      : undefined,
+    sale_payments: p.sale_payments?.map((x) => ({
+      ...x,
+      amount: num(x.amount),
+      bonus: num(x.bonus),
+    })),
   };
 }
 

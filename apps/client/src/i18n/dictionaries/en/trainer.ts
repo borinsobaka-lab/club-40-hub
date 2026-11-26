@@ -108,6 +108,16 @@ const dict: Dictionary = {
   "{n} смена|{n} смены|{n} смен": "{n} shift|{n} shifts",
   "До выплаты ещё {n} смена|До выплаты ещё {n} смены|До выплаты ещё {n} смен":
     "{n} more shift before payout|{n} more shifts before payout",
+  "{n} групповая|{n} групповые|{n} групповых": "{n} group class|{n} group classes",
+  "{n} персональная|{n} персональные|{n} персональных":
+    "{n} personal session|{n} personal sessions",
+  "{n} другое занятие|{n} других занятия|{n} других занятий":
+    "{n} other session|{n} other sessions",
+  "по числу пришедших": "by attendance",
+  "групповые — по числу пришедших": "group classes — by attendance",
+  "групповая — {amount}": "group class — {amount}",
+  "персональная — {amount}": "personal session — {amount}",
+  "абонемент после пробного — {amount}": "membership after a trial — {amount}",
 };
 
 export default dict;

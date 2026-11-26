@@ -60,9 +60,9 @@ type PayoutsQuery<P extends Payouts, K extends QueryKey> = (
   shift: number,
 ) => UseQueryOptions<P | null, Error, P | null, K>;
 
-/** Ответ администратора — со сменами и платежами по продажам. */
+/** Ответ администратора — со сменами периода. */
 function asAdmin(p: Payouts | AdminPayouts): AdminPayouts | null {
-  return "sale_payments" in p ? p : null;
+  return "shifts" in p ? p : null;
 }
 
 function PayoutsView<P extends Payouts, K extends QueryKey>({
@@ -187,7 +187,7 @@ function PayoutsView<P extends Payouts, K extends QueryKey>({
                       extra={x}
                       percent={data.sales_percent}
                       onOpen={
-                        admin && x.kind === "sale"
+                        data.sale_payments && x.kind === "sale"
                           ? () => setSalesDay(x.date.slice(0, 10))
                           : undefined
                       }
@@ -218,10 +218,10 @@ function PayoutsView<P extends Payouts, K extends QueryKey>({
       )}
 
       <LessonDrawer lesson={open} onClose={() => setOpen(null)} />
-      {admin && (
+      {data.sale_payments && (
         <SalesDrawer
           day={salesDay}
-          payments={admin.sale_payments}
+          payments={data.sale_payments}
           percent={data.sales_percent}
           onClose={() => setSalesDay(null)}
         />
@@ -238,7 +238,29 @@ function Summary({ data }: { data: Payouts | AdminPayouts }) {
   const payDay = t.date(localDay(data.pay_on), { day: "numeric", month: "long" });
   const inDays = payoutIn(data.today, data.pay_on, t);
   const rows: { label: string; amount: number }[] = [];
-  if (data.lessons_count > 0 || data.lessons_total !== 0)
+  const rates = data.rates;
+  if (rates) {
+    // Тренеру — по видам занятий: у фиксированной ставки видно «12 × 30 ₾».
+    for (const k of lessonKinds(data.lessons)) {
+      const fixed =
+        k.kind === "group" ? rates.group : k.kind === "personal" ? rates.personal : null;
+      const progressiveGroup = data.format === "progressive" && k.kind === "group";
+      const label =
+        k.kind === "group"
+          ? t.plural(k.count, "{n} групповая|{n} групповые|{n} групповых")
+          : k.kind === "personal"
+            ? t.plural(k.count, "{n} персональная|{n} персональные|{n} персональных")
+            : t.plural(k.count, "{n} другое занятие|{n} других занятия|{n} других занятий");
+      rows.push({
+        label: progressiveGroup
+          ? `${label} · ${t("по числу пришедших")}`
+          : fixed != null
+            ? `${label} × ${payoutMoney(fixed, t)}`
+            : label,
+        amount: k.amount,
+      });
+    }
+  } else if (data.lessons_count > 0 || data.lessons_total !== 0)
     rows.push({
       label: t.plural(data.lessons_count, "{n} занятие|{n} занятия|{n} занятий"),
       amount: data.lessons_total,
@@ -261,7 +283,17 @@ function Summary({ data }: { data: Payouts | AdminPayouts }) {
   } else {
     if (data.shifts_total)
       rows.push({ label: t("Смены администратора"), amount: data.shifts_total });
-    if (data.sales_bonus) rows.push({ label: t("Бонус с продаж"), amount: data.sales_bonus });
+    if (data.sales_bonus || (rates && data.sales_total))
+      rows.push({
+        label:
+          data.sales_total != null
+            ? t("Бонус с продаж: {percent} % от {amount}", {
+                percent,
+                amount: payoutMoney(data.sales_total, t),
+              })
+            : t("Бонус с продаж"),
+        amount: data.sales_bonus,
+      });
   }
   if (data.trial_bonus)
     rows.push({
@@ -274,7 +306,7 @@ function Summary({ data }: { data: Payouts | AdminPayouts }) {
       amount: a.kind === "deduction" ? -a.amount : a.amount,
     });
   // Одна строка «занятия» повторяла бы итог — разбивка нужна, когда слагаемых несколько.
-  const breakdown = rows.length > 1 || admin ? rows : [];
+  const breakdown = rows.length > 1 || admin || rates ? rows : [];
   const ahead = admin ? admin.shifts.filter((x) => !x.done) : [];
 
   return (
@@ -320,6 +352,31 @@ function Summary({ data }: { data: Payouts | AdminPayouts }) {
             : t("смены не оплачиваются")}
           {" · "}
           {t("{percent} % с продаж", { percent })}
+        </div>
+      )}
+
+      {rates && (
+        <div className="mt-1 text-xs text-muted-foreground">
+          {[
+            data.format === "progressive"
+              ? t("Выплаты 11-го и 26-го числа")
+              : t("Выплаты 20-го и 1-го числа"),
+            data.format === "progressive"
+              ? t("групповые — по числу пришедших")
+              : rates.group != null
+                ? t("групповая — {amount}", { amount: payoutMoney(rates.group, t) })
+                : null,
+            rates.personal != null
+              ? t("персональная — {amount}", { amount: payoutMoney(rates.personal, t) })
+              : null,
+            rates.trial_sale_bonus != null
+              ? t("абонемент после пробного — {amount}", {
+                  amount: payoutMoney(rates.trial_sale_bonus, t),
+                })
+              : t("{percent} % с продаж", { percent }),
+          ]
+            .filter(Boolean)
+            .join(" · ")}
         </div>
       )}
 
@@ -387,6 +444,21 @@ function Summary({ data }: { data: Payouts | AdminPayouts }) {
       )}
     </div>
   );
+}
+
+/** Проведённые занятия по видам: групповые, персональные, остальные — сколько и на какую сумму. */
+function lessonKinds(lessons: PayoutLesson[]) {
+  const out = (["group", "personal", "other"] as const).map((kind) => ({
+    kind,
+    count: 0,
+    amount: 0,
+  }));
+  for (const l of lessons) {
+    const k = out.find((x) => x.kind === l.kind) ?? out[2];
+    k.count += 1;
+    k.amount += l.amount;
+  }
+  return out.filter((k) => k.count > 0);
 }
 
 /** «240 ₾», вычет — «−20 ₾». */
@@ -476,7 +548,7 @@ function PlainRow({
   );
 }
 
-/** Платежи по продажам за день — по нажатию на «Бонус с продаж» у администратора. */
+/** Платежи по продажам за день — по нажатию на «Бонус с продаж» (тренер и администратор). */
 function SalesDrawer({
   day,
   payments,
