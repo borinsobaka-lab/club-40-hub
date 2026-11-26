@@ -80,7 +80,7 @@ const dict: Dictionary = {
   Вычет: "Deduction",
   Надбавка: "Bonus",
   "Показать весь период (дней: {n})": "Show the whole period ({n} days)",
-  "5 % от {amount}": "5% of {amount}",
+  "{percent} % от {amount}": "{percent}% of {amount}",
   "Смены администратора: {n}": "Admin shifts: {n}",
   "Смена администратора": "Admin shift",
   "Выплата сегодня": "Payout today",

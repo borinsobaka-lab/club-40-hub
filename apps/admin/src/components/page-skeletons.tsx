@@ -1444,6 +1444,7 @@ export function PayRatesPageSkeleton() {
             "Смена администратора",
             "Групповая тренировка",
             "Персональная тренировка",
+            "Процент с продаж",
             "Прогрессивная ставка",
           ]}
         />
@@ -1607,7 +1608,7 @@ export function PayrollPageSkeleton() {
             "Роль",
             { label: "Оклад", className: "text-right" },
             { label: "Продажи", className: "text-right" },
-            { label: "Бонус 5%", className: "text-right" },
+            { label: "Бонус", className: "text-right" },
             { label: "Корректир.", className: "text-right" },
             { label: "Итого", className: "text-right" },
             "Статус",

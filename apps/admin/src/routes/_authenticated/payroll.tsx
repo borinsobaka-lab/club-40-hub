@@ -48,7 +48,7 @@ import { formatDate, todayISO } from "@/lib/format";
 import {
   ADJUSTMENT_KINDS,
   formatPay,
-  BONUS_RATE,
+  percentLabel,
   EMPTY_SUMMARY,
   PAY_FORMATS,
   addMonths,
@@ -81,6 +81,7 @@ import {
   formatIban,
   isAdminRole,
   payFormatOf,
+  salesRateOf,
   usePayRates,
   usePayrollAdjustments,
   usePayrollScope,
@@ -122,7 +123,8 @@ export const Route = createFileRoute("/_authenticated/payroll")({
  * формат — в «Ставках»): «Классическая» — аванс 1–19 (выплата 20-го) и
  * основная 20–конец (1-го следующего месяца); «Прогрессивная» — тренеры с
  * оплатой групповых по числу пришедших: 26–10 (выплата 11-го) и 11–25
- * (выплата 26-го). На вкладке — только сотрудники этого формата.
+ * (выплата 26-го) — и администраторы со своим процентом с продаж (2026-11-26).
+ * На вкладке — только сотрудники этого формата.
  */
 
 const TIPS = {
@@ -130,7 +132,7 @@ const TIPS = {
   sales:
     "Деньги по абонементам, поступившие за период: первые платежи и доплаты по рассрочкам, в том числе по абонементам, проданным раньше. Администратору — по продажам, где он выбран администратором, тренеру — где он тренер при продаже. Пробные и разовые посещения не считаются; пакет персональных — администратору всегда, кроме пакета на 1 тренировку, тренеру — только первая покупка клиентом. Список платежей — в карточке сотрудника.",
   bonus:
-    "5 % от поступивших платежей. Тренеру на прогрессивной ставке, у которого в «Ставках» задан бонус за абонемент после пробного, — фиксированная сумма за каждого клиента, купившего абонемент после пробного у этого тренера (5 % тренеру при продаже ему не идут).",
+    "Процент от поступивших платежей: 5 %, если в «Ставках» сотруднику не задан свой. Тренеру на прогрессивной ставке, у которого в «Ставках» задан бонус за абонемент после пробного, — фиксированная сумма за каждого клиента, купившего абонемент после пробного у этого тренера (5 % тренеру при продаже ему не идут).",
   adjustments: "Вычеты и надбавки из «Графика администраторов» с датой в этом периоде.",
   total: "Оклад + бонус + корректировки.",
   status:
@@ -222,10 +224,12 @@ function PayrollPage() {
   });
 
   const range = periodRange(month, period, format);
-  const summaries = summarize(lines, adjustments, range);
+  const rateOf = (id: string) => salesRateOf(ratesById.get(id));
+  const summaries = summarize(lines, adjustments, range, rateOf);
   const halves = payoutPeriods(month, period, format);
-  const halfSummaries = halves.map((h) => summarize(lines, adjustments, h));
-  const summaryOf = (id: string) => summaries.get(id) ?? EMPTY_SUMMARY;
+  const halfSummaries = halves.map((h) => summarize(lines, adjustments, h, rateOf));
+  const summaryOf = (id: string) =>
+    summaries.get(id) ?? { ...EMPTY_SUMMARY, bonusRate: rateOf(id) };
   const payoutOf = (id: string, half: { from: string; to: string }) =>
     payouts.find(
       (p) => p.trainer_id === id && p.period_start === half.from && p.period_end === half.to,
@@ -454,7 +458,7 @@ function PayrollPage() {
                       Продажи
                     </TableHead>
                     <TableHead className="text-right" tip={TIPS.bonus} {...sort.head("bonus")}>
-                      Бонус {BONUS_RATE * 100}%
+                      Бонус
                     </TableHead>
                     <TableHead
                       className="text-right"
@@ -571,7 +575,7 @@ function PayrollPage() {
       </div>
 
       <SelectedShell
-        wide={format === "progressive"}
+        wide={format === "progressive" && selected?.role === "trainer"}
         open={!!selected}
         onClose={() => setSelectedId(null)}
       >
@@ -787,7 +791,9 @@ function EmployeePayroll({
   onUnmark: (half: Half) => Promise<void>;
 }) {
   const [pending, setPending] = useState<string | null>(null);
-  const wide = format === "progressive";
+  // Подробное окно с занятиями — тренеру; администратору со своим процентом —
+  // обычная шторка (занятий у него нет).
+  const wide = format === "progressive" && employee.role === "trainer";
   const shifts = lines.filter((l) => l.kind === "shift");
   const lessons = lines.filter(
     (l) => l.kind === "group" || l.kind === "personal" || l.kind === "other",
@@ -886,7 +892,7 @@ function EmployeePayroll({
         summary={summary}
       />
       <div className="flex justify-between text-sm">
-        <span className="text-muted-foreground">Бонус {BONUS_RATE * 100}%</span>
+        <span className="text-muted-foreground">Бонус {percentLabel(summary.bonusRate)}</span>
         <span className="tabular-nums">{formatPay(summary.bonus - summary.trialBonus)}</span>
       </div>
       {summary.trialSales > 0 && (

@@ -150,7 +150,7 @@ export function TrainerPayouts({ trainerId }: { trainerId: string }) {
                 ))}
                 {d.extras.map((x) => (
                   <li key={x.kind}>
-                    <ExtraRow extra={x} />
+                    <ExtraRow extra={x} percent={data.sales_percent} />
                   </li>
                 ))}
                 {d.adjustments.map((a, i) => (
@@ -273,13 +273,16 @@ function signedMoney(amount: number, t: ReturnType<typeof useT>) {
 }
 
 /** Начисление дня не за занятие: смена, бонус с продаж, абонементы после пробного. */
-function ExtraRow({ extra: x }: { extra: PayoutExtra }) {
+function ExtraRow({ extra: x, percent }: { extra: PayoutExtra; percent: number }) {
   const t = useT();
   if (x.kind === "sale")
     return (
       <PlainRow
         title={t("Бонус с продаж")}
-        note={t("5 % от {amount}", { amount: payoutMoney(x.amount, t) })}
+        note={t("{percent} % от {amount}", {
+          percent: t.number(percent, { maximumFractionDigits: 2 }),
+          amount: payoutMoney(x.amount, t),
+        })}
         amount={x.bonus}
       />
     );

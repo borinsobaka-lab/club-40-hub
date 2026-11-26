@@ -62,7 +62,13 @@ export type PayrollPayout = {
   paid_by_name: string | null;
 };
 
+/** Бонус с продаж по умолчанию — 5 %; свой процент сотрудника — trainer_pay_rates.sales_percent. */
 export const BONUS_RATE = 0.05;
+
+/** «5 %», «3,5 %» — доля бонуса с продаж подписью. */
+export function percentLabel(rate: number): string {
+  return `${String(Math.round(rate * 10000) / 100).replace(".", ",")} %`;
+}
 
 const PAY_FORMAT = new Intl.NumberFormat("ru-RU", {
   style: "currency",
@@ -144,7 +150,7 @@ export const PAY_FORMATS: Record<PayFormat, { label: string; tip: string }> = {
   },
   progressive: {
     label: "Прогрессивная",
-    tip: "Групповые — по числу пришедших: минимум за малую группу, дальше — за каждого человека, плюс бонус за наполняемость. Выплаты: 11-го — за 26–10, 26-го — за 11–25.",
+    tip: "Тренеры с оплатой групповых по числу пришедших (минимум за малую группу, дальше — за каждого человека, плюс бонус за наполняемость) и администраторы со своим процентом с продаж. Выплаты: 11-го — за 26–10, 26-го — за 11–25.",
   },
 };
 
@@ -282,8 +288,10 @@ export type PayrollSummary = {
   /** За абонементы после пробного (фикс за продажу). */
   trialBonus: number;
   trialSales: number;
-  /** Бонус: 5 % с продаж + за абонементы после пробного. */
+  /** Бонус: процент с продаж + за абонементы после пробного. */
   bonus: number;
+  /** Доля бонуса с продаж у сотрудника (0.05 — 5 %). */
+  bonusRate: number;
   /** Корректировки со знаком. */
   adjustments: number;
   total: number;
@@ -300,6 +308,7 @@ export const EMPTY_SUMMARY: PayrollSummary = {
   trialBonus: 0,
   trialSales: 0,
   bonus: 0,
+  bonusRate: BONUS_RATE,
   adjustments: 0,
   total: 0,
 };
@@ -311,12 +320,14 @@ export function summarize(
   lines: PayrollLine[],
   adjustments: PayrollAdjustment[],
   range: { from: string; to: string },
+  /** Доля бонуса с продаж сотрудника; без неё — 5 %. */
+  rateOf?: (trainerId: string) => number,
 ): Map<string, PayrollSummary> {
   const out = new Map<string, PayrollSummary>();
   const get = (id: string) => {
     let s = out.get(id);
     if (!s) {
-      s = { ...EMPTY_SUMMARY };
+      s = { ...EMPTY_SUMMARY, bonusRate: rateOf?.(id) ?? BONUS_RATE };
       out.set(id, s);
     }
     return s;
@@ -360,7 +371,7 @@ export function summarize(
     s.base = round2(s.base);
     s.sales = round2(s.sales);
     s.trialBonus = round2(s.trialBonus);
-    s.bonus = round2(s.sales * BONUS_RATE + s.trialBonus);
+    s.bonus = round2(s.sales * s.bonusRate + s.trialBonus);
     s.adjustments = round2(s.adjustments);
     s.total = round2(s.base + s.bonus + s.adjustments);
   }

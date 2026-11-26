@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useStudios } from "@/hooks/use-studios";
 import { supabase } from "@/integrations/supabase/client";
 import type { PayFormat, PayrollAdjustment, MonthKey } from "@/lib/payroll";
-import { monthBounds } from "@/lib/payroll";
+import { BONUS_RATE, monthBounds } from "@/lib/payroll";
 import type { ContentTranslations } from "@/lib/content-i18n";
 import { unwrap } from "@/lib/query";
 
@@ -28,7 +28,7 @@ export {
   roleGroup,
   type TrainerRole,
 } from "@/lib/staff-roles";
-import type { TrainerRole } from "@/lib/staff-roles";
+import { isAdminRole, type TrainerRole } from "@/lib/staff-roles";
 
 export type BankCode = "bog" | "tbc" | "credo";
 
@@ -124,16 +124,33 @@ export type PayRates = {
   pay_format: PayFormat;
   /** Прогрессивная ставка: ₾ тренеру пробного за купленный абонемент; null — 5 % при продаже. */
   trial_sale_bonus: number | null;
+  /** Свой процент бонуса с продаж; null — 5 %, как у всех. */
+  sales_percent: number | null;
 };
 
-/** Формат оплаты сотрудника: прогрессивная — только у тренеров. */
+/** Доля бонуса с продаж сотрудника: 0.05 по умолчанию. */
+export function salesRateOf(rates: Pick<PayRates, "sales_percent"> | null | undefined): number {
+  const p = rates?.sales_percent;
+  return p == null ? BONUS_RATE : Number(p) / 100;
+}
+
+/**
+ * Формат выплат сотрудника (вкладка «Зарплат» и дни выплат): прогрессивная —
+ * тренер с форматом «Прогрессивная» или администратор со своим процентом с
+ * продаж, отличным от 5 (решение владельца 2026-11-26: администраторы
+ * купленной студии). То же правило в базе — payroll_pay_format.
+ */
 export function payFormatOf(
   employee: Pick<Employee, "role">,
-  rates: Pick<PayRates, "pay_format"> | null | undefined,
+  rates: Partial<Pick<PayRates, "pay_format" | "sales_percent">> | null | undefined,
 ): PayFormat {
-  return employee.role === "trainer" && rates?.pay_format === "progressive"
-    ? "progressive"
-    : "classic";
+  if (employee.role === "trainer")
+    return rates?.pay_format === "progressive" ? "progressive" : "classic";
+  if (isAdminRole(employee.role)) {
+    const p = rates?.sales_percent;
+    return p != null && Number(p) !== 5 ? "progressive" : "classic";
+  }
+  return "classic";
 }
 
 export function usePayRates() {

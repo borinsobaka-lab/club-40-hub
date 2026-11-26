@@ -59,6 +59,8 @@ export const Route = createFileRoute("/_authenticated/pay-rates")({
 const TIPS = {
   format:
     "Как тренеру считается зарплата. «Классическая» — ставка за тренировку и бонус 5 % с продажи; выплаты 20-го и 1-го. «Прогрессивная» — групповые по числу пришедших по суммам из колонки «Прогрессивная ставка»; выплаты 11-го и 26-го. От формата зависит, на какой вкладке «Зарплат» сотрудник.",
+  salesPercent:
+    "Бонус сотрудника с поступивших платежей по его продажам. Пусто — 5 %, как у всех. У администратора свой процент (не 5) переносит его в «Зарплатах» на вкладку «Прогрессивная»: выплаты 11-го и 26-го.",
   progressive:
     "Суммы прогрессивной ставки тренера: минимум за малую группу, ₾ за человека, бонус за наполняемость, бонус за абонемент после пробного. Заполняются у каждого тренера, действуют, когда формат оплаты — «Прогрессивная».",
 };
@@ -101,6 +103,7 @@ function PayRatesPage() {
     group_training: (e) => rateOf(e, "group_training"),
     personal_training: (e) => rateOf(e, "personal_training"),
     format: (e) => PAY_FORMATS[payFormatOf(e, byEmployee.get(e.id))].label,
+    sales_percent: (e) => Number(byEmployee.get(e.id)?.sales_percent ?? 5),
   });
   const { data: schemes } = useTrainerPaySchemes();
   const [schemesFor, setSchemesFor] = useState<string | null>(null);
@@ -155,15 +158,18 @@ function PayRatesPage() {
                     {k.label}
                   </TableHead>
                 ))}
+                <TableHead tip={TIPS.salesPercent} {...sort.head("sales_percent")}>
+                  Процент с продаж
+                </TableHead>
                 <TableHead tip={TIPS.progressive}>Прогрессивная ставка</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {busy ? (
-                <TableSkeletonRows columns={6} />
+                <TableSkeletonRows columns={7} />
               ) : employees.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="py-8 text-center text-sm text-muted-foreground">
+                  <TableCell colSpan={7} className="py-8 text-center text-sm text-muted-foreground">
                     Сначала добавьте сотрудников в разделе «Сотрудники».
                   </TableCell>
                 </TableRow>
@@ -202,6 +208,14 @@ function PayRatesPage() {
                         />
                       </TableCell>
                     ))}
+                    <TableCell>
+                      <PercentCell
+                        key={byEmployee.get(e.id)?.sales_percent ?? "default"}
+                        label={`Процент с продаж: ${e.full_name}`}
+                        value={byEmployee.get(e.id)?.sales_percent ?? null}
+                        onSave={(sales_percent) => save(e.id, { sales_percent })}
+                      />
+                    </TableCell>
                     <TableCell>
                       {e.role === "trainer" ? (
                         <div className="flex items-center gap-3">
@@ -286,6 +300,63 @@ function FormatCell({
         title: PAY_FORMATS[f].tip,
       }))}
     />
+  );
+}
+
+/** Свой процент с продаж: пусто или 5 — как у всех (хранится null). */
+function PercentCell({
+  label,
+  value,
+  onSave,
+}: {
+  label: string;
+  value: number | null;
+  onSave: (value: number | null) => Promise<boolean>;
+}) {
+  const shown = value == null ? "" : String(Number(value)).replace(".", ",");
+  const [text, setText] = useState(shown);
+  const [pending, setPending] = useState(false);
+
+  const commit = async () => {
+    const t = text.trim().replace(",", ".");
+    const n = t === "" ? null : Number(t);
+    if (n !== null && (!Number.isFinite(n) || n < 0 || n > 100)) {
+      toast.error("Процент — число от 0 до 100");
+      setText(shown);
+      return;
+    }
+    const next = n === 5 ? null : n;
+    if (next === (value == null ? null : Number(value))) {
+      setText(shown);
+      return;
+    }
+    setPending(true);
+    try {
+      if (!(await onSave(next))) setText(shown);
+    } finally {
+      setPending(false);
+    }
+  };
+
+  return (
+    <div className="relative w-24">
+      <Input
+        inputMode="decimal"
+        value={text}
+        disabled={pending}
+        aria-label={label}
+        placeholder="5"
+        onChange={(e) => setText(e.target.value)}
+        onBlur={commit}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") e.currentTarget.blur();
+        }}
+        className="pr-7 tabular-nums"
+      />
+      <span className="pointer-events-none absolute top-1/2 right-2.5 -translate-y-1/2 text-sm text-muted-foreground">
+        %
+      </span>
+    </div>
   );
 }
 

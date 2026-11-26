@@ -249,6 +249,8 @@ export type PayoutExtra = {
 export type TrainerPayouts = {
   /** classic — выплаты 20-го и 1-го; progressive — 11-го и 26-го. */
   format: "classic" | "progressive";
+  /** Процент бонуса с продаж сотрудника (нет в ответе — 5). */
+  sales_percent: number;
   shift: number;
   /** Даты YYYY-MM-DD по Тбилиси. */
   period_from: string;
@@ -299,6 +301,7 @@ export function trainerPayoutsQuery(trainerId: string | null, shift: number) {
           amount: num(x.amount),
           bonus: num(x.bonus),
         })),
+        sales_percent: p.sales_percent == null ? 5 : num(p.sales_percent),
         lessons_total: num(p.lessons_total),
         shifts_total: num(p.shifts_total),
         sales_bonus: num(p.sales_bonus),

@@ -156,6 +156,7 @@ describe("summarize", () => {
     ];
     const s = summarize(lines, adjustments, periodRange("2026-10", "advance"));
     expect(s.get("t1")).toEqual({
+      bonusRate: 0.05,
       base: 150,
       shifts: 0,
       groups: 2,
@@ -210,5 +211,22 @@ describe("studioAbbrs", () => {
     expect(m.get("Old Town")).toBe("OT");
     expect(m.get("Ваке")).toBe("Вак");
     expect(m.get("Варкетили")).toBe("Вар");
+  });
+
+  describe("свой процент с продаж", () => {
+    test("бонус считается по проценту сотрудника, без него — 5 %", () => {
+      const lines = [
+        line({ trainer_id: "a", kind: "sale", amount: 1000 }),
+        line({ trainer_id: "b", kind: "sale", amount: 1000 }),
+      ];
+      const out = summarize(lines, [], { from: "2026-10-01", to: "2026-10-31" }, (id) =>
+        id === "a" ? 0.03 : 0.05,
+      );
+      expect(out.get("a")?.bonus).toBe(30);
+      expect(out.get("b")?.bonus).toBe(50);
+      expect(summarize(lines, [], { from: "2026-10-01", to: "2026-10-31" }).get("a")?.bonus).toBe(
+        50,
+      );
+    });
   });
 });

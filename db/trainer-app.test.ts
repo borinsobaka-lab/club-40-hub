@@ -547,5 +547,32 @@ describe.skipIf(!url)("тренер в приложении (база)", () => {
         expect(prev.period_to < p.period_from).toBe(true);
       });
     });
+
+    test("администратор со своим процентом с продаж — периоды прогрессивной, бонус по проценту", async () => {
+      await scenario(async (tx) => {
+        const s = await seed(tx);
+        await link(tx, s);
+        await tx`update trainers set role = 'admin' where id = ${s.trainer}`;
+        await tx`insert into trainer_studios (trainer_id, studio_id) values (${s.trainer}, ${s.studio})`;
+        await tx`insert into trainer_pay_rates (trainer_id, sales_percent) values (${s.trainer}, 3)`;
+        const buyer = await client(tx, s.studio, "Покупатель", false);
+        const [{ id: m }] = await tx`
+          insert into memberships (studio_id, name, kind, visits_count, duration_days, price)
+          values (${s.studio}, 'Пакет 8', 'package', 8, 30, 200) returning id`;
+        await tx`
+          insert into sales (studio_id, client_id, membership_id, total_amount, sold_at, sale_kind, seller_id)
+          values (${s.studio}, ${buyer.id}, ${m}, 200, (now() at time zone 'Asia/Tbilisi')::date, 'new', ${s.trainer})`;
+
+        const p = (await payouts(tx, s))!;
+        expect(p.format).toBe("progressive");
+        expect(["11", "26"]).toContain(String(p.period_from).slice(8, 10));
+        expect(Number(p.sales_percent)).toBe(3);
+        expect(Number(p.sales_bonus)).toBe(6);
+
+        // 5 % — как у всех: обычные периоды.
+        await tx`update trainer_pay_rates set sales_percent = 5 where trainer_id = ${s.trainer}`;
+        expect((await payouts(tx, s))!.format).toBe("classic");
+      });
+    });
   });
 });
