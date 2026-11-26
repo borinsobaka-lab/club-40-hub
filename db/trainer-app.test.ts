@@ -548,6 +548,40 @@ describe.skipIf(!url)("тренер в приложении (база)", () => {
       });
     });
 
+    test("классическая ставка: ставки тренера и платежи по продажам с бонусом", async () => {
+      await scenario(async (tx) => {
+        const s = await seed(tx);
+        await link(tx, s);
+        await tx`
+          insert into trainer_pay_rates (trainer_id, group_training_enabled, group_training_rate,
+                                         personal_training_enabled, personal_training_rate)
+          values (${s.trainer}, true, 30, false, 50)`;
+        const buyer = await client(tx, s.studio, "Покупатель", false);
+        const [{ id: m }] = await tx`
+          insert into memberships (studio_id, name, kind, visits_count, duration_days, price)
+          values (${s.studio}, 'Пакет 8', 'package', 8, 30, 200) returning id`;
+        await tx`
+          insert into sales (studio_id, client_id, membership_id, total_amount, sold_at, sale_kind, trainer_id)
+          values (${s.studio}, ${buyer.id}, ${m}, 200, (now() at time zone 'Asia/Tbilisi')::date, 'new', ${s.trainer})`;
+
+        const p = (await payouts(tx, s))!;
+        expect(p.format).toBe("classic");
+        const rates = p.rates as { group: number | null; personal: number | null };
+        expect(Number(rates.group)).toBe(30);
+        expect(rates.personal).toBeNull();
+        expect(Number(p.sales_total)).toBe(200);
+        expect(Number(p.sales_bonus)).toBe(10);
+        const pays = p.sale_payments as {
+          client_name: string;
+          bonus: number;
+          as_trainer: boolean;
+        }[];
+        expect(pays.length).toBe(1);
+        expect(pays[0]).toMatchObject({ client_name: "Анна Покупатель", as_trainer: true });
+        expect(Number(pays[0].bonus)).toBe(10);
+      });
+    });
+
     test("администратор со своим процентом с продаж — периоды прогрессивной, бонус по проценту", async () => {
       await scenario(async (tx) => {
         const s = await seed(tx);
