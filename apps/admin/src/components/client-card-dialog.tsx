@@ -40,7 +40,7 @@ import { SaleDialog } from "@/components/sale-dialog";
 import { SaleKindPickerDialog } from "@/components/sale-kind-picker";
 import { ClientDialog, type SavedClient } from "@/components/client-form-dialog";
 import { ClientAppTab } from "@/components/client-app-tab";
-import { ClientTrainerField } from "@/components/client-trainer-field";
+import { ClientAdminField, ClientTrainerField } from "@/components/client-trainer-field";
 import { TrainerCommentsBlock } from "@/components/trainer-comments-block";
 import { ClientCommentsCard } from "@/components/client-comments";
 import { useActiveStudioId } from "@/hooks/use-active-studio";
@@ -649,6 +649,8 @@ function ClientCard({ client: initial, onClose }: { client: ClientLike; onClose:
             <TabsContent value="app" className="mt-4 space-y-4">
               {/* Пользователь приложения — тренер (2026-11-05). */}
               <ClientTrainerField clientId={client.id} cardStudioId={cardStudioId} />
+              {/* …и администратор (2026-11-26): «Мои смены» и «Выплаты». */}
+              <ClientAdminField clientId={client.id} cardStudioId={cardStudioId} />
               <ClientAppTab clientId={client.id} hasUser={!!userId} />
             </TabsContent>
 

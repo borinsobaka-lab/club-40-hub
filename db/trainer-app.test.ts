@@ -575,4 +575,121 @@ describe.skipIf(!url)("тренер в приложении (база)", () => {
       });
     });
   });
+
+  // Администратор в приложении (db/migrations/2026-11-26_zzz_admin_app_payouts.sql).
+  describe("администратор: смены и выплаты", () => {
+    async function adminSeed(tx: Tx, s: Seed, percent: number | null) {
+      const [{ id: adm }] = await tx`
+        insert into trainers (full_name, role) values ('Мариам Админ', 'admin') returning id`;
+      await tx`insert into trainer_studios (trainer_id, studio_id) values (${adm}, ${s.studio})`;
+      await tx`
+        insert into trainer_pay_rates (trainer_id, admin_shift_enabled, admin_shift_rate, sales_percent)
+        values (${adm}, true, 40, ${percent})`;
+      const card = await client(tx, s.studio, "Админова");
+      return { adm: adm as string, card };
+    }
+
+    test("связь: только администратор справочника; без связи — пусто", async () => {
+      await scenario(async (tx) => {
+        const s = await seed(tx);
+        const { adm, card } = await adminSeed(tx, s, null);
+        await as(tx, card.user!);
+        expect((await tx`select admin_app_me() as m`)[0].m).toBeNull();
+        expect((await tx`select admin_payouts(0) as p`)[0].p).toBeNull();
+        expect((await tx`select * from admin_my_shifts(60)`).length).toBe(0);
+        await asServer(tx);
+
+        await as(tx, s.admin);
+        expect(
+          await failure(
+            tx,
+            () =>
+              tx`insert into app_admin_links (client_id, trainer_id) values (${card.id}, ${s.trainer})`,
+          ),
+        ).toContain("admin_link_role");
+        await tx`insert into app_admin_links (client_id, trainer_id) values (${card.id}, ${adm})`;
+        await asServer(tx);
+
+        await as(tx, card.user!);
+        const [{ m }] = await tx`select admin_app_me() as m`;
+        expect(m).toMatchObject({ trainer_id: adm, format: "classic" });
+        expect(Number(m.shift_rate)).toBe(40);
+        // Тренерское не открылось, таблица связей клиенту закрыта.
+        expect((await tx`select trainer_payouts(0) as p`)[0].p).toBeNull();
+        expect((await tx`select * from app_admin_links`).length).toBe(0);
+      });
+    });
+
+    test("классический: смены (прошедшие в начислении, будущие — впереди), 5 % с платежей", async () => {
+      await scenario(async (tx) => {
+        const s = await seed(tx);
+        const { adm, card } = await adminSeed(tx, s, null);
+        await tx`insert into app_admin_links (client_id, trainer_id) values (${card.id}, ${adm})`;
+        await tx`
+          insert into admin_shifts (studio_id, trainer_id, shift_date)
+          values (${s.studio}, ${adm}, workday_today()),
+                 (${s.studio}, ${adm}, workday_today() + 1),
+                 (${s.studio}, ${adm}, workday_today() + 40)`;
+        const [{ id: other }] = await tx`
+          insert into trainers (full_name, role) values ('Нино Админ', 'admin') returning id`;
+        await tx`insert into admin_shifts (studio_id, trainer_id, shift_date)
+                 values (${s.studio}, ${other}, workday_today() + 1)`;
+        const buyer = await client(tx, s.studio, "Покупатель", false);
+        const [{ id: m }] = await tx`
+          insert into memberships (studio_id, name, kind, visits_count, duration_days, price)
+          values (${s.studio}, 'Пакет 8', 'package', 8, 30, 200) returning id`;
+        await tx`
+          insert into sales (studio_id, client_id, membership_id, total_amount, sold_at, sale_kind, seller_id)
+          values (${s.studio}, ${buyer.id}, ${m}, 200, workday_today(), 'new', ${adm})`;
+
+        await as(tx, card.user!);
+        const [{ p }] = await tx`select admin_payouts(0) as p`;
+        expect(p.format).toBe("classic");
+        expect(Number(p.sales_percent)).toBe(5);
+        expect(Number(p.sales_total)).toBe(200);
+        expect(Number(p.sales_bonus)).toBe(10);
+        expect(Number(p.shifts_total)).toBe(40);
+        expect(Number(p.total)).toBe(50);
+        const shifts = p.shifts as { done: boolean; amount: number | null }[];
+        // Завтрашняя смена — в этом периоде, если завтра ещё он.
+        expect(shifts.filter((x) => x.done).length).toBe(1);
+        expect(p.upcoming_shifts).toBe(shifts.length - 1);
+        expect(Number(p.forecast)).toBe(50 + 40 * p.upcoming_shifts);
+        const pays = p.sale_payments as { client_name: string; amount: number; bonus: number }[];
+        expect(pays.length).toBe(1);
+        expect(pays[0].client_name).toBe("Анна Покупатель");
+        expect([Number(pays[0].amount), Number(pays[0].bonus)]).toEqual([200, 10]);
+
+        const mine = await tx`select * from admin_my_shifts(60)`;
+        expect(mine.length).toBe(3);
+        const tomorrow = mine[1] as { colleagues: { full_name: string }[] };
+        expect(tomorrow.colleagues.map((c) => c.full_name)).toEqual(["Нино Админ"]);
+        expect((await tx`select * from admin_my_shifts(10)`).length).toBe(2);
+      });
+    });
+
+    test("прогрессивный (свой процент): периоды 11-го и 26-го, бонус по проценту", async () => {
+      await scenario(async (tx) => {
+        const s = await seed(tx);
+        const { adm, card } = await adminSeed(tx, s, 3);
+        await tx`insert into app_admin_links (client_id, trainer_id) values (${card.id}, ${adm})`;
+        const buyer = await client(tx, s.studio, "Покупатель", false);
+        const [{ id: m }] = await tx`
+          insert into memberships (studio_id, name, kind, visits_count, duration_days, price)
+          values (${s.studio}, 'Пакет 8', 'package', 8, 30, 300) returning id`;
+        await tx`
+          insert into sales (studio_id, client_id, membership_id, total_amount, sold_at, sale_kind, seller_id)
+          values (${s.studio}, ${buyer.id}, ${m}, 300, workday_today(), 'new', ${adm})`;
+        await as(tx, card.user!);
+        const [{ p }] = await tx`select admin_payouts(0) as p`;
+        expect(p.format).toBe("progressive");
+        expect(["11", "26"]).toContain(String(p.period_from).slice(8, 10));
+        expect(Number(p.sales_bonus)).toBe(9);
+        expect(Number((p.sale_payments as { bonus: number }[])[0].bonus)).toBe(9);
+        const [{ m: me }] = await tx`select admin_app_me() as m`;
+        expect(me.format).toBe("progressive");
+        expect(Number(me.sales_percent)).toBe(3);
+      });
+    });
+  });
 });

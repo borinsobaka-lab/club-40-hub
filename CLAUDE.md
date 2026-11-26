@@ -382,6 +382,20 @@ AUTH_SETUP.md.
   сотрудника — `payroll_pay_format`: `progressive` (11-го и 26-го) — тренер
   на прогрессивной ставке или администратор (`admin` / `senior_admin`) с
   процентом, отличным от 5; то же правило в админке — `payFormatOf`.
+  **Администратор в мобильном приложении — «Мои смены» и «Выплаты»**
+  (решение владельца 2026-11-26): `db/migrations/2026-11-26_zzz_admin_app_payouts.sql`
+  — `app_admin_links` (карточка клиента ↔ администратор справочника, роль
+  `admin` / `senior_admin` — иначе `admin_link_role`; устроена как
+  `app_trainer_links`, ставят сотрудники клубов карточки), `app_admin_of`.
+  Тело прежней `trainer_payouts` — внутренняя `staff_payouts_for(trainer,
+  shift)` (+ `sales_total`), `trainer_payouts` (актуальное определение —
+  здесь) зовёт её для тренера вызывающего. RPC приложения (только о себе):
+  `admin_app_me` (формат выплат, процент, ставка смены), `admin_payouts(p_shift)`
+  (то же + `shifts` периода — отработанные и впереди, `upcoming_shifts`,
+  `forecast` — с оставшимися сменами, `sale_payments` — платежи по продажам
+  с бонусом: клиент, абонемент, платёж N из M, возврат),
+  `admin_my_shifts(p_days)` (смены из `admin_shifts` с сегодняшней, до 92
+  дней, кто ещё в смене). Тесты — `db/trainer-app.test.ts`.
   TRX и гамаки (замечание владельца 2026-11-26: за TRX — 6 ₾, считалось 4):
   `db/migrations/2026-11-26_trainer_scheme_workouts_by_name.sql` — схемам
   тренеров «TRX» / «Гамаки» без выбранных тренировок разово привязаны
