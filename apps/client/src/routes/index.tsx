@@ -37,7 +37,8 @@ import { PackWorkoutCard } from "@/formats/packages/workout-card";
 import { StudioSwitcher } from "@/formats/packages/studio-switcher";
 import { TrainerMySchedule } from "@/formats/packages/trainer/my-schedule";
 import { StudioAdminToday } from "@/formats/packages/trainer/studio-admin-today";
-import { trainerMeQuery } from "@/formats/packages/trainer/queries";
+import { AdminHome } from "@/formats/packages/trainer/admin-home";
+import { adminMeQuery, trainerMeQuery } from "@/formats/packages/trainer/queries";
 
 import { ContentDrawer } from "@/components/content-drawer";
 import { StatsSection } from "@/components/stats-section";
@@ -155,7 +156,12 @@ function HomePage() {
     ...trainerMeQuery(userId),
     enabled: IS_PACKAGES && !!userId,
   });
-  const isTrainer = IS_PACKAGES && !!trainerMe;
+  // Администратор (2026-11-26): «Мои смены» и «Выплаты».
+  const { data: adminMe } = useQuery({
+    ...adminMeQuery(userId),
+    enabled: IS_PACKAGES && !!userId,
+  });
+  const isTrainer = IS_PACKAGES && (!!trainerMe || !!adminMe);
 
   // Салют после входа по коду или после анкеты (флаг ставят они).
   useEffect(() => {
@@ -454,6 +460,8 @@ function HomePage() {
         <div className="bg-muted">
           {/* Моё расписание — только тренеру (2026-11-05). */}
           {IS_PACKAGES && <TrainerMySchedule />}
+          {/* Мои смены и выплаты — только администратору (2026-11-26). */}
+          {IS_PACKAGES && <AdminHome />}
           {/* Тренировки */}
           <section
             className={`bg-background rounded-b-[14px] pb-5 ${isTrainer ? "rounded-t-[14px] pt-5" : ""}`}

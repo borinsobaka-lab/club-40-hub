@@ -84,6 +84,30 @@ const dict: Dictionary = {
   "Смены администратора: {n}": "Admin shifts: {n}",
   "Смена администратора": "Admin shift",
   "Выплата сегодня": "Payout today",
+  "Раздел администратора": "Admin section",
+  "Мои смены": "My shifts",
+  "Не удалось загрузить ваши смены. Обновите страницу.":
+    "Couldn't load your shifts. Refresh the page.",
+  "В графике на ближайшие {n} дней смен нет": "No shifts in the schedule for the next {n} days",
+  Завтра: "Tomorrow",
+  "Вместе с: {names}": "With: {names}",
+  "Впереди {n} смена|Впереди {n} смены|Впереди {n} смен": "{n} shift ahead|{n} shifts ahead",
+  "Бонус с продаж: {percent} % от {amount}": "Sales bonus: {percent}% of {amount}",
+  "Выплаты 11-го и 26-го числа": "Paid on the 11th and 26th",
+  "Выплаты 20-го и 1-го числа": "Paid on the 20th and 1st",
+  "смена — {amount}": "shift — {amount}",
+  "смены не оплачиваются": "shifts aren't paid",
+  "{percent} % с продаж": "{percent}% of sales",
+  "До выплаты смен в графике больше нет": "No more shifts in the schedule before payout",
+  "С оставшимися сменами": "With the remaining shifts",
+  "Платежи по продажам": "Sales payments",
+  "Поступило {amount}": "Received {amount}",
+  "Ваш бонус — {percent} %": "Your bonus is {percent}%",
+  "платёж {n} из {m}": "payment {n} of {m}",
+  "По продаже оформлен возврат": "This sale was refunded",
+  "{n} смена|{n} смены|{n} смен": "{n} shift|{n} shifts",
+  "До выплаты ещё {n} смена|До выплаты ещё {n} смены|До выплаты ещё {n} смен":
+    "{n} more shift before payout|{n} more shifts before payout",
 };
 
 export default dict;

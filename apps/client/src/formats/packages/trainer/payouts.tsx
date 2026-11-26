@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, type QueryKey, type UseQueryOptions } from "@tanstack/react-query";
 import { AltArrowLeft, AltArrowRight, CheckCircle, UsersGroupRounded } from "@solar-icons/react";
 
 import { BottomDrawer } from "@/components/bottom-drawer";
@@ -17,11 +17,14 @@ import {
   payoutPeriodLabel,
 } from "./format";
 import {
+  adminPayoutsQuery,
   trainerEntryClientsQuery,
   trainerPayoutsQuery,
+  type AdminPayouts,
   type EntryClient,
   type PayoutExtra,
   type PayoutLesson,
+  type PayoutSalePayment,
   type TrainerPayouts as Payouts,
 } from "./queries";
 
@@ -39,6 +42,34 @@ const DAYS_SHOWN = 3;
  * что «Зарплаты» админки (RPC trainer_payouts).
  */
 export function TrainerPayouts({ trainerId }: { trainerId: string }) {
+  return <PayoutsView queryFor={(shift) => trainerPayoutsQuery(trainerId, shift)} />;
+}
+
+/**
+ * «Выплаты» администратора (решение владельца 2026-11-26): то же, что у
+ * тренера, плюс смены периода (отработано и сколько впереди, прогноз с
+ * оставшимися сменами), ставка смены и процент с продаж (классический — 5 %,
+ * прогрессивный — свой, выплаты 11-го и 26-го), платежи по продажам за день
+ * — по нажатию на «Бонус с продаж» (RPC admin_payouts).
+ */
+export function AdminPayoutsView({ adminId }: { adminId: string }) {
+  return <PayoutsView queryFor={(shift) => adminPayoutsQuery(adminId, shift)} />;
+}
+
+type PayoutsQuery<P extends Payouts, K extends QueryKey> = (
+  shift: number,
+) => UseQueryOptions<P | null, Error, P | null, K>;
+
+/** Ответ администратора — со сменами и платежами по продажам. */
+function asAdmin(p: Payouts | AdminPayouts): AdminPayouts | null {
+  return "sale_payments" in p ? p : null;
+}
+
+function PayoutsView<P extends Payouts, K extends QueryKey>({
+  queryFor,
+}: {
+  queryFor: PayoutsQuery<P, K>;
+}) {
   const t = useT();
   // null — период по умолчанию: текущий, а в день выплаты — тот, за который
   // платят сегодня (26-го — 11–25; замечание владельца 2026-11-26). День
@@ -46,10 +77,11 @@ export function TrainerPayouts({ trainerId }: { trainerId: string }) {
   const [picked, setPicked] = useState<number | null>(null);
   const [showAll, setShowAll] = useState(false);
   const [open, setOpen] = useState<PayoutLesson | null>(null);
-  const current = useQuery(trainerPayoutsQuery(trainerId, 0));
+  const [salesDay, setSalesDay] = useState<string | null>(null);
+  const current = useQuery(queryFor(0));
   const payDay = !!current.data && current.data.period_from === current.data.today;
   const shift = picked ?? (payDay ? -1 : 0);
-  const shown = useQuery(trainerPayoutsQuery(trainerId, shift));
+  const shown = useQuery(queryFor(shift));
   const waiting = picked === null && !current.data && !current.isError;
   const { data, isError, isFetching } = shown;
   const isLoading = waiting || shown.isLoading;
@@ -78,6 +110,7 @@ export function TrainerPayouts({ trainerId }: { trainerId: string }) {
     );
   }
 
+  const admin = asAdmin(data);
   const allDays = payoutDays(data.lessons, data.extras, data.adjustments);
   const days = showAll ? allDays : allDays.slice(0, DAYS_SHOWN);
   const hidden = allDays.length - days.length;
@@ -150,7 +183,15 @@ export function TrainerPayouts({ trainerId }: { trainerId: string }) {
                 ))}
                 {d.extras.map((x) => (
                   <li key={x.kind}>
-                    <ExtraRow extra={x} percent={data.sales_percent} />
+                    <ExtraRow
+                      extra={x}
+                      percent={data.sales_percent}
+                      onOpen={
+                        admin && x.kind === "sale"
+                          ? () => setSalesDay(x.date.slice(0, 10))
+                          : undefined
+                      }
+                    />
                   </li>
                 ))}
                 {d.adjustments.map((a, i) => (
@@ -177,13 +218,23 @@ export function TrainerPayouts({ trainerId }: { trainerId: string }) {
       )}
 
       <LessonDrawer lesson={open} onClose={() => setOpen(null)} />
+      {admin && (
+        <SalesDrawer
+          day={salesDay}
+          payments={admin.sale_payments}
+          percent={data.sales_percent}
+          onClose={() => setSalesDay(null)}
+        />
+      )}
     </div>
   );
 }
 
 /** Итог периода: сумма, когда выплата, сколько проведено и сколько ещё впереди. */
-function Summary({ data }: { data: Payouts }) {
+function Summary({ data }: { data: Payouts | AdminPayouts }) {
   const t = useT();
+  const admin = asAdmin(data);
+  const percent = t.number(data.sales_percent, { maximumFractionDigits: 2 });
   const payDay = t.date(localDay(data.pay_on), { day: "numeric", month: "long" });
   const inDays = payoutIn(data.today, data.pay_on, t);
   const rows: { label: string; amount: number }[] = [];
@@ -192,8 +243,26 @@ function Summary({ data }: { data: Payouts }) {
       label: t.plural(data.lessons_count, "{n} занятие|{n} занятия|{n} занятий"),
       amount: data.lessons_total,
     });
-  if (data.shifts_total) rows.push({ label: t("Смены администратора"), amount: data.shifts_total });
-  if (data.sales_bonus) rows.push({ label: t("Бонус с продаж"), amount: data.sales_bonus });
+  if (admin) {
+    const done = admin.shifts.filter((x) => x.done).length;
+    if (done > 0 || data.shifts_total)
+      rows.push({
+        label: t.plural(done, "{n} смена|{n} смены|{n} смен"),
+        amount: data.shifts_total,
+      });
+    // Администратору бонус с продаж виден всегда — с процентом и суммой платежей.
+    rows.push({
+      label: t("Бонус с продаж: {percent} % от {amount}", {
+        percent,
+        amount: payoutMoney(data.sales_total ?? 0, t),
+      }),
+      amount: data.sales_bonus,
+    });
+  } else {
+    if (data.shifts_total)
+      rows.push({ label: t("Смены администратора"), amount: data.shifts_total });
+    if (data.sales_bonus) rows.push({ label: t("Бонус с продаж"), amount: data.sales_bonus });
+  }
   if (data.trial_bonus)
     rows.push({
       label: t("Абонементы после пробного: {n}", { n: data.trial_count }),
@@ -205,7 +274,8 @@ function Summary({ data }: { data: Payouts }) {
       amount: a.kind === "deduction" ? -a.amount : a.amount,
     });
   // Одна строка «занятия» повторяла бы итог — разбивка нужна, когда слагаемых несколько.
-  const breakdown = rows.length > 1 ? rows : [];
+  const breakdown = rows.length > 1 || admin ? rows : [];
+  const ahead = admin ? admin.shifts.filter((x) => !x.done) : [];
 
   return (
     <div className="rounded-2xl bg-muted p-4">
@@ -239,6 +309,20 @@ function Summary({ data }: { data: Payouts }) {
         </div>
       )}
 
+      {admin && (
+        <div className="mt-1 text-xs text-muted-foreground">
+          {admin.format === "progressive"
+            ? t("Выплаты 11-го и 26-го числа")
+            : t("Выплаты 20-го и 1-го числа")}
+          {" · "}
+          {admin.shift_rate != null
+            ? t("смена — {amount}", { amount: payoutMoney(admin.shift_rate, t) })
+            : t("смены не оплачиваются")}
+          {" · "}
+          {t("{percent} % с продаж", { percent })}
+        </div>
+      )}
+
       {breakdown.length > 0 && (
         <ul className="mt-3 space-y-1 border-t border-border pt-3 text-sm">
           {breakdown.map((r, i) => (
@@ -253,7 +337,45 @@ function Summary({ data }: { data: Payouts }) {
         </ul>
       )}
 
-      {data.shift === 0 && (
+      {data.shift === 0 && admin && (
+        <div className="mt-3 space-y-1 border-t border-border pt-3 text-sm">
+          <div>
+            {ahead.length > 0
+              ? t.plural(
+                  ahead.length,
+                  "До выплаты ещё {n} смена|До выплаты ещё {n} смены|До выплаты ещё {n} смен",
+                )
+              : t("До выплаты смен в графике больше нет")}
+          </div>
+          {ahead.length > 0 && (
+            <div className="text-xs text-muted-foreground">
+              {ahead
+                .map((x) =>
+                  t.date(localDay(x.date), { weekday: "short", day: "numeric", month: "short" }),
+                )
+                .join(", ")}
+            </div>
+          )}
+          {ahead.length > 0 && admin.shift_rate ? (
+            <div className="flex items-baseline justify-between gap-3 pt-1">
+              <span className="text-muted-foreground">{t("С оставшимися сменами")}</span>
+              <span className="shrink-0 font-semibold tabular-nums">
+                {payoutMoney(admin.forecast, t)}
+              </span>
+            </div>
+          ) : null}
+          {data.upcoming_count > 0 && (
+            <div>
+              {t.plural(
+                data.upcoming_count,
+                "До выплаты ещё {n} занятие|До выплаты ещё {n} занятия|До выплаты ещё {n} занятий",
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {data.shift === 0 && !admin && (
         <div className="mt-3 border-t border-border pt-3 text-sm">
           {data.upcoming_count > 0
             ? t.plural(
@@ -273,11 +395,20 @@ function signedMoney(amount: number, t: ReturnType<typeof useT>) {
 }
 
 /** Начисление дня не за занятие: смена, бонус с продаж, абонементы после пробного. */
-function ExtraRow({ extra: x, percent }: { extra: PayoutExtra; percent: number }) {
+function ExtraRow({
+  extra: x,
+  percent,
+  onOpen,
+}: {
+  extra: PayoutExtra;
+  percent: number;
+  onOpen?: () => void;
+}) {
   const t = useT();
   if (x.kind === "sale")
     return (
       <PlainRow
+        onOpen={onOpen}
         title={t("Бонус с продаж")}
         note={t("{percent} % от {amount}", {
           percent: t.number(percent, { maximumFractionDigits: 2 }),
@@ -301,10 +432,20 @@ function ExtraRow({ extra: x, percent }: { extra: PayoutExtra; percent: number }
 }
 
 /** Строка начисления без перехода: что, пояснение, сумма (вычет — красным). */
-function PlainRow({ title, note, amount }: { title: string; note?: string; amount: number }) {
+function PlainRow({
+  title,
+  note,
+  amount,
+  onOpen,
+}: {
+  title: string;
+  note?: string;
+  amount: number;
+  onOpen?: () => void;
+}) {
   const t = useT();
-  return (
-    <div className="flex items-center gap-3 px-3 py-2.5">
+  const body = (
+    <>
       <div className="w-14 shrink-0" />
       <div className="min-w-0 flex-1">
         <div className="truncate text-sm font-semibold">{title}</div>
@@ -315,8 +456,105 @@ function PlainRow({ title, note, amount }: { title: string; note?: string; amoun
       >
         {signedMoney(amount, t)}
       </div>
-      <div className="w-4 shrink-0" />
-    </div>
+      {onOpen ? (
+        <AltArrowRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+      ) : (
+        <div className="w-4 shrink-0" />
+      )}
+    </>
+  );
+  return onOpen ? (
+    <button
+      type="button"
+      onClick={onOpen}
+      className="flex w-full items-center gap-3 px-3 py-2.5 text-left transition active:bg-muted"
+    >
+      {body}
+    </button>
+  ) : (
+    <div className="flex items-center gap-3 px-3 py-2.5">{body}</div>
+  );
+}
+
+/** Платежи по продажам за день — по нажатию на «Бонус с продаж» у администратора. */
+function SalesDrawer({
+  day,
+  payments,
+  percent,
+  onClose,
+}: {
+  day: string | null;
+  payments: PayoutSalePayment[];
+  percent: number;
+  onClose: () => void;
+}) {
+  const t = useT();
+  const loc = useLocalize();
+  const { data: studios = [] } = useFormatStudios();
+  // Содержимое держим на время закрытия шторки.
+  const [last, setLast] = useState<string | null>(null);
+  if (day && day !== last) setLast(day);
+  const d = day ?? last;
+  if (!d) return null;
+  const list = payments.filter((p) => p.paid_on.slice(0, 10) === d);
+  const total = list.reduce((sum, p) => sum + p.amount, 0);
+  const bonus = list.reduce((sum, p) => sum + p.bonus, 0);
+  return (
+    <BottomDrawer
+      open={day !== null}
+      onOpenChange={(o) => {
+        if (!o) onClose();
+      }}
+      title={t("Платежи по продажам")}
+      description={t.capitalize(
+        t.date(localDay(d), { weekday: "long", day: "numeric", month: "long" }),
+      )}
+    >
+      <div className="mb-4 flex items-center justify-between gap-3 rounded-2xl bg-muted px-4 py-3">
+        <div className="text-sm">
+          {t("Поступило {amount}", { amount: payoutMoney(total, t) })}
+          <div className="text-xs text-muted-foreground">
+            {t("Ваш бонус — {percent} %", {
+              percent: t.number(percent, { maximumFractionDigits: 2 }),
+            })}
+          </div>
+        </div>
+        <div className="text-xl font-semibold tabular-nums">{payoutMoney(bonus, t)}</div>
+      </div>
+      <ul className="divide-y divide-border rounded-2xl border border-border bg-card">
+        {list.map((p, i) => {
+          const studio = loc(studios.find((s) => s.id === p.studio_id))?.name ?? null;
+          const membership = p.membership ? loc(p.membership).name : t("Абонемент");
+          return (
+            <li key={`${p.sale_id}-${i}`} className="flex items-center gap-3 px-3 py-2.5 text-sm">
+              <div className="min-w-0 flex-1">
+                <div className="truncate font-medium">{p.client_name}</div>
+                <div className="truncate text-xs text-muted-foreground">
+                  {[
+                    membership,
+                    p.installment_no && p.installments_total && p.installments_total > 1
+                      ? t("платёж {n} из {m}", { n: p.installment_no, m: p.installments_total })
+                      : null,
+                    studio,
+                  ]
+                    .filter(Boolean)
+                    .join(" · ")}
+                </div>
+                {p.refunded && (
+                  <div className="text-xs font-medium text-red-600 dark:text-red-400">
+                    {t("По продаже оформлен возврат")}
+                  </div>
+                )}
+              </div>
+              <div className="shrink-0 text-right tabular-nums">
+                <div className="font-semibold">{payoutMoney(p.amount, t)}</div>
+                <div className="text-xs text-muted-foreground">+{payoutMoney(p.bonus, t)}</div>
+              </div>
+            </li>
+          );
+        })}
+      </ul>
+    </BottomDrawer>
   );
 }
 

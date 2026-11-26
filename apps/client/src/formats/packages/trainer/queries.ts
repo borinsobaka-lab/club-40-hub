@@ -261,6 +261,8 @@ export type TrainerPayouts = {
   lessons_count: number;
   lessons_total: number;
   shifts_total: number;
+  /** Поступило по продажам за период (нет — база ещё без миграции 2026-11-26). */
+  sales_total?: number;
   sales_bonus: number;
   trial_bonus: number;
   trial_count: number;
@@ -289,31 +291,165 @@ export function trainerPayoutsQuery(trainerId: string | null, shift: number) {
       const { data, error } = await untypedDb.rpc("trainer_payouts", { p_shift: shift });
       if (error) throw error;
       const p = data as TrainerPayouts | null;
-      if (!p) return null;
-      // numeric из базы может прийти строкой.
-      return {
-        ...p,
-        lessons: (p.lessons ?? []).map((l) => ({ ...l, amount: num(l.amount) })),
-        adjustments: (p.adjustments ?? []).map((a) => ({ ...a, amount: num(a.amount) })),
-        extras: (p.extras ?? []).map((x) => ({
-          ...x,
-          units: num(x.units),
-          amount: num(x.amount),
-          bonus: num(x.bonus),
-        })),
-        sales_percent: p.sales_percent == null ? 5 : num(p.sales_percent),
-        lessons_total: num(p.lessons_total),
-        shifts_total: num(p.shifts_total),
-        sales_bonus: num(p.sales_bonus),
-        trial_bonus: num(p.trial_bonus),
-        adjustments_total: num(p.adjustments_total),
-        total: num(p.total),
-        paid: p.paid ? { ...p.paid, amount: num(p.paid.amount) } : null,
-      };
+      return p ? normalizePayouts(p) : null;
     },
     enabled: !!trainerId,
     placeholderData: keepPreviousData,
     // Занятие заканчивается — сумма меняется: не держим старое дольше минуты.
+    staleTime: 60_000,
+  });
+}
+
+/* ── Администратор в приложении (решение владельца 2026-11-26) ─────────────
+ * Пользователь, которому в карточке клиента в админке указан администратор
+ * (app_admin_links). «Мои смены» и «Выплаты» — RPC admin_*, они сами
+ * проверяют вызывающего (db/migrations/2026-11-26_zzz_admin_app_payouts.sql).
+ */
+
+export type AdminMe = {
+  trainer_id: string;
+  full_name: string | null;
+  photo_url: string | null;
+  translations?: ContentTranslations | null;
+  /** classic — выплаты 20-го и 1-го; progressive — 11-го и 26-го. */
+  format: "classic" | "progressive";
+  sales_percent: number;
+  /** Ставка за смену; null — смены не оплачиваются. */
+  shift_rate: number | null;
+};
+
+/** Я администратор? null — нет (до миграции RPC нет — тоже null). */
+export function adminMeQuery(userId: string | null) {
+  return queryOptions({
+    queryKey: ["admin-me", userId],
+    queryFn: async (): Promise<AdminMe | null> => {
+      const { data, error } = await untypedDb.rpc("admin_app_me");
+      if (error || !data) return null;
+      const m = data as AdminMe;
+      return {
+        ...m,
+        sales_percent: m.sales_percent == null ? 5 : num(m.sales_percent),
+        shift_rate: m.shift_rate == null ? null : num(m.shift_rate),
+      };
+    },
+    enabled: !!userId,
+    staleTime: 5 * 60_000,
+  });
+}
+
+/** Смена из «Графика» админки. */
+export type AdminShift = {
+  shift_date: string;
+  studio_id: string;
+  /** Кто ещё в этот день в смене в той же студии. */
+  colleagues: { full_name: string | null; photo_url: string | null }[];
+};
+
+/** Сколько дней вперёд показывать смены. */
+export const ADMIN_SHIFTS_DAYS = 60;
+
+/** Мои смены с сегодняшней на ADMIN_SHIFTS_DAYS дней вперёд. */
+export function adminShiftsQuery(adminId: string | null) {
+  return queryOptions({
+    queryKey: ["admin-shifts", adminId],
+    queryFn: async (): Promise<AdminShift[]> => {
+      const { data, error } = await untypedDb.rpc("admin_my_shifts", {
+        p_days: ADMIN_SHIFTS_DAYS,
+      });
+      if (error) throw error;
+      return ((data as AdminShift[] | null) ?? []).map((s) => ({
+        ...s,
+        colleagues: s.colleagues ?? [],
+      }));
+    },
+    enabled: !!adminId,
+    staleTime: 5 * 60_000,
+  });
+}
+
+/** Смена периода выплаты: отработанная (done) — в начислении, будущая — впереди. */
+export type PayoutShift = {
+  date: string;
+  studio_id: string;
+  done: boolean;
+  amount: number | null;
+};
+
+/** Платёж по продаже, с которого идёт бонус. */
+export type PayoutSalePayment = {
+  paid_on: string;
+  sale_id: string;
+  studio_id: string;
+  client_name: string;
+  membership: { name: string; translations?: ContentTranslations | null } | null;
+  amount: number;
+  bonus: number;
+  installment_no: number | null;
+  installments_total: number | null;
+  refunded: boolean;
+};
+
+export type AdminPayouts = TrainerPayouts & {
+  shift_rate: number | null;
+  shifts: PayoutShift[];
+  /** Смен ещё впереди в этом периоде. */
+  upcoming_shifts: number;
+  /** Начислено + оставшиеся смены периода по ставке. */
+  forecast: number;
+  sale_payments: PayoutSalePayment[];
+};
+
+/** Поля «Выплат», общие у тренера и администратора: numeric из базы может прийти строкой. */
+function normalizePayouts<P extends TrainerPayouts>(p: P): P {
+  return {
+    ...p,
+    lessons: (p.lessons ?? []).map((l) => ({ ...l, amount: num(l.amount) })),
+    adjustments: (p.adjustments ?? []).map((a) => ({ ...a, amount: num(a.amount) })),
+    extras: (p.extras ?? []).map((x) => ({
+      ...x,
+      units: num(x.units),
+      amount: num(x.amount),
+      bonus: num(x.bonus),
+    })),
+    sales_percent: p.sales_percent == null ? 5 : num(p.sales_percent),
+    sales_total: num(p.sales_total),
+    lessons_total: num(p.lessons_total),
+    shifts_total: num(p.shifts_total),
+    sales_bonus: num(p.sales_bonus),
+    trial_bonus: num(p.trial_bonus),
+    adjustments_total: num(p.adjustments_total),
+    total: num(p.total),
+    paid: p.paid ? { ...p.paid, amount: num(p.paid.amount) } : null,
+  };
+}
+
+/** «Выплаты» администратора — те же суммы, что «Зарплаты» админки. */
+export function adminPayoutsQuery(adminId: string | null, shift: number) {
+  return queryOptions({
+    queryKey: ["admin-payouts", adminId, shift],
+    queryFn: async (): Promise<AdminPayouts | null> => {
+      const { data, error } = await untypedDb.rpc("admin_payouts", { p_shift: shift });
+      if (error) throw error;
+      const p = data as AdminPayouts | null;
+      if (!p) return null;
+      return {
+        ...normalizePayouts(p),
+        shift_rate: p.shift_rate == null ? null : num(p.shift_rate),
+        shifts: (p.shifts ?? []).map((s) => ({
+          ...s,
+          amount: s.amount == null ? null : num(s.amount),
+        })),
+        upcoming_shifts: num(p.upcoming_shifts),
+        forecast: num(p.forecast),
+        sale_payments: (p.sale_payments ?? []).map((x) => ({
+          ...x,
+          amount: num(x.amount),
+          bonus: num(x.bonus),
+        })),
+      };
+    },
+    enabled: !!adminId,
+    placeholderData: keepPreviousData,
     staleTime: 60_000,
   });
 }
