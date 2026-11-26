@@ -81,7 +81,12 @@ const OCCUPANCY: PayBonus[] = [
   { from: 7, amount: 5 },
   { from: 10, amount: 10 },
 ];
-export const PRESET_SCHEMES: (SchemeTerms & { name: string; is_default: boolean })[] = [
+export const PRESET_SCHEMES: (SchemeTerms & {
+  name: string;
+  is_default: boolean;
+  /** Тренировки каталога, которые сразу идут по этой схеме, — по слову в названии. */
+  match?: RegExp;
+})[] = [
   {
     name: "Обычная группа",
     is_default: true,
@@ -92,6 +97,7 @@ export const PRESET_SCHEMES: (SchemeTerms & { name: string; is_default: boolean 
   },
   {
     name: "TRX",
+    match: /trx/i,
     is_default: false,
     min_amount: 15,
     min_up_to: 3,
@@ -100,6 +106,7 @@ export const PRESET_SCHEMES: (SchemeTerms & { name: string; is_default: boolean 
   },
   {
     name: "Гамаки",
+    match: /гамак|hammock/i,
     is_default: false,
     min_amount: 15,
     min_up_to: 3,

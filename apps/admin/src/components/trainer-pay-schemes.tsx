@@ -143,9 +143,24 @@ export function TrainerPaySchemes({
   const fillPreset = async () => {
     setBusy(true);
     try {
-      await insertSchemes(PRESET_SCHEMES);
+      // TRX и гамаки — сразу со своими тренировками (по слову в названии): иначе
+      // до выбора руками они считались бы по схеме «для остальных» (4 ₾, а не 6 ₾).
+      const catalog = workouts.data ?? [];
+      const taken = new Set<string>();
+      const items = PRESET_SCHEMES.map(({ match, ...terms }) => {
+        const own = match
+          ? catalog.filter((w) => match.test(w.name) && !taken.has(w.id)).map((w) => w.id)
+          : [];
+        own.forEach((id) => taken.add(id));
+        return { ...terms, workouts: own };
+      });
+      await insertSchemes(items);
       if (trialBonus == null) await onSaveRates({ trial_sale_bonus: PRESET_TRIAL_SALE_BONUS });
-      toast.success("Схемы добавлены — выберите тренировки для TRX и гамаков");
+      toast.success(
+        taken.size > 0
+          ? "Схемы добавлены — проверьте тренировки у TRX и гамаков"
+          : "Схемы добавлены — выберите тренировки для TRX и гамаков",
+      );
     } catch (e) {
       toast.error("Не удалось добавить схемы: " + (e as Error).message);
     } finally {

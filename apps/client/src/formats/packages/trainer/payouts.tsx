@@ -40,10 +40,20 @@ const DAYS_SHOWN = 3;
  */
 export function TrainerPayouts({ trainerId }: { trainerId: string }) {
   const t = useT();
-  const [shift, setShift] = useState(0);
+  // null — период по умолчанию: текущий, а в день выплаты — тот, за который
+  // платят сегодня (26-го — 11–25; замечание владельца 2026-11-26). День
+  // выплаты — первый день нового периода, поэтому смотрим на его начало.
+  const [picked, setPicked] = useState<number | null>(null);
   const [showAll, setShowAll] = useState(false);
   const [open, setOpen] = useState<PayoutLesson | null>(null);
-  const { data, isLoading, isError, isFetching } = useQuery(trainerPayoutsQuery(trainerId, shift));
+  const current = useQuery(trainerPayoutsQuery(trainerId, 0));
+  const payDay = !!current.data && current.data.period_from === current.data.today;
+  const shift = picked ?? (payDay ? -1 : 0);
+  const shown = useQuery(trainerPayoutsQuery(trainerId, shift));
+  const waiting = picked === null && !current.data && !current.isError;
+  const { data, isError, isFetching } = shown;
+  const isLoading = waiting || shown.isLoading;
+  const setShift = setPicked;
 
   const move = (next: number) => {
     setShift(next);
@@ -90,7 +100,11 @@ export function TrainerPayouts({ trainerId }: { trainerId: string }) {
             {payoutPeriodLabel(data.period_from, data.period_to, t)}
           </div>
           <div className="text-xs text-muted-foreground">
-            {shift === 0 ? t("Текущий период") : t("Прошлый период")}
+            {shift === 0
+              ? t("Текущий период")
+              : data.pay_on === data.today
+                ? t("Выплата сегодня")
+                : t("Прошлый период")}
           </div>
         </div>
         <button

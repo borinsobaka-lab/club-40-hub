@@ -83,6 +83,7 @@ const dict: Dictionary = {
   "5 % от {amount}": "5% of {amount}",
   "Смены администратора: {n}": "Admin shifts: {n}",
   "Смена администратора": "Admin shift",
+  "Выплата сегодня": "Payout today",
 };
 
 export default dict;
