@@ -46,6 +46,16 @@ export function BottomNav() {
 }
 
 function PackagesBottomNav() {
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const activeIndex = packagesItems.findIndex(({ to, exact }) =>
+    exact ? pathname === to : pathname === to || pathname.startsWith(`${to}/`),
+  );
+  // Подложка остаётся под последним разделом, пока открыт экран вне меню
+  // («Профиль», «Уведомления»): гаснет на месте и оттуда же поедет дальше.
+  const lastIndex = useRef(Math.max(activeIndex, 0));
+  if (activeIndex >= 0) lastIndex.current = activeIndex;
+  const profileActive = pathname === "/profile";
+
   return (
     <nav className="pointer-events-none fixed inset-x-0 bottom-0 z-30 flex justify-center">
       <div className="pointer-events-auto w-full max-w-md px-3 pb-3">
@@ -53,7 +63,17 @@ function PackagesBottomNav() {
             и с тем же скруглением. */}
         <div className="relative flex items-stretch gap-2">
           <div className="glass-dark nav-squircle relative flex-1 rounded-[26px] px-1.5 py-1.5">
-            <ul className="grid grid-cols-4">
+            <ul className="relative grid grid-cols-4">
+              {/* Розовая подложка — одна на меню и переезжает на выбранный
+                  раздел (решение владельца 2026-11-27). Двигается transform'ом
+                  на ширину ячейки — без замеров и без перерисовки. */}
+              <li
+                aria-hidden="true"
+                className="nav-pill pointer-events-none absolute left-0 top-[5px] flex h-7 w-1/4 justify-center transition-transform duration-[420ms] ease-[cubic-bezier(0.34,1.3,0.64,1)]"
+                style={{ transform: `translateX(${lastIndex.current * 100}%)` }}
+              >
+                <NavPill shown={activeIndex >= 0} />
+              </li>
               {packagesItems.map(({ to, label, Icon, exact }) => (
                 <li key={to}>
                   <Link
@@ -61,7 +81,7 @@ function PackagesBottomNav() {
                     activeOptions={{ exact }}
                     onPointerDown={resetPageScrollPosition}
                     onClick={resetPageScrollPosition}
-                    className="flex h-14 flex-col items-center justify-center gap-0.5 rounded-xl active:bg-white/5"
+                    className="relative flex h-14 flex-col items-center justify-center gap-0.5 rounded-xl"
                   >
                     {({ isActive }) => <NavItemBody Icon={Icon} label={label} active={isActive} />}
                   </Link>
@@ -74,9 +94,19 @@ function PackagesBottomNav() {
             to="/profile"
             onPointerDown={resetPageScrollPosition}
             onClick={resetPageScrollPosition}
-            className="glass-dark nav-squircle flex w-[72px] shrink-0 flex-col items-center justify-center gap-0.5 rounded-[26px] active:bg-white/5"
+            className="glass-dark nav-squircle relative flex w-[72px] shrink-0 flex-col items-center justify-center gap-0.5 rounded-[26px]"
           >
-            {({ isActive }) => <NavItemBody Icon={User} label={msg("Профиль")} active={isActive} />}
+            {({ isActive }) => (
+              <>
+                <span
+                  aria-hidden="true"
+                  className="pointer-events-none absolute inset-x-0 top-[11px] flex h-7 justify-center"
+                >
+                  <NavPill shown={profileActive} />
+                </span>
+                <NavItemBody Icon={User} label={msg("Профиль")} active={isActive} />
+              </>
+            )}
           </Link>
         </div>
         <div className="h-[env(safe-area-inset-bottom)]" />
@@ -85,10 +115,22 @@ function PackagesBottomNav() {
   );
 }
 
+/** Розовая «пилюля» под иконкой выбранного раздела: проявляется и гаснет. */
+function NavPill({ shown }: { shown: boolean }) {
+  return (
+    <span
+      className={`nav-pill h-7 w-12 rounded-full bg-primary transition-[opacity,scale] duration-300 ease-out ${
+        shown ? "scale-100 opacity-100" : "scale-50 opacity-0"
+      }`}
+    />
+  );
+}
+
 /**
  * Иконка и подпись раздела. Активный — белая иконка на «пилюле» основного
  * цвета и белая подпись: розовый текст на тёмном стекле читался плохо
- * (решение владельца 2026-10-11).
+ * (решение владельца 2026-10-11). Сама «пилюля» — отдельный слой под
+ * иконкой (NavPill), здесь только цвета.
  */
 function NavItemBody({
   Icon,
@@ -103,14 +145,14 @@ function NavItemBody({
   return (
     <>
       <span
-        className={`flex h-7 w-12 items-center justify-center rounded-full transition-colors duration-200 ${
-          active ? "bg-primary text-primary-foreground" : "text-white/70"
+        className={`relative flex h-7 w-12 items-center justify-center transition-[color,scale] duration-300 ${
+          active ? "scale-105 text-primary-foreground" : "text-white/70"
         }`}
       >
         <Icon className="h-[22px] w-[22px]" weight="BoldDuotone" />
       </span>
       <span
-        className={`text-[11px] transition-colors duration-200 ${
+        className={`relative text-[11px] leading-4 transition duration-200 ${
           active ? "font-semibold text-white" : "font-medium text-white/70"
         }`}
       >
@@ -170,7 +212,7 @@ function SubscriptionBottomNav() {
                     onClick={resetPageScrollPosition}
                     activeProps={{ className: "text-primary" }}
                     inactiveProps={{ className: "text-white/70" }}
-                    className="flex h-14 flex-col items-center justify-center gap-0.5 rounded-xl text-[11px] font-medium transition-colors active:bg-white/5"
+                    className="flex h-14 flex-col items-center justify-center gap-0.5 rounded-xl text-[11px] font-medium transition active:bg-white/5"
                   >
                     <Icon className="h-6 w-6" weight="BoldDuotone" />
                     <span>{t(label)}</span>
@@ -184,7 +226,7 @@ function SubscriptionBottomNav() {
                   onClick={() => setMoreOpen((v) => !v)}
                   aria-expanded={moreOpen}
                   aria-haspopup="menu"
-                  className={`flex h-14 w-full flex-col items-center justify-center gap-0.5 rounded-xl text-[11px] font-medium transition-colors active:bg-white/5 ${
+                  className={`flex h-14 w-full flex-col items-center justify-center gap-0.5 rounded-xl text-[11px] font-medium transition active:bg-white/5 ${
                     moreActive || moreOpen ? "text-primary" : "text-white/70"
                   }`}
                 >
@@ -210,7 +252,7 @@ function SubscriptionBottomNav() {
                     role="menuitem"
                     onPointerDown={resetPageScrollPosition}
                     onClick={resetPageScrollPosition}
-                    className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors active:bg-white/10 ${
+                    className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition active:bg-white/10 ${
                       active ? "text-primary" : "text-white/90"
                     }`}
                   >

@@ -381,7 +381,7 @@ function DiagnosticForm({
             <button
               type="button"
               onClick={() => (step === 0 ? back() : setStep(step - 1))}
-              className="-ml-1 flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white/10 transition-colors active:bg-white/20"
+              className="-ml-1 flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white/10 transition active:bg-white/20"
               aria-label={t("Назад")}
             >
               <AltArrowLeft className="h-5 w-5" weight="BoldDuotone" />
@@ -394,7 +394,7 @@ function DiagnosticForm({
                 {STEPS.map((s, i) => (
                   <span
                     key={s.key}
-                    className={`h-1.5 flex-1 rounded-full transition-colors duration-300 ${
+                    className={`h-1.5 flex-1 rounded-full transition duration-300 ${
                       i <= step ? "bg-white" : "bg-white/20"
                     }`}
                   />
@@ -609,7 +609,7 @@ function DiagnosticForm({
                     onClick={() => set("stage", s.key)}
                     aria-pressed={f.stage === s.key}
                     className={cn(
-                      "flex w-full items-center gap-3 rounded-xl border px-4 py-3.5 text-left transition-colors",
+                      "flex w-full items-center gap-3 rounded-xl border px-4 py-3.5 text-left transition",
                       f.stage === s.key
                         ? "border-primary bg-primary/10 ring-1 ring-primary"
                         : "border-border bg-card",
@@ -1178,7 +1178,7 @@ function Choice({
       onClick={onClick}
       aria-pressed={active}
       className={cn(
-        "flex min-h-[52px] w-full items-center gap-3 rounded-xl border px-4 py-3 text-left text-[15px] leading-snug transition-colors",
+        "flex min-h-[52px] w-full items-center gap-3 rounded-xl border px-4 py-3 text-left text-[15px] leading-snug transition",
         active
           ? "border-primary bg-primary/10 font-medium ring-1 ring-primary"
           : "border-border bg-card",
@@ -1231,7 +1231,7 @@ function Tile({
       onClick={onClick}
       aria-pressed={active}
       className={cn(
-        "flex min-h-[52px] items-center rounded-xl border px-3 text-[15px] leading-snug transition-colors",
+        "flex min-h-[52px] items-center rounded-xl border px-3 text-[15px] leading-snug transition",
         center ? "justify-center text-center font-semibold" : "text-left",
         active
           ? "border-primary bg-primary/10 font-medium ring-1 ring-primary"
@@ -1265,7 +1265,7 @@ function NumberGrid({
           onClick={() => onChange(value === n ? null : n)}
           aria-pressed={value === n}
           className={cn(
-            "h-12 rounded-xl border text-[15px] font-semibold tabular-nums transition-colors",
+            "h-12 rounded-xl border text-[15px] font-semibold tabular-nums transition",
             value === n
               ? "border-primary bg-primary text-primary-foreground"
               : "border-border bg-card",

@@ -394,7 +394,7 @@ export function PackagesOnboardingPage() {
             <button
               type="button"
               onClick={() => setStep((s) => Math.max(0, s - 1))}
-              className="-ml-1 flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white/10 transition-colors active:bg-white/20"
+              className="-ml-1 flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white/10 transition active:bg-white/20"
               aria-label={t("Назад")}
             >
               <AltArrowLeft className="h-5 w-5" weight="BoldDuotone" />
@@ -602,7 +602,7 @@ function Progress({ step, total }: { step: number; total: number }) {
         {Array.from({ length: total }, (_, i) => (
           <span
             key={i}
-            className={`h-1.5 flex-1 rounded-full transition-colors duration-300 ${
+            className={`h-1.5 flex-1 rounded-full transition duration-300 ${
               i < step ? "bg-white" : "bg-white/20"
             }`}
           />

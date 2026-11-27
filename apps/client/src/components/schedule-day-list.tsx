@@ -41,7 +41,7 @@ export function ScheduleDayList<E extends { id: string; starts_at: string }>({
         type="button"
         onClick={() => setShowPast((v) => !v)}
         aria-expanded={showPast}
-        className="mb-4 flex h-10 w-full items-center justify-center rounded-lg bg-card text-sm font-medium text-muted-foreground transition-colors active:bg-muted"
+        className="mb-4 flex h-10 w-full items-center justify-center rounded-lg bg-card text-sm font-medium text-muted-foreground transition active:bg-muted"
       >
         {showPast
           ? t("Скрыть прошедшие тренировки")

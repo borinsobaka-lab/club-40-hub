@@ -45,7 +45,7 @@ export function StepHeader({
         <button
           type="button"
           onClick={onBack}
-          className="h-9 w-9 rounded-full flex items-center justify-center hover:bg-muted transition-colors"
+          className="h-9 w-9 rounded-full flex items-center justify-center hover:bg-muted transition"
           aria-label={t("Назад")}
         >
           <AltArrowLeft className="h-5 w-5" weight="BoldDuotone" />
@@ -119,7 +119,7 @@ export function OptionButton({
     <button
       type="button"
       onClick={onClick}
-      className={`w-full text-left px-4 py-4 rounded-xl border transition-colors ${
+      className={`w-full text-left px-4 py-4 rounded-xl border transition ${
         active
           ? soft
             ? "bg-primary/10 text-foreground border-primary ring-1 ring-primary"
@@ -252,7 +252,7 @@ export function HealthNotesInput({
 }
 
 function tileClass(active: boolean) {
-  return `h-12 rounded-xl border font-semibold transition-colors ${
+  return `h-12 rounded-xl border font-semibold transition ${
     active
       ? "bg-primary text-primary-foreground border-primary"
       : "bg-card border-border hover:border-foreground/30"

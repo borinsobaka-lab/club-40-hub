@@ -10,7 +10,7 @@ import { cn } from "@/lib/utils";
    в src/styles.css. Этот же класс берут Textarea и поля с плавающей
    подписью (floating-input.tsx). */
 export const fieldClass =
-  "w-full rounded-2xl border-0 bg-field px-4 text-base text-foreground shadow-none outline-none transition-colors placeholder:text-field-placeholder focus:bg-field-focus focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50";
+  "w-full rounded-2xl border-0 bg-field px-4 text-base text-foreground shadow-none outline-none transition placeholder:text-field-placeholder focus:bg-field-focus focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50";
 
 const Input = React.forwardRef<HTMLInputElement, React.ComponentProps<"input">>(
   ({ className, type, ...props }, ref) => {

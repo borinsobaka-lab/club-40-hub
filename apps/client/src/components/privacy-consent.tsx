@@ -38,7 +38,7 @@ export function PrivacyConsent({
         <span
           aria-hidden="true"
           className={cn(
-            "mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-md border-2 transition-colors peer-focus-visible:ring-2 peer-focus-visible:ring-ring",
+            "mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-md border-2 transition peer-focus-visible:ring-2 peer-focus-visible:ring-ring",
             checked
               ? "border-primary bg-primary text-primary-foreground"
               : invalid

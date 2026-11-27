@@ -73,7 +73,7 @@ export function OverduePaymentBanner({ className = "" }: { className?: string })
     <div className={className}>
       <Link
         to="/memberships"
-        className="flex items-center gap-3 rounded-2xl bg-red-50 p-3 text-red-700 ring-1 ring-red-200 active:bg-red-100 transition-colors"
+        className="flex items-center gap-3 rounded-2xl bg-red-50 p-3 text-red-700 ring-1 ring-red-200 active:bg-red-100 transition"
       >
         <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-red-100 text-red-500">
           <DangerTriangle className="h-[18px] w-[18px]" weight="BoldDuotone" />

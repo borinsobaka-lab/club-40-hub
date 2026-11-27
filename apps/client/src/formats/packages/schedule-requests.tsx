@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { Spinner } from "@/components/ui/spinner";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { CheckCircle, Ruler, UserHeart } from "@solar-icons/react";
 import { toast } from "sonner";
@@ -220,7 +221,7 @@ function PersonalRequestForm({
                 onClick={() => toggle(g.v)}
                 aria-pressed={active}
                 className={cn(
-                  "inline-flex min-h-10 items-center gap-1.5 rounded-full border px-4 text-sm font-medium transition-colors",
+                  "inline-flex min-h-10 items-center gap-1.5 rounded-full border px-4 text-sm font-medium transition",
                   active
                     ? "border-primary bg-primary/10 text-foreground"
                     : "border-border bg-card text-card-foreground",
@@ -256,7 +257,7 @@ function PersonalRequestForm({
       </div>
 
       <Button className="w-full" onClick={submit} disabled={sending}>
-        {sending ? "..." : t("Отправить заявку")}
+        {sending ? <Spinner /> : t("Отправить заявку")}
       </Button>
     </Card>
   );
@@ -362,7 +363,7 @@ export function DiagnosticsTab() {
               )}
             </p>
             <Button className="w-full" onClick={() => send({})} disabled={sending}>
-              {sending ? "..." : t("Отправить заявку")}
+              {sending ? <Spinner /> : t("Отправить заявку")}
             </Button>
           </>
         ) : (

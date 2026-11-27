@@ -68,7 +68,7 @@ export function VisitHistoryButton({ onOpen }: { onOpen: () => void }) {
     <button
       type="button"
       onClick={onOpen}
-      className="mx-4 mt-4 flex w-[calc(100%-2rem)] items-center gap-3 rounded-2xl border border-border bg-card p-3 text-left transition-opacity active:opacity-80"
+      className="mx-4 mt-4 flex w-[calc(100%-2rem)] items-center gap-3 rounded-2xl border border-border bg-card p-3 text-left transition active:opacity-80"
     >
       <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-muted">
         <History className="h-5 w-5 text-foreground" weight="BoldDuotone" />

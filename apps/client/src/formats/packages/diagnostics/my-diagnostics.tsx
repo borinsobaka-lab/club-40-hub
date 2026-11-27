@@ -385,7 +385,7 @@ function Dynamics({ list }: { list: BodyDiagnostic[] }) {
                   aria-selected={g.key === group.key}
                   onClick={() => setGroupKey(g.key)}
                   className={cn(
-                    "shrink-0 rounded-full px-4 py-2 text-sm font-semibold transition-colors",
+                    "shrink-0 rounded-full px-4 py-2 text-sm font-semibold transition",
                     g.key === group.key
                       ? "bg-foreground text-background"
                       : "bg-muted text-foreground",

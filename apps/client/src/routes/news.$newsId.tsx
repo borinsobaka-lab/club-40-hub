@@ -126,7 +126,7 @@ function NewsDetailPage() {
           <Link
             to="/"
             aria-label={t("Назад")}
-            className="absolute top-3 left-3 h-9 w-9 rounded-full flex items-center justify-center bg-background/85 backdrop-blur active:bg-background transition-colors"
+            className="absolute top-3 left-3 h-9 w-9 rounded-full flex items-center justify-center bg-background/85 backdrop-blur active:bg-background transition"
           >
             <AltArrowLeft className="h-5 w-5" weight="BoldDuotone" />
           </Link>

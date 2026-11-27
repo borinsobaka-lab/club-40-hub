@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Spinner } from "@/components/ui/spinner";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { DangerTriangle } from "@solar-icons/react";
 import { toast } from "sonner";
@@ -213,7 +214,7 @@ function CommentsSection({ clientId }: { clientId: string }) {
         rows={3}
       />
       <Button className="mt-2 w-full" onClick={save} disabled={!text.trim() || saving}>
-        {saving ? "..." : t("Добавить комментарий")}
+        {saving ? <Spinner /> : t("Добавить комментарий")}
       </Button>
       {isLoading ? (
         <div className="mt-3 h-16 animate-pulse rounded-2xl bg-muted" />

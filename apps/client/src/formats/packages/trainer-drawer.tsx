@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Drawer as DrawerPrimitive } from "vaul";
 
 import { Button } from "@/components/ui/button";
@@ -24,7 +24,7 @@ import {
 } from "./queries";
 import { RateTrainer, TipButton, TrainerRatingLine } from "./trainer-rating";
 import { TrainerComments } from "./trainer-comments";
-import { publishedTrainerCommentsQuery } from "./trainer-comments-data";
+import { myTrainerCommentQuery, publishedTrainerCommentsQuery } from "./trainer-comments-data";
 import { UnderlineTabs } from "@/components/underline-tabs";
 import { useAuth } from "@/hooks/use-auth";
 
@@ -41,7 +41,12 @@ import { useAuth } from "@/hooks/use-auth";
  * вложенной шторкой, nested, поверх окна).
  *
  * Данные — trainerCardQuery по id; из списка тренеров приходят сразу
- * (initial), из окна тренировки догружаются.
+ * (initial), из окна тренировки — из уже загруженного списка сотрудников
+ * (кэш «Студии»), иначе догружаются под скелетоном карточки.
+ *
+ * Без скачков (замечание владельца 2026-11-27): у тех, кого оценивают,
+ * шторка постоянной высоты — смена вкладки и подгрузка оценки не двигают её
+ * верхний край; своя оценка и отзывы запрашиваются заранее.
  */
 export function TrainerDrawer({
   trainerId,
@@ -61,12 +66,20 @@ export function TrainerDrawer({
     initial,
   });
   if (trainerId && trainerId !== shown.id) setShown({ id: trainerId, initial });
+  const queryClient = useQueryClient();
   const query = useQuery({
     ...trainerCardQuery(shown.id),
-    placeholderData: shown.initial ?? undefined,
+    placeholderData: () =>
+      shown.initial ??
+      queryClient
+        .getQueriesData<StudioTrainer[]>({ queryKey: ["studio-trainers"] })
+        .flatMap(([, list]) => list ?? [])
+        .find((x) => x.id === shown.id),
   });
   const trainer = query.data ?? null;
   const masseur = !!trainer && staffRole(trainer) === "masseur";
+  // Администратора не оценивают — карточка короткая, по содержимому.
+  const tall = !trainer || !!STAFF_ROLE_TEXT[staffRole(trainer)].rate;
   const Root = nested ? DrawerPrimitive.NestedRoot : DrawerPrimitive.Root;
 
   return (
@@ -80,15 +93,17 @@ export function TrainerDrawer({
       <DrawerPrimitive.Portal>
         <DrawerPrimitive.Overlay className="fixed inset-0 z-50 bg-black/60" />
         <DrawerPrimitive.Content
-          className="fixed inset-x-0 bottom-0 z-50 flex max-h-[90vh] flex-col rounded-t-2xl border-t border-border bg-background outline-none"
+          className={`fixed inset-x-0 bottom-0 z-50 flex max-h-[90vh] flex-col rounded-t-2xl border-t border-border bg-background outline-none ${
+            tall ? "h-[90vh]" : ""
+          }`}
           aria-describedby={undefined}
         >
           <div className="mx-auto mb-1 mt-2 h-1.5 w-12 shrink-0 rounded-full bg-muted-foreground/30" />
           <div
             className={
               masseur
-                ? "overflow-y-auto overscroll-contain px-4 pb-6 pt-3"
-                : "overflow-y-auto overscroll-contain px-4 pb-[calc(env(safe-area-inset-bottom)+24px)] pt-3"
+                ? "min-h-0 grow overflow-y-auto overscroll-contain px-4 pb-6 pt-3"
+                : "min-h-0 grow overflow-y-auto overscroll-contain px-4 pb-[calc(env(safe-area-inset-bottom)+24px)] pt-3"
             }
           >
             {trainer ? (
@@ -103,15 +118,7 @@ export function TrainerDrawer({
             ) : (
               <>
                 <DrawerPrimitive.Title className="sr-only">{t("Тренер")}</DrawerPrimitive.Title>
-                <div className="flex items-center gap-4">
-                  <Skeleton className="h-[88px] w-[88px] rounded-3xl" />
-                  <div className="flex-1 space-y-2">
-                    <Skeleton className="h-4 w-1/3" />
-                    <Skeleton className="h-6 w-2/3" />
-                    <Skeleton className="h-4 w-1/2" />
-                  </div>
-                </div>
-                <Skeleton className="mt-5 h-16 w-full rounded-2xl" />
+                <TrainerCardSkeleton />
               </>
             )}
           </div>
@@ -127,6 +134,33 @@ export function TrainerDrawer({
         </DrawerPrimitive.Content>
       </DrawerPrimitive.Portal>
     </Root>
+  );
+}
+
+/** Болванка карточки: фото, имя и рейтинг, оценка, вкладки, текст — на своих местах. */
+function TrainerCardSkeleton() {
+  return (
+    <div aria-hidden="true">
+      <div className="flex items-center gap-4">
+        <Skeleton className="h-[88px] w-[88px] shrink-0 rounded-3xl" />
+        <div className="min-w-0 flex-1">
+          <Skeleton className="h-4 w-16" />
+          <Skeleton className="mt-2 h-7 w-2/3" />
+          <Skeleton className="mt-2.5 h-4 w-1/2" />
+        </div>
+      </div>
+      <Skeleton className="mt-5 h-[178px] w-full rounded-2xl" />
+      <div className="mt-6 flex gap-6 pt-3">
+        <Skeleton className="h-5 w-24" />
+        <Skeleton className="h-5 w-36" />
+      </div>
+      <div className="mt-5 space-y-2.5">
+        <Skeleton className="h-4 w-full" />
+        <Skeleton className="h-4 w-11/12" />
+        <Skeleton className="h-4 w-4/5" />
+        <Skeleton className="h-4 w-2/3" />
+      </div>
+    </div>
   );
 }
 
@@ -146,8 +180,11 @@ function TrainerCard({ trainer: row }: { trainer: StudioTrainer }) {
   const withReviews = !!text.rate && !!user;
   const [tab, setTab] = useState<"about" | "reviews">("about");
   const reviews = useQuery({ ...publishedTrainerCommentsQuery(row.id), enabled: withReviews });
+  // Свой комментарий («на модерации») — заранее: вкладка «Отзывы» откроется
+  // уже с кнопкой или плашкой, без подгрузки.
+  useQuery({ ...myTrainerCommentQuery(row.id, user?.id ?? null), enabled: withReviews });
   return (
-    <>
+    <div className="content-enter">
       <div className="flex items-center gap-4">
         <SquircleAvatar size={88} className="shrink-0">
           {photo && <SquircleAvatarImage src={photo} alt={trainer.full_name} />}
@@ -198,31 +235,34 @@ function TrainerCard({ trainer: row }: { trainer: StudioTrainer }) {
           onChange={setTab}
         />
       )}
-      {withReviews && tab === "reviews" ? (
-        <div className="mt-4">
-          <TrainerComments trainerId={trainer.id} />
-        </div>
-      ) : trainer.bio?.trim() ? (
-        <FormattedText
-          text={trainer.bio}
-          className={
-            withReviews
-              ? "mt-4 text-[15px] leading-relaxed text-foreground/90"
-              : "mt-5 text-[15px] leading-relaxed text-foreground/90"
-          }
-          linkClass="font-medium text-foreground underline decoration-primary decoration-2 underline-offset-2"
-        />
-      ) : (
-        <p
-          className={
-            withReviews
-              ? "mt-4 text-sm text-muted-foreground"
-              : "mt-5 text-sm text-muted-foreground"
-          }
-        >
-          {t(text.noBio)}
-        </p>
-      )}
-    </>
+      {/* key — содержимое вкладки проявляется заново при переключении. */}
+      <div key={withReviews ? tab : "about"} className={withReviews ? "content-enter" : undefined}>
+        {withReviews && tab === "reviews" ? (
+          <div className="mt-4">
+            <TrainerComments trainerId={trainer.id} />
+          </div>
+        ) : trainer.bio?.trim() ? (
+          <FormattedText
+            text={trainer.bio}
+            className={
+              withReviews
+                ? "mt-4 text-[15px] leading-relaxed text-foreground/90"
+                : "mt-5 text-[15px] leading-relaxed text-foreground/90"
+            }
+            linkClass="font-medium text-foreground underline decoration-primary decoration-2 underline-offset-2"
+          />
+        ) : (
+          <p
+            className={
+              withReviews
+                ? "mt-4 text-sm text-muted-foreground"
+                : "mt-5 text-sm text-muted-foreground"
+            }
+          >
+            {t(text.noBio)}
+          </p>
+        )}
+      </div>
+    </div>
   );
 }

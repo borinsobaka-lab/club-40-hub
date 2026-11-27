@@ -33,8 +33,13 @@ import {
   packMyMembershipsQuery,
   packScheduleQuery,
   startOfDay,
+  staffRole,
   studioStaffQuery,
 } from "@/formats/packages/queries";
+import {
+  myTrainerReviewsQuery,
+  trainerCommentCountsQuery,
+} from "@/formats/packages/trainer-comments-data";
 import { supabase } from "@/integrations/supabase/client";
 import { Toaster } from "@/components/ui/sonner";
 import { InstallScreen } from "@/components/install-screen";
@@ -46,6 +51,7 @@ import { buttonVariants } from "@/components/ui/button";
 import { I18nProvider, getTranslator, loadDictionary, useLocalize, useT } from "@/i18n";
 import { getRequestLocale } from "@/i18n/request-locale";
 import { installScrollPerf } from "@/lib/scroll-perf";
+import { installPressFeedback } from "@/lib/press-feedback";
 
 // Адрес API Supabase — для preconnect: соединение (DNS + TLS) с базой
 // открывается параллельно с загрузкой JS, а не после неё.
@@ -96,7 +102,7 @@ function NotFoundComponent() {
         <div className="mt-6">
           <Link
             to="/"
-            className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+            className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition hover:bg-primary/90"
           >
             {t("На главную")}
           </Link>
@@ -130,13 +136,13 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
               router.invalidate();
               reset();
             }}
-            className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+            className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition hover:bg-primary/90"
           >
             {t("Попробовать снова")}
           </button>
           <a
             href="/"
-            className="inline-flex items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent"
+            className="inline-flex items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium text-foreground transition hover:bg-accent"
           >
             {t("На главную")}
           </a>
@@ -249,6 +255,9 @@ function RootComponent() {
   // Плавная прокрутка: огоньки шапки замирают на время прокрутки
   // (src/lib/scroll-perf.ts).
   useEffect(() => installScrollPerf(), []);
+
+  // Отклик на нажатие: кнопки и карточки «приседают» (src/lib/press-feedback.ts).
+  useEffect(() => installPressFeedback(), []);
 
   // Service worker (public/sw.js): пуш-уведомления и файлы сборки из кэша
   // телефона — повторный запуск не ждёт загрузки JS и CSS. У обоих приложений
@@ -434,7 +443,21 @@ function usePrefetchScreens(ready: boolean) {
       queryClient.prefetchQuery(packCatalogQuery());
       queryClient.prefetchQuery(packMyMembershipsQuery(userId));
       queryClient.prefetchQuery(aboutQuery());
-      if (studioId) queryClient.prefetchQuery(studioStaffQuery(studioId));
+      // «Студия»: сотрудники, свои оценки тренерам и число отзывов — чтобы
+      // список тренеров и карточка тренера открывались целиком, а не
+      // достраивались по частям.
+      queryClient.prefetchQuery(myTrainerReviewsQuery(userId));
+      if (studioId) {
+        void queryClient
+          .fetchQuery(studioStaffQuery(studioId))
+          .then((staff) => {
+            for (const role of ["trainer", "masseur"] as const) {
+              const ids = staff.filter((s) => staffRole(s) === role).map((s) => s.id);
+              if (ids.length > 0) queryClient.prefetchQuery(trainerCommentCountsQuery(ids, true));
+            }
+          })
+          .catch(() => {});
+      }
     };
     // Сначала — запросы самого экрана (ждём, пока догрузятся, но не дольше
     // ~5 секунд), потом, когда браузер свободен, — остальное.

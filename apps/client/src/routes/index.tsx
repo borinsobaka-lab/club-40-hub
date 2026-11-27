@@ -26,6 +26,7 @@ import { mediaUrl } from "@/lib/media";
 import { clientCardQuery } from "@/lib/client-card";
 import { homeBookingsQuery, type MyBooking } from "@/lib/home-queries";
 import { PageShell } from "@/components/page-shell";
+import { FadeImg } from "@/components/fade-img";
 import { useClubSettings } from "@/hooks/use-club-settings";
 import { useFormatStudios, useViewedStudioId } from "@/hooks/use-viewed-studio";
 import { useNotifications } from "@/lib/notifications";
@@ -299,7 +300,7 @@ function HomePage() {
           <div className="px-4 flex items-center justify-between">
             <Link
               to="/profile"
-              className="flex items-center gap-3 min-w-0 flex-1 -ml-1 rounded-xl px-1 py-1 active:bg-accent/50 transition-colors"
+              className="flex items-center gap-3 min-w-0 flex-1 -ml-1 rounded-xl px-1 py-1 active:bg-accent/50 transition"
             >
               <SquircleAvatar size={44}>
                 {avatarUrl && <SquircleAvatarImage src={avatarUrl} alt={fullName} />}
@@ -322,7 +323,7 @@ function HomePage() {
                 <Link
                   to="/invite"
                   aria-label={t("Пригласи подругу")}
-                  className="h-10 w-10 shrink-0 overflow-hidden rounded-full ring-1 ring-white/20 shadow-lg shadow-primary/40 active:scale-95 transition-transform"
+                  className="h-10 w-10 shrink-0 overflow-hidden rounded-full ring-1 ring-white/20 shadow-lg shadow-primary/40 active:scale-95 transition"
                 >
                   <img src={inviteGiftButton} alt="" className="h-full w-full object-cover" />
                 </Link>
@@ -330,7 +331,7 @@ function HomePage() {
                 <button
                   type="button"
                   aria-label={t("Подарки")}
-                  className="h-10 w-10 rounded-full flex items-center justify-center bg-gradient-to-r from-rose-500 via-orange-400 to-amber-300 active:opacity-90 transition-opacity shadow-md"
+                  className="h-10 w-10 rounded-full flex items-center justify-center bg-gradient-to-r from-rose-500 via-orange-400 to-amber-300 active:opacity-90 transition shadow-md"
                 >
                   <img src={giftIcon} alt={t("Подарки")} className="h-5 w-5 object-contain" />
                 </button>
@@ -340,7 +341,7 @@ function HomePage() {
                 aria-label={
                   unread > 0 ? t("Уведомления: непрочитанных {n}", { n: unread }) : t("Уведомления")
                 }
-                className="relative h-10 w-10 rounded-full flex items-center justify-center bg-white/10 active:bg-white/20 transition-colors"
+                className="relative h-10 w-10 rounded-full flex items-center justify-center bg-white/10 active:bg-white/20 transition"
               >
                 <Bell className="h-5 w-5 text-white" />
                 {unread > 0 && (
@@ -374,12 +375,12 @@ function HomePage() {
                       key={n.id}
                       type="button"
                       onClick={() => setOpenNewsId(n.id)}
-                      className="relative shrink-0 snap-start w-32 h-44 rounded-2xl overflow-hidden text-left active:scale-[0.98] transition-transform"
+                      className="relative shrink-0 snap-start w-32 h-44 rounded-2xl overflow-hidden text-left bg-white/10"
                     >
                       {(() => {
                         const url = mediaUrl(n.image_url);
                         return url ? (
-                          <img
+                          <FadeImg
                             src={url}
                             alt={n.title}
                             className="absolute inset-0 h-full w-full object-cover"
@@ -523,7 +524,7 @@ function HomePage() {
                             key={b.entry_id}
                             type="button"
                             onClick={() => setOpenEntry(entryToDrawerData(e, t))}
-                            className="w-full text-left active:opacity-80 transition-opacity"
+                            className="w-full text-left active:opacity-80 transition"
                           >
                             <Card className="relative p-3 pl-4 flex items-center gap-3 w-full overflow-hidden rounded-lg bg-primary text-primary-foreground border-primary">
                               <span
@@ -594,10 +595,10 @@ function HomePage() {
                       key={s.id}
                       type="button"
                       onClick={() => setOpenServiceId(s.id)}
-                      className="relative shrink-0 snap-start w-56 h-32 rounded-2xl overflow-hidden text-left bg-muted active:scale-[0.98] transition-transform"
+                      className="relative shrink-0 snap-start w-56 h-32 rounded-2xl overflow-hidden text-left bg-muted"
                     >
                       {url ? (
-                        <img
+                        <FadeImg
                           src={url}
                           alt={s.title}
                           className="absolute inset-0 h-full w-full object-cover"

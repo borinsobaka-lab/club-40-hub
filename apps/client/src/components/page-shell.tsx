@@ -129,9 +129,12 @@ export function PageShell({ header, children, scrollKey }: PageShellProps) {
         className="no-scrollbar relative z-10 h-full overflow-y-auto overscroll-contain"
       >
         <div className="sticky top-0 z-0 text-white">
-          <div className="relative z-10">{header}</div>
+          {/* Шапка раздела проявляется, белый «лист» под ней — проявляется
+              и чуть поднимается (page-enter в styles.css): переход по меню
+              мягкий, без резкой смены экрана. */}
+          <div className="content-enter relative z-10">{header}</div>
         </div>
-        <div className="relative z-10 -mt-4 min-h-full rounded-t-3xl bg-background pb-24 shadow-[0_-4px_16px_-8px_rgba(0,0,0,0.08)]">
+        <div className="page-enter relative z-10 -mt-4 min-h-full rounded-t-3xl bg-background pb-24 shadow-[0_-4px_16px_-8px_rgba(0,0,0,0.08)]">
           {children}
         </div>
       </div>

@@ -92,7 +92,7 @@ function NotificationsPage() {
             type="button"
             onClick={markAllRead}
             disabled={unread === 0}
-            className="text-xs font-semibold text-foreground bg-muted hover:bg-muted/80 active:bg-muted/70 disabled:opacity-60 disabled:cursor-not-allowed rounded-full px-3 py-2.5 transition-colors"
+            className="text-xs font-semibold text-foreground bg-muted hover:bg-muted/80 active:bg-muted/70 disabled:opacity-60 disabled:cursor-not-allowed rounded-full px-3 py-2.5 transition"
           >
             {t("Прочитать все")}
           </button>
@@ -130,7 +130,7 @@ function NotificationsPage() {
                     onClick={() => {
                       if (!read) markRead(n.notification_id);
                     }}
-                    className={`p-4 transition-colors ${
+                    className={`p-4 transition ${
                       read ? "" : "border-primary bg-primary/5 cursor-pointer active:opacity-80"
                     } ${opened ? "ring-2 ring-primary" : ""}`}
                   >
@@ -156,7 +156,7 @@ function NotificationsPage() {
                                 e.stopPropagation();
                                 follow(n);
                               }}
-                              className="shrink-0 text-xs font-semibold text-primary-foreground bg-primary hover:bg-primary/90 active:bg-primary/80 rounded-full px-3 py-1.5 transition-colors"
+                              className="shrink-0 text-xs font-semibold text-primary-foreground bg-primary hover:bg-primary/90 active:bg-primary/80 rounded-full px-3 py-1.5 transition"
                             >
                               {t("Перейти")}
                             </button>

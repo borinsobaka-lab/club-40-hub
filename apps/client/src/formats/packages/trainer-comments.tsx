@@ -4,6 +4,7 @@ import { toast } from "sonner";
 
 import { OptionButton } from "@/components/onboarding";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/hooks/use-auth";
 import { useT } from "@/i18n";
@@ -39,11 +40,7 @@ export function TrainerComments({ trainerId }: { trainerId: string }) {
       <CommentComposer key={trainerId} trainerId={trainerId} />
 
       {published.isPending ? (
-        <div className="mt-3 space-y-2">
-          {[0, 1].map((i) => (
-            <div key={i} className="h-20 animate-pulse rounded-2xl bg-muted" />
-          ))}
-        </div>
+        <CommentsSkeleton />
       ) : published.isError ? (
         <p className="mt-3 text-sm text-destructive">
           {t("Не удалось загрузить отзывы. Попробуйте ещё раз.")}
@@ -54,7 +51,7 @@ export function TrainerComments({ trainerId }: { trainerId: string }) {
         </p>
       ) : (
         <>
-          <ul className="mt-3 space-y-2">
+          <ul className="content-enter mt-3 space-y-2">
             {items.slice(0, shown).map((c) => (
               <li key={c.id} className="rounded-2xl border border-border bg-card p-4">
                 <div className="flex items-baseline justify-between gap-3 text-sm">
@@ -90,6 +87,24 @@ export function TrainerComments({ trainerId }: { trainerId: string }) {
 }
 
 const PAGE = 5;
+
+/** Болванки отзывов — той же формы, что карточка отзыва: имя, дата, текст. */
+function CommentsSkeleton() {
+  return (
+    <ul className="mt-3 space-y-2" aria-hidden="true">
+      {[0, 1, 2].map((i) => (
+        <li key={i} className="rounded-2xl border border-border bg-card p-4">
+          <div className="flex items-center justify-between gap-3">
+            <Skeleton className="h-4 w-24" />
+            <Skeleton className="h-4 w-28" />
+          </div>
+          <Skeleton className="mt-3 h-4 w-full" />
+          <Skeleton className={`mt-2 h-4 ${i === 1 ? "w-1/2" : "w-4/5"}`} />
+        </li>
+      ))}
+    </ul>
+  );
+}
 
 /**
  * «Оставить комментарий»: свёрнуто — кнопка; развёрнуто — текст, «От своего
@@ -127,7 +142,8 @@ function CommentComposer({ trainerId }: { trainerId: string }) {
       queryClient.invalidateQueries({ queryKey: ["trainer-comment-mine", trainerId] }),
   });
 
-  if (mine.isPending) return null;
+  // Место кнопки «Оставить комментарий» занято сразу — список под ней не прыгает.
+  if (mine.isPending) return <Skeleton className="h-12 w-full rounded-full" aria-hidden="true" />;
 
   if (mine.data?.status === "pending") {
     return (
@@ -164,7 +180,7 @@ function CommentComposer({ trainerId }: { trainerId: string }) {
         e.preventDefault();
         submit();
       }}
-      className="rounded-2xl border border-border bg-card p-4"
+      className="content-enter rounded-2xl border border-border bg-card p-4"
     >
       <label htmlFor={`trainer-comment-${trainerId}`} className="font-semibold">
         {t("Ваш комментарий")}

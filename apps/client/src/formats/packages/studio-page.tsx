@@ -98,13 +98,16 @@ export function PackagesStudioPage() {
         className="px-4 pt-4"
         gapClass="gap-6"
       />
-      {tab === "about" ? (
-        <AboutTab />
-      ) : (
-        <div className="p-4">
-          <StaffTab role={tab} />
-        </div>
-      )}
+      {/* key — содержимое вкладки проявляется заново при переключении. */}
+      <div key={tab} className="content-enter">
+        {tab === "about" ? (
+          <AboutTab />
+        ) : (
+          <div className="p-4">
+            <StaffTab role={tab} />
+          </div>
+        )}
+      </div>
     </PageShell>
   );
 }
@@ -184,7 +187,7 @@ function StaffTab({ role }: { role: StaffRole }) {
               key={tr.id}
               type="button"
               onClick={() => setOpenId(tr.id)}
-              className="w-full text-left transition active:scale-[0.99]"
+              className="w-full text-left transition"
             >
               <Card className="flex items-center gap-3 p-3">
                 <SquircleAvatar size={56} className="shrink-0">

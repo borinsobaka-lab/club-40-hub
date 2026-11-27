@@ -52,13 +52,13 @@ export function SegmentedSwitch<K extends string>({
             role="tab"
             aria-selected={active}
             onClick={() => onChange(o.key)}
-            className={`relative z-10 flex h-11 min-w-0 items-center justify-center gap-1.5 rounded-full px-2 text-[15px] font-semibold transition-colors duration-300 active:scale-[0.97] ${
+            className={`relative z-10 flex h-11 min-w-0 items-center justify-center gap-1.5 rounded-full px-2 text-[15px] font-semibold transition duration-300 active:scale-[0.97] ${
               active ? "text-foreground" : "text-muted-foreground"
             }`}
           >
             {Icon && (
               <Icon
-                className={`h-[18px] w-[18px] shrink-0 transition-colors duration-300 ${active ? "text-primary" : ""}`}
+                className={`h-[18px] w-[18px] shrink-0 transition duration-300 ${active ? "text-primary" : ""}`}
                 weight={active ? "Bold" : "Linear"}
               />
             )}

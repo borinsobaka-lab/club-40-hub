@@ -461,7 +461,7 @@ function MembershipsPage() {
               return (
                 <Card
                   onClick={() => setActiveOpen(true)}
-                  className="mt-4 p-0 overflow-hidden cursor-pointer transition-colors hover:bg-card/90 active:bg-card/80 border-0"
+                  className="mt-4 p-0 overflow-hidden cursor-pointer transition hover:bg-card/90 active:bg-card/80 border-0"
                 >
                   <div className="flex items-stretch">
                     <div className="flex-1 p-4 border border-border rounded-l-xl bg-background">
@@ -538,7 +538,7 @@ function MembershipsPage() {
                     onClick={() => {
                       setActiveTab(tab.key);
                     }}
-                    className={`shrink-0 relative pt-3 pb-1 text-base font-semibold transition-colors ${
+                    className={`shrink-0 relative pt-3 pb-1 text-base font-semibold transition ${
                       active ? "text-foreground" : "text-muted-foreground"
                     }`}
                   >

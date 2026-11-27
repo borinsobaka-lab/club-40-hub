@@ -124,7 +124,7 @@ export function RulerPicker({
                 >
                   {isMajor && (
                     <div
-                      className={`mb-1 text-[11px] tabular-nums transition-colors ${
+                      className={`mb-1 text-[11px] tabular-nums transition ${
                         isCenter ? "text-foreground font-bold" : "text-muted-foreground"
                       }`}
                     >
@@ -132,7 +132,7 @@ export function RulerPicker({
                     </div>
                   )}
                   <div
-                    className={`rounded-full transition-colors ${
+                    className={`rounded-full transition ${
                       isCenter ? "bg-foreground" : isMajor ? "bg-foreground/60" : "bg-foreground/25"
                     }`}
                     style={{

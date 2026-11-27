@@ -166,7 +166,7 @@ function InvitePage() {
           <div className="relative z-[2] px-4 pt-2">
             <Link
               to="/"
-              className="-ml-2 inline-flex h-10 items-center gap-1 rounded-full px-2 text-sm font-medium text-white/80 transition-colors active:bg-white/10"
+              className="-ml-2 inline-flex h-10 items-center gap-1 rounded-full px-2 text-sm font-medium text-white/80 transition active:bg-white/10"
             >
               <AltArrowLeft className="h-5 w-5" />
               {t("Назад")}

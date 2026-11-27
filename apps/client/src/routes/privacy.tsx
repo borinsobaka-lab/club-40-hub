@@ -41,7 +41,7 @@ function PrivacyPage() {
           <Link
             to={session ? "/profile" : "/auth"}
             aria-label={t("Назад")}
-            className="h-9 w-9 shrink-0 rounded-full flex items-center justify-center bg-white/10 active:bg-white/20 transition-colors"
+            className="h-9 w-9 shrink-0 rounded-full flex items-center justify-center bg-white/10 active:bg-white/20 transition"
           >
             <AltArrowLeft className="h-5 w-5" weight="BoldDuotone" />
           </Link>

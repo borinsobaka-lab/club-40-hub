@@ -436,7 +436,7 @@ function AuthPage() {
             setNotMember(false);
           }}
           className={cn(
-            "relative z-10 h-10 rounded-full text-sm font-medium transition-colors duration-300",
+            "relative z-10 h-10 rounded-full text-sm font-medium transition duration-300",
             method === m ? "text-foreground" : "text-muted-foreground",
           )}
         >
@@ -506,7 +506,7 @@ function AuthPage() {
           <div
             key={i}
             aria-hidden="true"
-            className={`flex h-14 w-11 items-center justify-center rounded-xl text-xl font-bold transition-colors ${
+            className={`flex h-14 w-11 items-center justify-center rounded-xl text-xl font-bold transition ${
               current ? "bg-field-focus" : "bg-field"
             }`}
           >
@@ -542,7 +542,7 @@ function AuthPage() {
               otpRefs.current[i - 1]?.focus();
             }
           }}
-          className="h-14 w-11 rounded-xl bg-field text-center text-xl font-bold outline-none transition-colors focus:bg-field-focus"
+          className="h-14 w-11 rounded-xl bg-field text-center text-xl font-bold outline-none transition focus:bg-field-focus"
         />
       ))}
     </div>

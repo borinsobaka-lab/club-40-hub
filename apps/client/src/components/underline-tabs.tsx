@@ -64,7 +64,7 @@ export function UnderlineTabs<K extends string>({
             role="tab"
             aria-selected={active}
             onClick={() => onChange(t.key)}
-            className={`relative shrink-0 pt-3 pb-1 text-base font-semibold transition-colors duration-300 ${
+            className={`relative shrink-0 pt-3 pb-1 text-base font-semibold transition duration-300 ${
               active ? "text-foreground" : "text-muted-foreground"
             }`}
           >

@@ -545,7 +545,7 @@ function StepBody({
                   key={v}
                   type="button"
                   onClick={() => onChange({ gender: v })}
-                  className={`aspect-square flex flex-col items-center justify-center gap-3 rounded-xl border transition-colors ${
+                  className={`aspect-square flex flex-col items-center justify-center gap-3 rounded-xl border transition ${
                     active
                       ? "bg-primary text-primary-foreground border-primary"
                       : "bg-card border-border hover:border-foreground/30"

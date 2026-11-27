@@ -44,7 +44,7 @@ export function StudioSwitcher() {
       <button
         type="button"
         onClick={() => canSwitch && setOpen(true)}
-        className="flex w-full items-center gap-3 rounded-2xl bg-white/10 px-3 py-2.5 text-left transition active:scale-[0.99]"
+        className="flex w-full items-center gap-3 rounded-2xl bg-white/10 px-3 py-2.5 text-left transition"
       >
         {/* Только название (решение владельца 2026-10-12: без адреса и метки),
             адрес — в списке студий. */}
@@ -165,7 +165,7 @@ function StudioRow({
   return (
     <li
       className={cn(
-        "relative rounded-2xl border-2 p-3 transition active:scale-[0.99]",
+        "relative rounded-2xl border-2 p-3 transition",
         active
           ? "border-primary bg-primary/10"
           : "border-transparent bg-background shadow-[0_2px_10px_rgba(0,0,0,0.08)] ring-1 ring-border",

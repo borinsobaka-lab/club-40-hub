@@ -6,7 +6,7 @@ import { PageShell } from "@/components/page-shell";
 import { UnderlineTabs } from "@/components/underline-tabs";
 import { buttonVariants } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { MembershipCardsSkeleton } from "@/components/content-skeletons";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/hooks/use-auth";
 import { useFormatStudios, useViewedStudioId } from "@/hooks/use-viewed-studio";
 import { msg, useLocalize, useT, type Translator } from "@/i18n";
@@ -115,13 +115,14 @@ export function PackagesMembershipsPage() {
         gapClass="gap-6"
       />
 
-      <div className="space-y-3 p-4 pb-24">
+      {/* key — список проявляется заново при смене вкладки. */}
+      <div key={tab} className="content-enter space-y-3 p-4 pb-24">
         {!user && !authLoading ? (
           <Card className="p-4 text-sm text-muted-foreground">
             {t("Войдите в аккаунт, чтобы увидеть абонементы.")}
           </Card>
         ) : catalog.isPending ? (
-          <MembershipCardsSkeleton />
+          <PackCardsSkeleton />
         ) : catalog.error ? (
           <Card className="p-4 text-sm text-destructive">
             {t("Не удалось загрузить абонементы. Обновите страницу.")}
@@ -139,6 +140,29 @@ export function PackagesMembershipsPage() {
         )}
       </div>
     </PageShell>
+  );
+}
+
+/** Болванки карточек пакетов — той же формы: название, цена, «Что входит», кнопка. */
+function PackCardsSkeleton() {
+  return (
+    <>
+      {[0, 1].map((i) => (
+        <Card key={i} className="rounded-2xl p-5" aria-hidden="true">
+          <div className="flex items-start justify-between gap-3">
+            <Skeleton className="h-7 w-1/2" />
+            <Skeleton className="h-5 w-16" />
+          </div>
+          <Skeleton className="mt-4 h-11 w-32" />
+          <div className="mt-5 space-y-2.5 border-t border-border pt-4">
+            <Skeleton className="h-4 w-24" />
+            <Skeleton className="h-4 w-3/4" />
+            <Skeleton className="h-4 w-2/3" />
+          </div>
+          <Skeleton className="mt-5 h-12 w-full rounded-full" />
+        </Card>
+      ))}
+    </>
   );
 }
 

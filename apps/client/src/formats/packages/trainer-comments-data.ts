@@ -108,3 +108,30 @@ export function isPendingError(e: unknown): boolean {
   const msg = (e as { message?: unknown } | null)?.message;
   return typeof msg === "string" && msg.includes("client_trainer_comment_pending");
 }
+
+/**
+ * Свои оценки всем тренерам — одним запросом (тренер → оценка). Раньше
+ * карточка каждого тренера спрашивала свою оценку отдельно и блок «Оцените
+ * тренера» появлялся после открытия — карточка скакала (замечание владельца
+ * 2026-11-27). Запрос подгружается заранее (usePrefetchScreens, список
+ * тренеров), в карточке оценка есть сразу.
+ */
+export function myTrainerReviewsQuery(userId: string | null) {
+  return queryOptions({
+    queryKey: ["trainer-reviews-mine", userId],
+    queryFn: async (): Promise<Record<string, number>> => {
+      const { data, error } = await untypedDb
+        .from("trainer_reviews")
+        .select("trainer_id, rating")
+        .eq("user_id", userId);
+      if (error) throw error;
+      const map: Record<string, number> = {};
+      for (const row of (data ?? []) as { trainer_id: string; rating: number }[]) {
+        map[row.trainer_id] = row.rating;
+      }
+      return map;
+    },
+    enabled: !!userId,
+    staleTime: 5 * 60_000,
+  });
+}

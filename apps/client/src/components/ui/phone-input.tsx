@@ -64,7 +64,7 @@ export function PhoneInput({
   return (
     <div
       className={cn(
-        "relative h-14 w-full rounded-2xl bg-field text-base text-foreground transition-colors focus-within:bg-field-focus",
+        "relative h-14 w-full rounded-2xl bg-field text-base text-foreground transition focus-within:bg-field-focus",
         className,
       )}
     >

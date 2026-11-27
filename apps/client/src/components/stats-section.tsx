@@ -707,7 +707,7 @@ function CaloriesInfoLink() {
   return (
     <Dialog>
       <DialogTrigger asChild>
-        <button type="button" className="hover:text-foreground transition-colors">
+        <button type="button" className="hover:text-foreground transition">
           {t("Как считаются калории?")}
         </button>
       </DialogTrigger>

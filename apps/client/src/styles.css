@@ -196,6 +196,86 @@
   }
 }
 
+/* Отклик на нажатие (src/lib/press-feedback.ts, решение владельца
+   2026-11-27): всё, что нажимается, на время касания чуть уменьшается —
+   атрибут data-pressed ставит скрипт (не :active: палец, начавший прокрутку,
+   карточки не «приседает»). Вниз — быстро, обратно — с лёгкой пружинкой.
+   Слой base: свой active:scale-* у элемента сильнее. Свойство scale, а не
+   transform — не спорит с translate и своими transform элемента. */
+@layer base {
+  :where(
+    button,
+    a,
+    [role="button"],
+    [role="tab"],
+    [role="radio"],
+    [role="menuitem"],
+    [data-press]
+  ) {
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+    transition-property:
+      color, background-color, border-color, outline-color, text-decoration-color, fill, stroke,
+      opacity, box-shadow, transform, translate, scale, rotate;
+    transition-duration: 220ms;
+    transition-timing-function: cubic-bezier(0.34, 1.3, 0.64, 1);
+  }
+  :where([data-pressed]) {
+    scale: 0.96;
+    transition-duration: 90ms;
+    transition-timing-function: ease-out;
+  }
+  :where([data-pressed="lg"]) {
+    scale: 0.98;
+  }
+}
+
+/* Появление содержимого. Только opacity и translate — без перерисовки.
+   - page-enter: белый «лист» раздела при переходе по меню;
+   - content-enter: содержимое вкладки и то, что пришло на место скелетона;
+   - pop-in: отметка появилась (звезда, галочка). */
+@utility page-enter {
+  animation: page-enter 260ms cubic-bezier(0.22, 1, 0.36, 1) backwards;
+}
+@utility content-enter {
+  animation: content-enter 220ms cubic-bezier(0.22, 1, 0.36, 1) backwards;
+}
+@utility pop-in {
+  animation: pop-in 320ms cubic-bezier(0.34, 1.56, 0.64, 1) backwards;
+}
+@keyframes page-enter {
+  from {
+    opacity: 0;
+    translate: 0 10px;
+  }
+}
+@keyframes content-enter {
+  from {
+    opacity: 0;
+    translate: 0 6px;
+  }
+}
+@keyframes pop-in {
+  from {
+    scale: 0.6;
+    opacity: 0;
+  }
+}
+
+/* «Уменьшение движения» в настройках телефона: без приседаний и въездов. */
+@media (prefers-reduced-motion: reduce) {
+  [data-pressed] {
+    scale: none !important;
+  }
+  .page-enter,
+  .content-enter,
+  .pop-in,
+  .nav-pill {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
 .no-scrollbar {
   -ms-overflow-style: none;
   scrollbar-width: none;

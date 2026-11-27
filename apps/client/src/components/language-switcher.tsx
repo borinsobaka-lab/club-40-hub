@@ -41,7 +41,7 @@ export function LanguageSwitcher({
     <DropdownMenu>
       <DropdownMenuTrigger
         aria-label={t("Язык")}
-        className={`inline-flex h-7 shrink-0 items-center gap-1.5 rounded-full pl-1 pr-2 text-xs font-medium outline-none transition-colors ${
+        className={`inline-flex h-7 shrink-0 items-center gap-1.5 rounded-full pl-1 pr-2 text-xs font-medium outline-none transition ${
           tone === "dark"
             ? "bg-white/10 text-white active:bg-white/20"
             : "bg-muted text-foreground active:bg-muted/70"
@@ -117,7 +117,7 @@ export function LanguageSheet({
                       type="button"
                       disabled={busy}
                       onClick={() => void choose(l.code)}
-                      className={`flex w-full items-center gap-3 rounded-2xl border p-3 text-left transition active:scale-[0.99] ${
+                      className={`flex w-full items-center gap-3 rounded-2xl border p-3 text-left transition ${
                         active ? "border-primary bg-primary/5" : "border-border bg-card"
                       }`}
                     >

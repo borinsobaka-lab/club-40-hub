@@ -126,7 +126,7 @@ export function PackWorkoutCard({
 
   return (
     <Card
-      className={`relative w-full overflow-hidden rounded-lg transition-colors ${
+      className={`relative w-full overflow-hidden rounded-lg transition ${
         isWaitlisted ? "border-blue-400 bg-blue-50 dark:bg-blue-950/40" : ""
       }`}
     >
@@ -137,7 +137,7 @@ export function PackWorkoutCard({
       <Row
         {...(closed ? {} : { type: "button" as const, onClick: onOpen })}
         className={`flex w-full items-center gap-3 p-3 pl-4 text-left ${
-          closed ? "" : "transition-opacity active:opacity-80"
+          closed ? "" : "transition active:opacity-80"
         }`}
       >
         <div className="flex w-12 shrink-0 flex-col items-center justify-center">
@@ -198,7 +198,7 @@ export function PackWorkoutCard({
           {isBooked ? (
             // Галочка — у первой строки («Вы записаны»), а не посередине двух.
             <div className="mt-1.5 flex items-start gap-1 text-xs font-semibold leading-tight text-emerald-600 dark:text-emerald-400">
-              <CheckCircle className="h-3.5 w-3.5 shrink-0" weight="Bold" />
+              <CheckCircle className="pop-in h-3.5 w-3.5 shrink-0" weight="Bold" />
               <BookedLabel startsAt={entry.starts_at} />
             </div>
           ) : closed ? (

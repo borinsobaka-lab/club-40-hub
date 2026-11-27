@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Spinner } from "@/components/ui/spinner";
 import { Drawer as DrawerPrimitive } from "vaul";
 import {
   AltArrowRight,
@@ -352,7 +353,7 @@ export function WorkoutDrawer({
                       cancelLocked && "opacity-60",
                     )}
                   >
-                    {isPending ? "..." : t("Отменить запись")}
+                    {isPending ? <Spinner /> : t("Отменить запись")}
                   </button>
                   <button
                     type="button"
@@ -383,7 +384,7 @@ export function WorkoutDrawer({
                     disabled={isPending}
                     className={cn(buttonVariants(), "flex-1 disabled:opacity-60")}
                   >
-                    {isPending ? "..." : t("Записаться")}
+                    {isPending ? <Spinner /> : t("Записаться")}
                   </button>
                 </div>
               ) : isWaitlisted ? (
@@ -396,7 +397,7 @@ export function WorkoutDrawer({
                     "w-full bg-red-500 text-white hover:bg-red-500/90 disabled:opacity-60",
                   )}
                 >
-                  {isPending ? "..." : t("Выйти из очереди")}
+                  {isPending ? <Spinner /> : t("Выйти из очереди")}
                 </button>
               ) : (
                 <button
@@ -405,7 +406,7 @@ export function WorkoutDrawer({
                   disabled={isPending}
                   className={cn(buttonVariants(), "w-full disabled:opacity-60")}
                 >
-                  {isPending ? "..." : isFull ? t("Встать в очередь") : t("Записаться")}
+                  {isPending ? <Spinner /> : isFull ? t("Встать в очередь") : t("Записаться")}
                 </button>
               )}
             </div>

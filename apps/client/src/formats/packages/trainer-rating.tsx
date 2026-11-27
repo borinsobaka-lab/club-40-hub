@@ -4,10 +4,12 @@ import { AltArrowRight, HandHeart, Star } from "@solar-icons/react";
 import { toast } from "sonner";
 
 import { buttonVariants } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/hooks/use-auth";
 import { useT, type Translator } from "@/i18n";
 import { untypedDb } from "@/lib/untyped-db";
 import { cn } from "@/lib/utils";
+import { myTrainerReviewsQuery } from "./trainer-comments-data";
 
 /**
  * Рейтинг тренера и чаевые в пакетном приложении (решение владельца
@@ -127,7 +129,7 @@ export function TipButton({ url, label }: { url: string; label: string }) {
       href={url}
       target="_blank"
       rel="noopener noreferrer"
-      className="flex items-center gap-3 rounded-2xl border border-border bg-card p-3 transition active:scale-[0.99]"
+      className="flex items-center gap-3 rounded-2xl border border-border bg-card p-3 transition"
     >
       <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
         <HandHeart className="h-6 w-6" weight="BoldDuotone" />
@@ -138,6 +140,23 @@ export function TipButton({ url, label }: { url: string; label: string }) {
       </span>
       <AltArrowRight className="h-5 w-5 shrink-0 text-muted-foreground" />
     </a>
+  );
+}
+
+/** Место блока «Оцените тренера», пока своя оценка не пришла, — того же размера. */
+function RateTrainerSkeleton() {
+  return (
+    <div className="rounded-2xl border border-border bg-card p-4" aria-hidden="true">
+      <Skeleton className="h-6 w-2/5" />
+      <div className="mt-3 flex justify-center gap-2">
+        {[1, 2, 3, 4, 5].map((n) => (
+          <span key={n} className="p-1">
+            <Skeleton className="h-9 w-9 rounded-full" />
+          </span>
+        ))}
+      </div>
+      <Skeleton className="mt-4 h-12 w-full rounded-full" />
+    </div>
   );
 }
 
@@ -152,20 +171,9 @@ export function RateTrainer({ trainerId, title }: { trainerId: string; title: st
   const [editing, setEditing] = useState(false);
   const [picked, setPicked] = useState(0);
 
-  const { data: mine, isPending } = useQuery({
-    queryKey: ["trainer-review", trainerId, user?.id],
-    queryFn: async (): Promise<number | null> => {
-      const { data, error } = await untypedDb
-        .from("trainer_reviews")
-        .select("rating")
-        .eq("trainer_id", trainerId)
-        .eq("user_id", user!.id)
-        .maybeSingle();
-      if (error) throw error;
-      return (data as { rating: number } | null)?.rating ?? null;
-    },
-    enabled: !!user,
-  });
+  const reviewsQuery = myTrainerReviewsQuery(user?.id ?? null);
+  const { data: reviews, isPending } = useQuery(reviewsQuery);
+  const mine = reviews?.[trainerId] ?? null;
 
   const save = useMutation({
     mutationFn: async (rating: number) => {
@@ -178,7 +186,10 @@ export function RateTrainer({ trainerId, title }: { trainerId: string; title: st
       if (error) throw error;
     },
     onSuccess: (_, rating) => {
-      queryClient.setQueryData(["trainer-review", trainerId, user?.id], rating);
+      queryClient.setQueryData(reviewsQuery.queryKey, (old) => ({
+        ...(old ?? {}),
+        [trainerId]: rating,
+      }));
       // Рейтинг пересчитывает база — обновляем все места, где он виден.
       queryClient.invalidateQueries({ queryKey: ["studio-trainers"] });
       queryClient.invalidateQueries({ queryKey: ["trainer-card", trainerId] });
@@ -189,7 +200,8 @@ export function RateTrainer({ trainerId, title }: { trainerId: string; title: st
     onError: () => toast.error(t("Не удалось отправить оценку. Попробуйте ещё раз.")),
   });
 
-  if (!user || isPending) return null;
+  if (!user) return null;
+  if (isPending) return <RateTrainerSkeleton />;
 
   const rated = mine != null;
   const showForm = !rated || editing;
@@ -198,7 +210,7 @@ export function RateTrainer({ trainerId, title }: { trainerId: string; title: st
     <div className="rounded-2xl border border-border bg-card p-4">
       <div className="font-semibold">{rated ? t("Ваша оценка") : title}</div>
       {showForm ? (
-        <>
+        <div key="form" className={editing ? "content-enter" : undefined}>
           <div
             className="mt-3 flex justify-center gap-2"
             role="radiogroup"
@@ -212,12 +224,14 @@ export function RateTrainer({ trainerId, title }: { trainerId: string; title: st
                 aria-checked={picked === n}
                 aria-label={t("{n} из 5", { n })}
                 onClick={() => setPicked(n)}
-                className="p-1 transition active:scale-90"
+                className="p-1 active:scale-90"
               >
+                {/* Звёзды загораются по очереди, слева направо. */}
                 <Star
                   weight="Bold"
-                  className={`h-9 w-9 transition-colors ${
-                    n <= picked ? "text-amber-400" : "text-muted-foreground/25"
+                  style={{ transitionDelay: n <= picked ? `${(n - 1) * 35}ms` : "0ms" }}
+                  className={`h-9 w-9 transition-[color,scale] duration-200 ease-[cubic-bezier(0.34,1.56,0.64,1)] ${
+                    n <= picked ? "scale-110 text-amber-400" : "text-muted-foreground/25"
                   }`}
                 />
               </button>
@@ -243,9 +257,9 @@ export function RateTrainer({ trainerId, title }: { trainerId: string; title: st
               {save.isPending ? t("Отправляем…") : rated ? t("Сохранить") : t("Отправить")}
             </button>
           </div>
-        </>
+        </div>
       ) : (
-        <div className="mt-2 flex items-center justify-between gap-3">
+        <div key="mine" className="content-enter mt-2 flex items-center justify-between gap-3">
           <RatingStars value={mine} className="h-6 w-6" />
           <button
             type="button"

@@ -396,11 +396,15 @@ export function PackagesSchedulePage() {
 
       {/* Персональные и диагностика — заявки администратору (2026-10-15). */}
       {activeTab === "personal" ? (
-        <PersonalRequestTab />
+        <div key="personal" className="content-enter">
+          <PersonalRequestTab />
+        </div>
       ) : activeTab === "diagnostics" ? (
-        <DiagnosticsTab />
+        <div key="diagnostics" className="content-enter">
+          <DiagnosticsTab />
+        </div>
       ) : (
-        <div className="p-4 space-y-4">
+        <div key="group" className="content-enter p-4 space-y-4">
           <div
             ref={daysContainerRef}
             className="sticky top-0 z-20 bg-background flex gap-2 overflow-x-auto no-scrollbar -mx-4 px-4 pt-2 pb-2"
@@ -415,7 +419,7 @@ export function PackagesSchedulePage() {
                     dayBtnRefs.current[i] = el;
                   }}
                   onClick={() => selectDay(i)}
-                  className={`flex flex-col items-center justify-center min-w-14 h-16 rounded-xl transition-colors ${
+                  className={`flex flex-col items-center justify-center min-w-14 h-16 rounded-xl transition ${
                     active ? "bg-primary text-primary-foreground" : "bg-card text-card-foreground"
                   } ${isPastDay ? "opacity-20" : ""}`}
                 >
@@ -608,7 +612,7 @@ function FilterChip({
     <button
       type="button"
       onClick={onClick}
-      className={`shrink-0 inline-flex max-w-[60%] items-center gap-1 px-3 h-8 rounded-full border text-xs font-medium transition-colors ${
+      className={`shrink-0 inline-flex max-w-[60%] items-center gap-1 px-3 h-8 rounded-full border text-xs font-medium transition ${
         active
           ? "bg-foreground text-background border-foreground"
           : "bg-transparent text-muted-foreground border-border"
@@ -699,7 +703,10 @@ function FilterSheet({
                         </span>
                       )}
                       {active && (
-                        <CheckCircle className="h-5 w-5 shrink-0 text-primary" weight="Bold" />
+                        <CheckCircle
+                          className="pop-in h-5 w-5 shrink-0 text-primary"
+                          weight="Bold"
+                        />
                       )}
                     </button>
                   </li>

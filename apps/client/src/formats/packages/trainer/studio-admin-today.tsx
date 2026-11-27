@@ -67,12 +67,7 @@ function AdminRow({ admin }: { admin: StudioAdminToday }) {
   );
   const cls = "flex w-full items-center gap-3 rounded-2xl bg-white/10 px-3 py-2 text-left";
   return href ? (
-    <a
-      href={href}
-      target="_blank"
-      rel="noopener noreferrer"
-      className={`${cls} transition active:scale-[0.99]`}
-    >
+    <a href={href} target="_blank" rel="noopener noreferrer" className={`${cls} transition`}>
       {body}
     </a>
   ) : (

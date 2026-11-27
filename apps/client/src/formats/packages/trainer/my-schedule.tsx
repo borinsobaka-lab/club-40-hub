@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { Spinner } from "@/components/ui/spinner";
 import { useQuery } from "@tanstack/react-query";
 import { CalendarMinimalistic, WalletMoney } from "@solar-icons/react";
 
@@ -183,7 +184,7 @@ export function TrainerMySchedule() {
                   disabled={isFetching}
                   onClick={() => setLimit((n) => n + MY_SCHEDULE_STEP)}
                 >
-                  {isFetching ? "..." : t("Показать ещё")}
+                  {isFetching ? <Spinner /> : t("Показать ещё")}
                 </Button>
               )}
             </div>

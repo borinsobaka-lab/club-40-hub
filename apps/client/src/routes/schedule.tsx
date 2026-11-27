@@ -448,7 +448,7 @@ function SchedulePage() {
             <button
               key={tab.key}
               onClick={() => setActiveTab(tab.key)}
-              className={`shrink-0 relative pt-3 pb-1 text-base font-semibold transition-colors ${
+              className={`shrink-0 relative pt-3 pb-1 text-base font-semibold transition ${
                 active ? "text-foreground" : "text-muted-foreground"
               }`}
             >
@@ -488,7 +488,7 @@ function SchedulePage() {
                     dayBtnRefs.current[i] = el;
                   }}
                   onClick={() => selectDay(i)}
-                  className={`flex flex-col items-center justify-center min-w-14 h-16 rounded-xl transition-colors ${
+                  className={`flex flex-col items-center justify-center min-w-14 h-16 rounded-xl transition ${
                     i === activeIdx
                       ? "bg-primary-foreground text-primary"
                       : "bg-card text-card-foreground"
@@ -514,7 +514,7 @@ function SchedulePage() {
                 <button
                   key={filter.key}
                   onClick={() => setActiveType(filter.key)}
-                  className={`shrink-0 inline-flex items-center gap-1.5 px-3 h-7 rounded-full border text-xs font-medium transition-colors ${
+                  className={`shrink-0 inline-flex items-center gap-1.5 px-3 h-7 rounded-full border text-xs font-medium transition ${
                     active
                       ? "bg-foreground text-background border-foreground"
                       : "bg-transparent text-muted-foreground border-border"
@@ -603,7 +603,7 @@ function SchedulePage() {
                           const Info = closed ? "div" : "button";
                           return (
                             <Card
-                              className={`relative p-3 pl-4 flex items-center gap-3 w-full overflow-hidden rounded-lg transition-colors ${
+                              className={`relative p-3 pl-4 flex items-center gap-3 w-full overflow-hidden rounded-lg transition ${
                                 isBooked
                                   ? "bg-primary text-primary-foreground border-primary"
                                   : isWaitlisted
@@ -622,7 +622,7 @@ function SchedulePage() {
                                       onClick: () => setOpenEntry(entryToDrawerData(c, t)),
                                     })}
                                 className={`flex flex-1 min-w-0 items-center gap-3 text-left ${
-                                  closed ? "" : "active:opacity-80 transition-opacity"
+                                  closed ? "" : "active:opacity-80 transition"
                                 }`}
                               >
                                 <div className="flex flex-col items-center justify-center w-12 shrink-0">
@@ -717,7 +717,7 @@ function SchedulePage() {
                                     e.stopPropagation();
                                     toggleBooking(c.id);
                                   }}
-                                  className={`shrink-0 h-10 w-10 rounded-full flex items-center justify-center transition-colors bg-primary text-primary-foreground ${
+                                  className={`shrink-0 h-10 w-10 rounded-full flex items-center justify-center transition bg-primary text-primary-foreground ${
                                     isPending ? "opacity-60" : ""
                                   }`}
                                   aria-label={t("Записаться")}
