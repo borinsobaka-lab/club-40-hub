@@ -7,7 +7,7 @@ import {
   TransferHorizontal,
   UsersGroupRounded,
 } from "@solar-icons/react";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 
 import { Card } from "@/components/ui/card";
 import { useLocalize, useT } from "@/i18n";
@@ -90,6 +90,7 @@ export function PackWorkoutCard({
   showBooked = false,
   hideTrainerId = null,
   bookingClosed = false,
+  footer = null,
   onOpen,
 }: {
   entry: PackEntry;
@@ -106,6 +107,8 @@ export function PackWorkoutCard({
   hideTrainerId?: string | null;
   /** «Закрытая запись» студии занятия — карточка не нажимается. */
   bookingClosed?: boolean;
+  /** Под карточкой, отдельно от нажатия: «Заполнить» диагностики у тренера (2026-11-27). */
+  footer?: ReactNode;
   onOpen: () => void;
 }) {
   const t = useT();
@@ -235,6 +238,7 @@ export function PackWorkoutCard({
         </div>
         {!closed && <AltArrowRight className="h-5 w-5 shrink-0 text-muted-foreground" />}
       </Row>
+      {footer && <div className="border-t border-border/60 px-3 py-2.5 pl-4">{footer}</div>}
     </Card>
   );
 }

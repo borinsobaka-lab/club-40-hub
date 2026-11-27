@@ -165,10 +165,19 @@ export function PrivacyPolicy({ info }: { info: PrivacyPolicyInfo }) {
           <li>how you heard about us.</li>
         </ul>
         <p>
+          Body diagnostic data, recorded by your trainer during a body diagnostic session: activity
+          level and emotional state, goals, body measurements (chest, waist, hips, weight), balance,
+          forward bend and splits test results, the training stage and the trainer’s
+          recommendations, and — only with your permission — photos taken to track your progress.
+          You see your diagnostics in the App; the photos are stored in closed storage and are
+          available only to you, the trainer who ran the diagnostic and the studio staff.
+        </p>
+        <p>
           4.3. Health data (special category data, optional): the health conditions you choose to
-          mark in the questionnaire (for example, back or joint problems, cardiovascular conditions
-          or blood pressure, a recent injury, pregnancy, chronic conditions) and any comments you
-          add. See Section 6.
+          mark in the questionnaire or tell your trainer during a body diagnostic (for example, back
+          or joint problems, cardiovascular conditions or blood pressure, a recent injury,
+          pregnancy, postpartum conditions, chronic conditions) and any comments you add. See
+          Section 6.
         </p>
         <p>4.4. Membership and payment data:</p>
         <ul>
@@ -257,8 +266,9 @@ export function PrivacyPolicy({ info }: { info: PrivacyPolicyInfo }) {
             your explicit written consent, see Section 6).
           </li>
           <li>
-            <b>Your progress in the App</b> — visit history, weight history and activity statistics.
-            Grounds: performance of the contract and your consent.
+            <b>Your progress in the App</b> — visit history, weight history, body diagnostic results
+            and their changes over time, and activity statistics. Grounds: performance of the
+            contract and your consent.
           </li>
           <li>
             <b>Service messages</b> — sign-in codes, notices about bookings, cancelled or changed
@@ -393,9 +403,10 @@ export function PrivacyPolicy({ info }: { info: PrivacyPolicyInfo }) {
         <p>9.1. We store personal data for the following periods:</p>
         <ul>
           <li>
-            Account, profile, questionnaire, weight history, bookings and trainer ratings — for as
-            long as you are a client of the studio and have an App account. When your client card is
-            deleted, or at your request, your App account and this data are deleted.
+            Account, profile, questionnaire, weight history, body diagnostics (including photos),
+            bookings and trainer ratings — for as long as you are a client of the studio and have an
+            App account. When your client card is deleted, or at your request, your App account and
+            this data are deleted.
           </li>
           <li>
             Records of sales, payments and refunds — for the period required by the tax and

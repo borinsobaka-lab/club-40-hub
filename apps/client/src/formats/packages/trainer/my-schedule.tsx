@@ -9,10 +9,26 @@ import { WorkoutDrawer, type WorkoutDrawerData } from "@/components/workout-draw
 import { useAuth } from "@/hooks/use-auth";
 import { useFormatStudios } from "@/hooks/use-viewed-studio";
 import { useLocalize, useT } from "@/i18n";
-import { bookedLabel, isOtherActivity, packEntryToDrawerData, type PackEntry } from "../entries";
+import { diagnosticsStateQuery, diagnosticsTodoQuery } from "../diagnostics/data";
+import { DiagnosticFillFooter } from "../diagnostics/trainer-fill";
+import {
+  bookedLabel,
+  isDiagnostic,
+  isOtherActivity,
+  packEntryToDrawerData,
+  type PackEntry,
+} from "../entries";
 import { PackWorkoutCard } from "../workout-card";
 import { TrainerPayouts } from "./payouts";
-import { MY_SCHEDULE_STEP, trainerEntriesQuery, trainerMeQuery } from "./queries";
+import {
+  MY_SCHEDULE_STEP,
+  trainerEntriesByIdsQuery,
+  trainerEntriesQuery,
+  trainerMeQuery,
+} from "./queries";
+
+const NO_IDS: string[] = [];
+const NO_ENTRIES: PackEntry[] = [];
 
 /** «Понедельник, 12 октября». */
 function dayTitle(iso: string, t: ReturnType<typeof useT>) {
@@ -27,6 +43,10 @@ function dayTitle(iso: string, t: ReturnType<typeof useT>) {
  * прочая активность. По нажатию — окно занятия тренера: кто записан и
  * «О тренировке» (у прочей активности — только описание). На каждой карточке
  * — студия занятия (2026-11-16). Не тренер — блока нет.
+ *
+ * У диагностики под карточкой — «Заполнить» (форма диагностики тела,
+ * 2026-11-27, ../diagnostics/); прошедшие за неделю диагностики без формы —
+ * сверху, «Заполните диагностику»: из ближайших занятий они уже ушли.
  *
  * С 2026-11-24 у блока две вкладки: «Моё расписание» (как было) и «Выплаты»
  * — проведённые занятия и начисления периода (./payouts.tsx); переключатель —
@@ -44,6 +64,17 @@ export function TrainerMySchedule() {
   const [open, setOpen] = useState<WorkoutDrawerData | null>(null);
   const [tab, setTab] = useState<"schedule" | "payouts">("schedule");
   const { data: studios = [] } = useFormatStudios();
+  const { data: todoIds = NO_IDS } = useQuery(diagnosticsTodoQuery(me?.trainer_id ?? null));
+  const { data: todo = NO_ENTRIES } = useQuery(trainerEntriesByIdsQuery(todoIds));
+  const diagIds = useMemo(
+    () =>
+      [...todo, ...(data?.entries ?? [])]
+        .filter(isDiagnostic)
+        .map((e) => e.id)
+        .sort(),
+    [todo, data],
+  );
+  const diagState = useQuery(diagnosticsStateQuery(diagIds)).data;
 
   const groups = useMemo(() => {
     const out: { key: string; first: string; items: PackEntry[] }[] = [];
@@ -61,6 +92,30 @@ export function TrainerMySchedule() {
   // Студия — на каждой карточке, всегда (решение владельца 2026-11-16: иначе
   // тренер может перепутать студию).
   const studioName = (id: string) => loc(studios.find((s) => s.id === id))?.name ?? null;
+
+  const renderCard = (e: PackEntry) => (
+    <PackWorkoutCard
+      key={e.id}
+      entry={e}
+      isBooked={false}
+      studioName={studioName(e.studio_id)}
+      showBooked
+      hideTrainerId={me.trainer_id}
+      footer={isDiagnostic(e) ? <DiagnosticFillFooter state={diagState?.get(e.id)} /> : null}
+      // В окне тоже «сколько записано», а не свободные места.
+      onOpen={() =>
+        setOpen({
+          ...packEntryToDrawerData(e, t),
+          spotsLabel: e.clients
+            ? e.clients.join(", ") || t("Клиент не указан")
+            : isOtherActivity(e)
+              ? null
+              : bookedLabel(e, t),
+          spotsLeft: null,
+        })
+      }
+    />
+  );
 
   return (
     <>
@@ -82,6 +137,20 @@ export function TrainerMySchedule() {
             tab === "payouts" ? "slide-in-from-right-4" : "slide-in-from-left-4"
           }`}
         >
+          {tab === "schedule" && todo.length > 0 && (
+            // Прошедшие диагностики без формы (из ближайших занятий уже ушли).
+            <div className="mb-5 space-y-2 px-4">
+              <div className="text-xs font-semibold text-primary">{t("Заполните диагностику")}</div>
+              {todo.map((e) => (
+                <div key={e.id} className="space-y-1">
+                  <div className="text-xs font-medium text-muted-foreground">
+                    {dayTitle(e.starts_at, t)}
+                  </div>
+                  {renderCard(e)}
+                </div>
+              ))}
+            </div>
+          )}
           {tab === "payouts" ? (
             <TrainerPayouts trainerId={me.trainer_id} />
           ) : isError ? (
@@ -105,28 +174,7 @@ export function TrainerMySchedule() {
                   <div className="text-xs font-semibold text-muted-foreground">
                     {dayTitle(g.first, t)}
                   </div>
-                  {g.items.map((e) => (
-                    <PackWorkoutCard
-                      key={e.id}
-                      entry={e}
-                      isBooked={false}
-                      studioName={studioName(e.studio_id)}
-                      showBooked
-                      hideTrainerId={me.trainer_id}
-                      // В окне тоже «сколько записано», а не свободные места.
-                      onOpen={() =>
-                        setOpen({
-                          ...packEntryToDrawerData(e, t),
-                          spotsLabel: e.clients
-                            ? e.clients.join(", ") || t("Клиент не указан")
-                            : isOtherActivity(e)
-                              ? null
-                              : bookedLabel(e, t),
-                          spotsLeft: null,
-                        })
-                      }
-                    />
-                  ))}
+                  {g.items.map(renderCard)}
                 </div>
               ))}
               {data.hasMore && (

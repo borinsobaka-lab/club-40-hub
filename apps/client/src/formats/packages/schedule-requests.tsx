@@ -30,6 +30,7 @@ import {
   type Goal,
   type RequestKind,
 } from "./requests";
+import { MyDiagnostics } from "./diagnostics/my-diagnostics";
 import { PackWorkoutCard } from "./workout-card";
 
 /**
@@ -314,31 +315,8 @@ export function DiagnosticsTab() {
 
   return (
     <div className="space-y-4 p-4 pb-24">
-      {/* Шапка — как у «Персональных»: иконка, заголовок, остаток розовым. */}
-      <Card className="rounded-2xl p-5">
-        <div className="flex items-center gap-3">
-          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-primary/15">
-            <Ruler className="h-7 w-7 text-primary" weight="BoldDuotone" />
-          </div>
-          <div className="min-w-0">
-            <h2 className="text-xl font-semibold leading-tight">{t("Диагностика тела")}</h2>
-            {balance > 0 && (
-              <div className="mt-0.5 text-sm font-medium text-primary">
-                {t("На балансе: {balance}", {
-                  balance: t.plural(balance, "{n} диагностика|{n} диагностики|{n} диагностик"),
-                })}
-              </div>
-            )}
-          </div>
-        </div>
-        <FormattedText
-          text={diagnosticDescription(t)}
-          className="mt-3 text-[15px] leading-relaxed text-foreground/90"
-        />
-        <p className="mt-3 text-sm text-muted-foreground">
-          {t("Диагностики входят в абонементы на 24, 36 и 50 занятий.")}
-        </p>
-      </Card>
+      {/* Результаты — в самом верху (решение владельца 2026-11-27), потом запись и описание. */}
+      <MyDiagnostics />
 
       {diagnostics.length > 0 && (
         <section className="space-y-2">
@@ -361,7 +339,17 @@ export function DiagnosticsTab() {
       )}
 
       <Card className="space-y-3 rounded-2xl p-5">
-        <h2 className="text-xl font-semibold leading-tight">{t("Записаться на диагностику")}</h2>
+        <div>
+          <h2 className="text-xl font-semibold leading-tight">{t("Записаться на диагностику")}</h2>
+          {/* Остаток — здесь, у записи: описание диагностики ушло вниз (2026-11-27). */}
+          {balance > 0 && (
+            <div className="mt-0.5 text-sm font-medium text-primary">
+              {t("На балансе: {balance}", {
+                balance: t.plural(balance, "{n} диагностика|{n} диагностики|{n} диагностик"),
+              })}
+            </div>
+          )}
+        </div>
         {open.isPending || mine.isPending ? (
           <div className="h-24 animate-pulse rounded-xl bg-muted" />
         ) : pendingAt ? (
@@ -384,6 +372,25 @@ export function DiagnosticsTab() {
             )}
           </p>
         )}
+      </Card>
+
+      {/* Что такое диагностика — внизу, после результатов и записи. */}
+      <Card className="rounded-2xl p-5">
+        <div className="flex items-center gap-3">
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-primary/15">
+            <Ruler className="h-7 w-7 text-primary" weight="BoldDuotone" />
+          </div>
+          <div className="min-w-0">
+            <h2 className="text-xl font-semibold leading-tight">{t("Диагностика тела")}</h2>
+          </div>
+        </div>
+        <FormattedText
+          text={diagnosticDescription(t)}
+          className="mt-3 text-[15px] leading-relaxed text-foreground/90"
+        />
+        <p className="mt-3 text-sm text-muted-foreground">
+          {t("Диагностики входят в абонементы на 24, 36 и 50 занятий.")}
+        </p>
       </Card>
 
       <WorkoutDrawer

@@ -52,6 +52,6 @@ export const PRIVACY_POLICY_INFO: PrivacyPolicyInfo | null = IS_PACKAGES
         },
       ],
       email: "ladystretch.georgia@gmail.com",
-      effectiveDate: "2026-11-07",
+      effectiveDate: "2026-11-27",
     }
   : null;

@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as TrainerDiagnosticRouteImport } from './routes/trainer-diagnostic'
 import { Route as SiteRouteImport } from './routes/site'
 import { Route as ScheduleRouteImport } from './routes/schedule'
 import { Route as ProfileRouteImport } from './routes/profile'
@@ -27,6 +28,11 @@ import { Route as NewsNewsIdRouteImport } from './routes/news.$newsId'
 import { Route as ApiPushAckRouteImport } from './routes/api/push-ack'
 import { Route as ApiHealthRouteImport } from './routes/api/health'
 
+const TrainerDiagnosticRoute = TrainerDiagnosticRouteImport.update({
+  id: '/trainer-diagnostic',
+  path: '/trainer-diagnostic',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SiteRoute = SiteRouteImport.update({
   id: '/site',
   path: '/site',
@@ -127,6 +133,7 @@ export interface FileRoutesByFullPath {
   '/profile': typeof ProfileRoute
   '/schedule': typeof ScheduleRoute
   '/site': typeof SiteRouteWithChildren
+  '/trainer-diagnostic': typeof TrainerDiagnosticRoute
   '/api/health': typeof ApiHealthRoute
   '/api/push-ack': typeof ApiPushAckRoute
   '/news/$newsId': typeof NewsNewsIdRoute
@@ -146,6 +153,7 @@ export interface FileRoutesByTo {
   '/profile': typeof ProfileRoute
   '/schedule': typeof ScheduleRoute
   '/site': typeof SiteRouteWithChildren
+  '/trainer-diagnostic': typeof TrainerDiagnosticRoute
   '/api/health': typeof ApiHealthRoute
   '/api/push-ack': typeof ApiPushAckRoute
   '/news/$newsId': typeof NewsNewsIdRoute
@@ -166,6 +174,7 @@ export interface FileRoutesById {
   '/profile': typeof ProfileRoute
   '/schedule': typeof ScheduleRoute
   '/site': typeof SiteRouteWithChildren
+  '/trainer-diagnostic': typeof TrainerDiagnosticRoute
   '/api/health': typeof ApiHealthRoute
   '/api/push-ack': typeof ApiPushAckRoute
   '/news/$newsId': typeof NewsNewsIdRoute
@@ -187,6 +196,7 @@ export interface FileRouteTypes {
     | '/profile'
     | '/schedule'
     | '/site'
+    | '/trainer-diagnostic'
     | '/api/health'
     | '/api/push-ack'
     | '/news/$newsId'
@@ -206,6 +216,7 @@ export interface FileRouteTypes {
     | '/profile'
     | '/schedule'
     | '/site'
+    | '/trainer-diagnostic'
     | '/api/health'
     | '/api/push-ack'
     | '/news/$newsId'
@@ -225,6 +236,7 @@ export interface FileRouteTypes {
     | '/profile'
     | '/schedule'
     | '/site'
+    | '/trainer-diagnostic'
     | '/api/health'
     | '/api/push-ack'
     | '/news/$newsId'
@@ -245,6 +257,7 @@ export interface RootRouteChildren {
   ProfileRoute: typeof ProfileRoute
   ScheduleRoute: typeof ScheduleRoute
   SiteRoute: typeof SiteRouteWithChildren
+  TrainerDiagnosticRoute: typeof TrainerDiagnosticRoute
   ApiHealthRoute: typeof ApiHealthRoute
   ApiPushAckRoute: typeof ApiPushAckRoute
   NewsNewsIdRoute: typeof NewsNewsIdRoute
@@ -252,6 +265,13 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/trainer-diagnostic': {
+      id: '/trainer-diagnostic'
+      path: '/trainer-diagnostic'
+      fullPath: '/trainer-diagnostic'
+      preLoaderRoute: typeof TrainerDiagnosticRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/site': {
       id: '/site'
       path: '/site'
@@ -398,6 +418,7 @@ const rootRouteChildren: RootRouteChildren = {
   ProfileRoute: ProfileRoute,
   ScheduleRoute: ScheduleRoute,
   SiteRoute: SiteRouteWithChildren,
+  TrainerDiagnosticRoute: TrainerDiagnosticRoute,
   ApiHealthRoute: ApiHealthRoute,
   ApiPushAckRoute: ApiPushAckRoute,
   NewsNewsIdRoute: NewsNewsIdRoute,

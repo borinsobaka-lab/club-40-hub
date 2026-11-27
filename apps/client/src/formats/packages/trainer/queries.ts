@@ -65,6 +65,22 @@ export function trainerEntriesQuery(trainerId: string | null, limit: number) {
   });
 }
 
+/**
+ * Занятия тренера по id (в том порядке): прошедшие диагностики без
+ * заполненной формы (2026-11-27, diagnostics/trainer-fill.tsx).
+ */
+export function trainerEntriesByIdsQuery(ids: string[]) {
+  return queryOptions({
+    queryKey: ["trainer-entries-by-ids", ids],
+    queryFn: async (): Promise<PackEntry[]> => {
+      const rows = await fetchTrainerEntries(ids);
+      const byId = new Map(rows.map((e) => [e.id, e]));
+      return ids.map((id) => byId.get(id)).filter((e): e is PackEntry => !!e);
+    },
+    enabled: ids.length > 0,
+  });
+}
+
 async function fetchTrainerEntries(ids: string[]): Promise<PackEntry[]> {
   const { data, error } = await untypedDb.rpc("trainer_entries_view", { p_ids: ids });
   if (!error) return (data as PackEntry[] | null) ?? [];

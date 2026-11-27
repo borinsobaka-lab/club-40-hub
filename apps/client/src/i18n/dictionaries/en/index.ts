@@ -23,6 +23,7 @@ import install from "./install";
 import feedback from "./feedback";
 import nps from "./nps";
 import trainer from "./trainer";
+import diagnostics from "./diagnostics";
 
 const dict: Dictionary = {
   ...common,
@@ -43,6 +44,7 @@ const dict: Dictionary = {
   ...feedback,
   ...nps,
   ...trainer,
+  ...diagnostics,
 };
 
 export default dict;
