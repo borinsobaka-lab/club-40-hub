@@ -40,6 +40,7 @@ import { SaleDialog } from "@/components/sale-dialog";
 import { SaleKindPickerDialog } from "@/components/sale-kind-picker";
 import { ClientDialog, type SavedClient } from "@/components/client-form-dialog";
 import { ClientAppTab } from "@/components/client-app-tab";
+import { ClientDiagnosticsTab } from "@/components/client-diagnostics-tab";
 import { ClientAdminField, ClientTrainerField } from "@/components/client-trainer-field";
 import { TrainerCommentsBlock } from "@/components/trainer-comments-block";
 import { ClientCommentsCard } from "@/components/client-comments";
@@ -503,6 +504,7 @@ function ClientCard({ client: initial, onClose }: { client: ClientLike; onClose:
               )}
               <TabsTrigger value="visits">Посещения</TabsTrigger>
               <TabsTrigger value="profile">Анкета</TabsTrigger>
+              <TabsTrigger value="diagnostics">Диагностика</TabsTrigger>
               <TabsTrigger value="app">Приложение</TabsTrigger>
             </TabsList>
 
@@ -643,6 +645,11 @@ function ClientCard({ client: initial, onClose }: { client: ClientLike; onClose:
               <ProfileTab profile={profile} loading={loadingProfile} hasUser={!!userId} />
               {/* Что написали тренеры в мобильном приложении (2026-11-05). */}
               <TrainerCommentsBlock clientId={client.id} />
+            </TabsContent>
+
+            {/* Результаты диагностики тела из приложения тренера (2026-11-27). */}
+            <TabsContent value="diagnostics" className="mt-4">
+              <ClientDiagnosticsTab clientId={client.id} />
             </TabsContent>
 
             {/* Устройства, уведомления и активность в мобильном приложении. */}
