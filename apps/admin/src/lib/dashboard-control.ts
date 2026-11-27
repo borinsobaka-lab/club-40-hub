@@ -19,9 +19,11 @@ import { plural } from "@/lib/payroll";
  * У каждого такого абонемента должен быть комментарий по клиенту не старше
  * 7 дней — та же лента, что в колонке «Комментарии» «Абонементов» (о клиенте
  * и всех его абонементах). Нет комментария или последний старше — абонемент
- * в списке. Во 2 и 3 не попадают клиенты, у которых продление уже куплено и
- * ждёт в очереди (абонемент того же вида со статусом «Ожидает»): обсуждать
- * с ними нечего.
+ * в списке. Во 2 и 3 не попадают клиенты, у которых следующий абонемент уже
+ * куплен и ещё не начат — «Ожидает» (в очереди) или «Ожидает посещения»,
+ * любого вида, кроме разового посещения и пробного (решение владельца
+ * 2026-11-27; раньше — только «Ожидает» того же вида баланса): клиент и так
+ * остаётся, писать о продлении незачем.
  *
  * Здесь — правила и подписи без React и без базы (тест —
  * dashboard-control.test.ts); загрузка — routes/_authenticated/dashboard/control.tsx.
@@ -35,6 +37,10 @@ export const CONTROL_ENDING_DAYS = 7;
 export const CONTROL_BALANCE = { min: 2, max: 4 } as const;
 /** Абонементы, которые ещё идут: у них срок и остаток что-то значат. */
 export const CONTROL_LIVE_STATES = ["active", "frozen"] as const;
+/** Куплен и ещё не начат: в очереди или ждёт первого посещения. */
+export const CONTROL_NEXT_STATES = ["pending", "awaiting"] as const;
+/** Разовое и пробное продлением не считаются. */
+const NOT_RENEWAL_KINDS = new Set(["single", "trial"]);
 
 export type ControlRuleKey = "overdue" | "ending" | "balance";
 
@@ -50,13 +56,13 @@ export const CONTROL_RULES: Record<
   },
   ending: {
     title: "Заканчиваются за неделю",
-    tip: `Действующие и замороженные абонементы, срок которых заканчивается сегодня или в ближайшие ${CONTROL_ENDING_DAYS} дней, без комментария по клиенту за последние ${CONTROL_COMMENT_DAYS} дней. Клиенты, которые уже купили продление (ждёт в очереди), не попадают.`,
+    tip: `Действующие и замороженные абонементы, срок которых заканчивается сегодня или в ближайшие ${CONTROL_ENDING_DAYS} дней, без комментария по клиенту за последние ${CONTROL_COMMENT_DAYS} дней. Клиенты, у которых следующий абонемент уже куплен и ещё не начат, не попадают.`,
     empty: "На этой неделе абонементы не заканчиваются",
     ok: "У всех заканчивающихся абонементов есть свежий комментарий",
   },
   balance: {
     title: `Осталось ${CONTROL_BALANCE.min}–${CONTROL_BALANCE.max} тренировки`,
-    tip: `Действующие и замороженные абонементы, на балансе которых осталось от ${CONTROL_BALANCE.min} до ${CONTROL_BALANCE.max} тренировок (у пакета персональных — персональных), без комментария по клиенту за последние ${CONTROL_COMMENT_DAYS} дней. Клиенты, которые уже купили продление (ждёт в очереди), не попадают.`,
+    tip: `Действующие и замороженные абонементы, на балансе которых осталось от ${CONTROL_BALANCE.min} до ${CONTROL_BALANCE.max} тренировок (у пакета персональных — персональных), без комментария по клиенту за последние ${CONTROL_COMMENT_DAYS} дней. Клиенты, у которых следующий абонемент уже куплен и ещё не начат, не попадают.`,
     empty: `Абонементов с остатком ${CONTROL_BALANCE.min}–${CONTROL_BALANCE.max} нет`,
     ok: "У всех абонементов с малым остатком есть свежий комментарий",
   },
@@ -96,21 +102,18 @@ export type ControlSale = {
   payments: ControlPayment[] | null;
 };
 
-/** Ждущее в очереди продление: чей и какого вида. */
+/** Купленный и не начатый абонемент клиента: чей и какого типа. */
 export type QueuedRenewal = { client_id: string; memberships: { kind: string | null } | null };
 
-/** Вид баланса: пакет персональных списывается отдельно от групповых. */
-function balanceKind(kind: string | null | undefined) {
-  return kind === "personal" ? "personal" : "group";
-}
-
-/** Клиенты с купленным продлением — по виду баланса. */
-export function renewedKeys(queued: QueuedRenewal[]): Set<string> {
-  return new Set(queued.map((q) => `${q.client_id}:${balanceKind(q.memberships?.kind)}`));
+/** Клиенты, у которых следующий абонемент уже куплен (разовое и пробное — не в счёт). */
+export function renewedClients(queued: QueuedRenewal[]): Set<string> {
+  return new Set(
+    queued.filter((q) => !NOT_RENEWAL_KINDS.has(q.memberships?.kind ?? "")).map((q) => q.client_id),
+  );
 }
 
 export function isRenewed(sale: ControlSale, renewed: Set<string>) {
-  return renewed.has(`${sale.client_id}:${balanceKind(sale.memberships?.kind)}`);
+  return renewed.has(sale.client_id);
 }
 
 /** Окно «заканчиваются»: сегодня … сегодня + 7. */
@@ -151,7 +154,7 @@ const DAYS: [string, string, string] = ["день", "дня", "дней"];
 /** «на балансе 3 из 8 тренировок» (после «из» — родительный падеж). */
 function balanceText(sale: ControlSale) {
   const left = sale.balance_left ?? 0;
-  const personal = balanceKind(sale.memberships?.kind) === "personal";
+  const personal = sale.memberships?.kind === "personal";
   const total = personal ? sale.memberships?.personal_count : sale.memberships?.visits_count;
   const n = total || left;
   const noun = personal

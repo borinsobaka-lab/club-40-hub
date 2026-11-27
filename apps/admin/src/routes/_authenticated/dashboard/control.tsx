@@ -21,6 +21,7 @@ import { formatPhoneDisplay } from "@/lib/contacts";
 import {
   CONTROL_BALANCE,
   CONTROL_LIVE_STATES,
+  CONTROL_NEXT_STATES,
   CONTROL_RULES,
   CONTROL_RULE_ORDER,
   commentLag,
@@ -31,7 +32,7 @@ import {
   endingWindow,
   hasFreshComment,
   isRenewed,
-  renewedKeys,
+  renewedClients,
   type ControlItem,
   type ControlRuleKey,
   type ControlSale,
@@ -127,8 +128,9 @@ async function loadControl(clubIds: string[]): Promise<ControlData> {
     ),
   ]);
 
-  // Купленные продления (ждут в очереди) — в любом клубе сети: такому
-  // клиенту про окончание и остаток писать нечего.
+  // Следующий абонемент уже куплен и не начат (в очереди или ждёт первого
+  // посещения) — в любом клубе сети: такому клиенту про окончание и
+  // остаток писать нечего.
   const candidates = [...new Set([...endingRows, ...balance].map((r) => r.client_id))];
   const all = [...new Set([...overdue, ...endingRows, ...balance].map((r) => r.client_id))];
   const [queued, crmRows] = await Promise.all([
@@ -139,7 +141,7 @@ async function loadControl(clubIds: string[]): Promise<ControlData> {
             .from("client_packages_list")
             .select("id, client_id, memberships")
             .in("client_id", part)
-            .eq("membership_state", "pending")
+            .in("membership_state", [...CONTROL_NEXT_STATES])
             .order("id")
             .range(lo, hi),
         ),
@@ -156,7 +158,7 @@ async function loadControl(clubIds: string[]): Promise<ControlData> {
       }),
     ),
   ]);
-  const renewed = renewedKeys(queued.flat());
+  const renewed = renewedClients(queued.flat());
   const crm = new Map(crmRows.flat().map((c) => [c.id, c.crm_link ?? null]));
   return {
     rules: {

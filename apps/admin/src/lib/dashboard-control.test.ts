@@ -10,7 +10,7 @@ import {
   hasFreshComment,
   isRenewed,
   overdueDebt,
-  renewedKeys,
+  renewedClients,
   type ControlSale,
 } from "./dashboard-control";
 
@@ -69,20 +69,18 @@ describe("«Руководителю» — отбор", () => {
     expect(endingWindow("2026-12-28")).toEqual({ from: "2026-12-28", to: "2027-01-04" });
   });
 
-  test("продление в очереди — по виду баланса: персональные отдельно от групповых", () => {
-    const renewed = renewedKeys([{ client_id: "c1", memberships: { kind: "package" } }]);
+  test("следующий абонемент куплен — любого вида, кроме разового и пробного", () => {
+    const renewed = renewedClients([
+      { client_id: "c1", memberships: { kind: "personal" } },
+      { client_id: "c2", memberships: { kind: "single" } },
+      { client_id: "c3", memberships: { kind: "trial" } },
+      { client_id: "c4", memberships: null },
+    ]);
     expect(isRenewed(sale(), renewed)).toBe(true);
     expect(isRenewed(sale({ client_id: "c2" }), renewed)).toBe(false);
-    const personal = sale({
-      memberships: {
-        name: "Персональные",
-        kind: "personal",
-        visits_count: null,
-        personal_count: 5,
-      },
-    });
-    expect(isRenewed(personal, renewed)).toBe(false);
-    expect(isRenewed(sale({ memberships: null }), renewed)).toBe(true);
+    expect(isRenewed(sale({ client_id: "c3" }), renewed)).toBe(false);
+    expect(isRenewed(sale({ client_id: "c4" }), renewed)).toBe(true);
+    expect(isRenewed(sale({ client_id: "c5" }), renewed)).toBe(false);
   });
 
   test("строки: без свежего комментария, сначала без комментариев, затем давние", () => {
